@@ -1,0 +1,1 @@
+{"version":3,"sources":["Footer.css"],"names":[],"mappings":"AAAA,aACE,iBAAkB,CAClB,uBACF,CAEA,WACE,oBACF,CAEA,YACE,eAAgB,CAChB,mBACF","file":"19.fff0e035.chunk.css","sourcesContent":[".footer-text {\n  text-align: center;\n  color: #868e96 !important;\n}\n\n.dark-mode {\n  color: white !important;\n}\n\n.footer-div {\n  margin-top: 2rem;\n  padding-bottom: 1rem;\n}\n"]}

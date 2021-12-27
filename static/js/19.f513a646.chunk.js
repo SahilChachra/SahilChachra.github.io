@@ -1,0 +1,2 @@
+(this["webpackJsonpsahil-portfolio"]=this["webpackJsonpsahil-portfolio"]||[]).push([[19],{111:function(e,t,a){"use strict";a.r(t);a(97);var o=a(0),r=a.n(o),n=a(22),s=(a(21),a(2));t.default=function(){var e=Object(o.useContext)(s.b).isDark;return r.a.createElement(n.Fade,{bottom:!0,duration:1e3,distance:"5px"},r.a.createElement("div",{className:"footer-div"},r.a.createElement("p",{className:e?"dark-mode footer-text":"footer-text"})))}},97:function(e,t,a){}}]);
+//# sourceMappingURL=19.f513a646.chunk.js.map
