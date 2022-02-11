@@ -1,12 +1,12 @@
 {
   "files": {
     "main.css": "/static/css/main.10e4063b.chunk.css",
-    "main.js": "/static/js/main.757df3ae.chunk.js",
-    "main.js.map": "/static/js/main.757df3ae.chunk.js.map",
+    "main.js": "/static/js/main.76fc107a.chunk.js",
+    "main.js.map": "/static/js/main.76fc107a.chunk.js.map",
     "runtime-main.js": "/static/js/runtime-main.024ed7c7.js",
     "runtime-main.js.map": "/static/js/runtime-main.024ed7c7.js.map",
-    "static/js/2.c2575674.chunk.js": "/static/js/2.c2575674.chunk.js",
-    "static/js/2.c2575674.chunk.js.map": "/static/js/2.c2575674.chunk.js.map",
+    "static/js/2.d339b926.chunk.js": "/static/js/2.d339b926.chunk.js",
+    "static/js/2.d339b926.chunk.js.map": "/static/js/2.d339b926.chunk.js.map",
     "static/css/3.df879eac.chunk.css": "/static/css/3.df879eac.chunk.css",
     "static/js/3.cf9c83e3.chunk.js": "/static/js/3.cf9c83e3.chunk.js",
     "static/js/3.cf9c83e3.chunk.js.map": "/static/js/3.cf9c83e3.chunk.js.map",
@@ -14,19 +14,19 @@
     "static/js/4.651aed64.chunk.js": "/static/js/4.651aed64.chunk.js",
     "static/js/4.651aed64.chunk.js.map": "/static/js/4.651aed64.chunk.js.map",
     "index.html": "/index.html",
-    "precache-manifest.6a55ee099eca7dfdd2971d201eeebf11.js": "/precache-manifest.6a55ee099eca7dfdd2971d201eeebf11.js",
+    "precache-manifest.35363c875a14b96a477113c89fd77393.js": "/precache-manifest.35363c875a14b96a477113c89fd77393.js",
     "service-worker.js": "/service-worker.js",
     "static/css/3.df879eac.chunk.css.map": "/static/css/3.df879eac.chunk.css.map",
     "static/css/4.e91a4b36.chunk.css.map": "/static/css/4.e91a4b36.chunk.css.map",
     "static/css/main.10e4063b.chunk.css.map": "/static/css/main.10e4063b.chunk.css.map",
-    "static/js/2.c2575674.chunk.js.LICENSE.txt": "/static/js/2.c2575674.chunk.js.LICENSE.txt",
+    "static/js/2.d339b926.chunk.js.LICENSE.txt": "/static/js/2.d339b926.chunk.js.LICENSE.txt",
     "static/media/index.css": "/static/media/Montserrat-Regular.ee653992.ttf",
     "static/media/contactMailDark.svg": "/static/media/contactMailDark.51cf7192.svg",
-    "static/media/developerActivity.svg": "/static/media/developerActivity.59389695.svg",
+    "static/media/developerActivity.svg": "/static/media/developerActivity.3e23ca14.svg",
+    "static/media/greeting.gif": "/static/media/greeting.03af3652.gif",
     "static/media/hackerrank_logo.jpg": "/static/media/hackerrank_logo.6b747dbf.jpg",
     "static/media/isro_logo.png": "/static/media/isro_logo.cd926486.png",
     "static/media/ksms_logo.png": "/static/media/ksms_logo.ed68226b.png",
-    "static/media/manOnTable.svg": "/static/media/manOnTable.52be3144.svg",
     "static/media/nextuLogo.webp": "/static/media/nextuLogo.829ad0a1.webp",
     "static/media/saayaHealthLogo.webp": "/static/media/saayaHealthLogo.25018d29.webp",
     "static/media/skill.svg": "/static/media/skill.34409398.svg",
@@ -35,8 +35,8 @@
   },
   "entrypoints": [
     "static/js/runtime-main.024ed7c7.js",
-    "static/js/2.c2575674.chunk.js",
+    "static/js/2.d339b926.chunk.js",
     "static/css/main.10e4063b.chunk.css",
-    "static/js/main.757df3ae.chunk.js"
+    "static/js/main.76fc107a.chunk.js"
   ]
 }
