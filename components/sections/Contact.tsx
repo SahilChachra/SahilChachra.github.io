@@ -1,4 +1,4 @@
-import { LinkButton } from "@/components/ui/link-button";
+import { ContactForm } from "@/components/sections/ContactForm";
 import { SectionHeader } from "@/components/SectionHeader";
 import { profile } from "@/data/profile";
 import { Github, Linkedin, Twitter, Mail, BookOpen } from "lucide-react";
@@ -22,14 +22,9 @@ export function Contact() {
             subtitle="Open for AI consulting, platform architecture reviews, and genuinely interesting problems. If you're building at the frontier of AI, I'd love to hear about it."
           />
 
-          {/* Primary CTA */}
+          {/* Contact form */}
           <div className="mb-12">
-            <LinkButton
-              href={`mailto:${profile.email}`}
-              className="text-zinc-100 font-semibold"
-            >
-              Send Me a Message
-            </LinkButton>
+            <ContactForm formspreeId={profile.formspreeId} email={profile.email} />
           </div>
 
           {/* Divider */}

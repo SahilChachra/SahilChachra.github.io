@@ -8,6 +8,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://sahilchachra.github.io"),
   title: "Sahil Chachra — Founding AI Engineer",
   description:
     "Architecting Intelligence, From the Ground Up. Founding AI Engineer building AI platforms that scale.",
@@ -17,6 +18,12 @@ export const metadata: Metadata = {
     title: "Sahil Chachra — Founding AI Engineer",
     description: "Architecting Intelligence, From the Ground Up.",
     type: "website",
+    url: "https://sahilchachra.github.io",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Sahil Chachra — Founding AI Engineer",
+    description: "Architecting Intelligence, From the Ground Up.",
   },
 };
 
