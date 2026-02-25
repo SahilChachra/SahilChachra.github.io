@@ -122,8 +122,10 @@ export function ContactForm({ formspreeId, email }: ContactFormProps) {
           disabled={state === "sending"}
           className="text-zinc-100 font-semibold"
         >
-          <Send size={16} />
-          {state === "sending" ? "Sending..." : "Send Message"}
+          <span className="flex items-center gap-2">
+            <Send size={16} />
+            {state === "sending" ? "Sending..." : "Send Message"}
+          </span>
         </LiquidButton>
       </div>
     </form>
