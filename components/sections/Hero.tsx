@@ -64,8 +64,13 @@ export function Hero() {
         </p>
 
         {/* Role */}
-        <p className="text-sm sm:text-base font-medium text-zinc-400 tracking-widest uppercase mb-12">
+        <p className="text-sm sm:text-base font-medium text-zinc-400 tracking-widest uppercase mb-6">
           {profile.role} &nbsp;·&nbsp; {profile.roleDetail}
+        </p>
+
+        {/* Short bio */}
+        <p className="text-sm sm:text-base text-zinc-500 leading-relaxed max-w-xl mb-10">
+          {profile.shortBio}
         </p>
 
         {/* CTA buttons */}
