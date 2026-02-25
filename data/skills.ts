@@ -16,7 +16,7 @@ export const skillCategories: SkillCategory[] = [
     id: "frameworks",
     title: "Frameworks & Libraries",
     icon: "Layers",
-    skills: ["PyTorch", "LangChain", "FastAPI", "OpenCV", "DeepStream", "CrewAI"],
+    skills: ["PyTorch", "LangChain", "FastAPI", "OpenCV", "CUDA","DeepStream", "CrewAI"],
   },
   {
     id: "ai-ml",
