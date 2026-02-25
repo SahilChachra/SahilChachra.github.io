@@ -10,40 +10,39 @@ export interface Project {
 
 export const projects: Project[] = [
   {
-    id: "agent-os",
-    title: "AgentOS",
+    id: "llm-safety-middleware",
+    title: "LLM Safety Middlware",
     description:
-      "An open-source orchestration framework for building reliable multi-agent AI systems. Features persistent memory, tool registry, structured planning, and human-in-the-loop checkpointing.",
-    tags: ["Python", "LLMs", "Multi-Agent", "FastAPI", "Redis"],
-    githubUrl: "https://github.com/sahilchachra/agent-os",
+      "An open-source and production-grade proxy that puts safety checks between your users and any LLM backend.",
+    tags: ["LLMs", "Python", "Flask", "Safety", "Custom Deployment", "Local LLM"],
+    githubUrl: "https://github.com/SahilChachra/LLM-Safety-Middleware",
     featured: true,
   },
   {
-    id: "rag-bench",
-    title: "RAGBench",
+    id: "llm-refusal-finetuning",
+    title: "Refusal Finetuning",
     description:
-      "A comprehensive evaluation framework for RAG pipelines. Tests retrieval quality, faithfulness, and answer relevance across 12 benchmark datasets and 5 chunking strategies.",
+      "Let's re-adapt the decision boundary of LLMs!",
     tags: ["Python", "Evaluation", "RAG", "Vector DBs", "Hugging Face"],
-    githubUrl: "https://github.com/sahilchachra/rag-bench",
-    liveUrl: "https://ragbench.example.com",
+    githubUrl: "https://github.com/SahilChachra/Refusal-Finetuning",
     featured: true,
   },
   {
-    id: "llm-cache",
-    title: "SemanticCache",
+    id: "llm-mering",
+    title: "LLM Merging",
     description:
-      "A semantic caching layer for LLM APIs that uses embedding similarity to serve cached responses for semantically equivalent queries, cutting API costs by up to 70%.",
+      "What happens if we merge LLMs finetuned on different dataset? Lets find out!",
     tags: ["Python", "TypeScript", "Embeddings", "Redis", "FastAPI"],
-    githubUrl: "https://github.com/sahilchachra/semantic-cache",
+    githubUrl: "https://github.com/SahilChachra/LLM-Merging",
     featured: false,
   },
   {
-    id: "fine-tune-lab",
-    title: "FineTuneLab",
+    id: "open-vlm-eval",
+    title: "Open VLM Eval",
     description:
-      "A lightweight CLI + UI for running fine-tuning experiments on open-source LLMs. Supports LoRA, QLoRA, and full fine-tuning with automatic experiment tracking.",
+      "[In Progress] Product teams building Computer Vision pipelines are now using VLMs. The rate at which VLMs are being released, its difficult to manually benchmark them for their usecase. This solves the problem!",
     tags: ["Python", "PyTorch", "LoRA", "Hugging Face", "Weights & Biases"],
-    githubUrl: "https://github.com/sahilchachra/fine-tune-lab",
+    githubUrl: "https://github.com/SahilChachra/openvlm-eval",
     featured: false,
   },
 ];
