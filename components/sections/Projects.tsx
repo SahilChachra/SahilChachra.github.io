@@ -6,7 +6,7 @@ import { Github, ExternalLink, Star } from "lucide-react";
 
 export function Projects() {
   return (
-    <section id="projects" className="py-24 lg:py-32 bg-zinc-900/30">
+    <section id="projects" className="py-16 lg:py-20 bg-zinc-900/30">
       <div className="max-w-6xl mx-auto px-6">
         <FadeIn>
           <SectionHeader

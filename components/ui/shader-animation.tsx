@@ -71,8 +71,8 @@ export function ShaderAnimation() {
     const mesh = new THREE.Mesh(geometry, material)
     scene.add(mesh)
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true })
-    renderer.setPixelRatio(window.devicePixelRatio)
+    const renderer = new THREE.WebGLRenderer({ antialias: false })
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1))
 
     container.appendChild(renderer.domElement)
 
@@ -87,15 +87,24 @@ export function ShaderAnimation() {
     onWindowResize()
     window.addEventListener("resize", onWindowResize, false)
 
+    let isVisible = true
+
     const animate = () => {
       const animationId = requestAnimationFrame(animate)
-      uniforms.time.value += 0.05
-      renderer.render(scene, camera)
-
+      if (isVisible) {
+        uniforms.time.value += 0.05
+        renderer.render(scene, camera)
+      }
       if (sceneRef.current) {
         sceneRef.current.animationId = animationId
       }
     }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => { isVisible = entry.isIntersecting },
+      { threshold: 0 }
+    )
+    observer.observe(container)
 
     sceneRef.current = {
       camera,
@@ -109,6 +118,7 @@ export function ShaderAnimation() {
 
     return () => {
       window.removeEventListener("resize", onWindowResize)
+      observer.disconnect()
 
       if (sceneRef.current) {
         cancelAnimationFrame(sceneRef.current.animationId)

@@ -6,7 +6,7 @@ import { MapPin, CalendarDays } from "lucide-react";
 
 export function Experience() {
   return (
-    <section id="experience" className="py-24 lg:py-32 bg-zinc-950">
+    <section id="experience" className="py-16 lg:py-20 bg-zinc-950">
       <div className="max-w-6xl mx-auto px-6">
         <FadeIn>
           <SectionHeader
