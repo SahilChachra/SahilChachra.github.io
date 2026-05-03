@@ -4,260 +4,244 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AWQ (Activation-aware Weight Quantization) - Complete Guide</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:      #0d0f0e;
+      --bg2:     #131614;
+      --bg3:     #1a1d1b;
+      --bg4:     #212623;
+      --border:  #2a2f2c;
+      --border2: #353c38;
+      --text:    #e8ede9;
+      --text2:   #a8b5ab;
+      --text3:   #6b7d6e;
+      --accent:  #4ade80;
+      --accent2: #22c55e;
+      --amber:   #fbbf24;
+      --red:     #f87171;
+      --blue:    #60a5fa;
+      --code-bg: #0a0c0b;
+    }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.7;
-            color: #2c3e50;
-            background-color: #f8f9fa;
-            padding: 20px;
-        }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
-            background-color: #ffffff;
-            padding: 40px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            border-radius: 8px;
-        }
+    html { scroll-behavior: smooth; }
 
-        h1 {
-            color: #1a1a1a;
-            font-size: 2.5em;
-            margin-bottom: 20px;
-            border-bottom: 4px solid #3498db;
-            padding-bottom: 15px;
-        }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      min-height: 100vh;
+      padding: 20px;
+    }
 
-        h2 {
-            color: #2c3e50;
-            font-size: 1.8em;
-            margin-top: 40px;
-            margin-bottom: 20px;
-            padding-left: 15px;
-            border-left: 5px solid #3498db;
-        }
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      background: var(--bg2);
+      padding: 40px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
 
-        h3 {
-            color: #34495e;
-            font-size: 1.4em;
-            margin-top: 30px;
-            margin-bottom: 15px;
-        }
+    h1 {
+      color: var(--text);
+      font-size: 2.2em;
+      margin-bottom: 20px;
+      border-bottom: 3px solid var(--accent);
+      padding-bottom: 15px;
+    }
 
-        h4 {
-            color: #555;
-            font-size: 1.2em;
-            margin-top: 20px;
-            margin-bottom: 10px;
-        }
+    h2 {
+      color: var(--text);
+      font-size: 1.6em;
+      margin-top: 40px;
+      margin-bottom: 20px;
+      padding-left: 14px;
+      border-left: 4px solid var(--accent);
+    }
 
-        p {
-            margin-bottom: 15px;
-            text-align: justify;
-        }
+    h3 {
+      color: var(--text);
+      font-size: 1.3em;
+      margin-top: 30px;
+      margin-bottom: 15px;
+    }
 
-        ul, ol {
-            margin-left: 30px;
-            margin-bottom: 20px;
-        }
+    h4 {
+      color: var(--text2);
+      font-size: 1.1em;
+      margin-top: 20px;
+      margin-bottom: 10px;
+    }
 
-        li {
-            margin-bottom: 10px;
-        }
+    p {
+      color: var(--text2);
+      margin-bottom: 15px;
+      text-align: justify;
+    }
 
-        .concept-box {
-            background-color: #e8f4f8;
-            border-left: 4px solid #3498db;
-            padding: 20px;
-            margin: 25px 0;
-            border-radius: 4px;
-        }
+    ul, ol {
+      margin-left: 28px;
+      margin-bottom: 20px;
+      color: var(--text2);
+    }
 
-        .example-box {
-            background-color: #fff9e6;
-            border-left: 4px solid #f39c12;
-            padding: 20px;
-            margin: 25px 0;
-            border-radius: 4px;
-        }
+    li { margin-bottom: 10px; }
 
-        .warning-box {
-            background-color: #ffe6e6;
-            border-left: 4px solid #e74c3c;
-            padding: 20px;
-            margin: 25px 0;
-            border-radius: 4px;
-        }
+    strong { color: var(--text); font-weight: 600; }
 
-        .success-box {
-            background-color: #e8f8f5;
-            border-left: 4px solid #27ae60;
-            padding: 20px;
-            margin: 25px 0;
-            border-radius: 4px;
-        }
+    em { color: var(--text3); font-style: italic; }
 
-        .formula {
-            background-color: #f4f4f4;
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 4px;
-            font-family: 'Courier New', monospace;
-            border: 1px solid #ddd;
-            overflow-x: auto;
-        }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
 
-        .comparison-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 25px 0;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
+    /* Callout boxes */
+    .concept-box {
+      background: var(--bg3);
+      border-left: 4px solid var(--blue);
+      padding: 18px 20px;
+      margin: 25px 0;
+      border-radius: 4px;
+      color: var(--text2);
+    }
 
-        .comparison-table th {
-            background-color: #3498db;
-            color: white;
-            padding: 15px;
-            text-align: left;
-            font-weight: 600;
-        }
+    .example-box {
+      background: var(--bg3);
+      border-left: 4px solid var(--amber);
+      padding: 18px 20px;
+      margin: 25px 0;
+      border-radius: 4px;
+      color: var(--text2);
+    }
 
-        .comparison-table td {
-            padding: 12px 15px;
-            border-bottom: 1px solid #e0e0e0;
-        }
+    .warning-box {
+      background: var(--bg3);
+      border-left: 4px solid var(--red);
+      padding: 18px 20px;
+      margin: 25px 0;
+      border-radius: 4px;
+      color: var(--text2);
+    }
 
-        .comparison-table tr:nth-child(even) {
-            background-color: #f8f9fa;
-        }
+    .success-box, .key-point {
+      background: var(--bg3);
+      border-left: 4px solid var(--accent);
+      padding: 18px 20px;
+      margin: 25px 0;
+      border-radius: 4px;
+      color: var(--text2);
+    }
 
-        .comparison-table tr:hover {
-            background-color: #e8f4f8;
-        }
+    /* Formula / code blocks */
+    .formula, .visual-diagram {
+      background: var(--code-bg);
+      border: 1px solid var(--border2);
+      padding: 16px;
+      margin: 20px 0;
+      border-radius: 4px;
+      font-family: 'IBM Plex Mono', 'Courier New', monospace;
+      font-size: 0.88em;
+      color: var(--accent);
+      overflow-x: auto;
+    }
 
-        strong {
-            color: #2c3e50;
-            font-weight: 600;
-        }
+    code {
+      background: var(--code-bg);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'IBM Plex Mono', 'Courier New', monospace;
+      font-size: 0.88em;
+      color: var(--accent);
+      border: 1px solid var(--border2);
+    }
 
-        em {
-            color: #555;
-            font-style: italic;
-        }
+    /* Table */
+    .comparison-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 25px 0;
+    }
 
-        .highlight {
-            background-color: #fff3cd;
-            padding: 2px 6px;
-            border-radius: 3px;
-        }
+    .comparison-table th {
+      background: var(--bg4);
+      color: var(--accent);
+      padding: 12px 15px;
+      text-align: left;
+      font-weight: 600;
+      border-bottom: 2px solid var(--border2);
+    }
 
-        .step-number {
-            display: inline-block;
-            background-color: #3498db;
-            color: white;
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            text-align: center;
-            line-height: 30px;
-            margin-right: 10px;
-            font-weight: bold;
-        }
+    .comparison-table td {
+      padding: 11px 15px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text2);
+    }
 
-        .toc {
-            background-color: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 4px;
-            padding: 20px 30px;
-            margin: 30px 0;
-        }
+    .comparison-table tr:nth-child(even) td { background: var(--bg3); }
+    .comparison-table tr:hover td { background: var(--bg4); }
 
-        .toc h3 {
-            margin-top: 0;
-            color: #2c3e50;
-        }
+    /* Highlight */
+    .highlight {
+      background: rgba(74, 222, 128, 0.12);
+      color: var(--accent);
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
 
-        .toc ul {
-            list-style-type: none;
-            margin-left: 0;
-        }
+    /* Step number badge */
+    .step-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--accent2);
+      color: #0d0f0e;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      margin-right: 10px;
+      font-weight: 700;
+      font-size: 0.85em;
+    }
 
-        .toc li {
-            margin-bottom: 8px;
-        }
+    /* TOC */
+    .toc {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 20px 28px;
+      margin: 30px 0;
+    }
 
-        .toc a {
-            color: #3498db;
-            text-decoration: none;
-            transition: color 0.3s;
-        }
+    .toc h3 { margin-top: 0; color: var(--text); }
 
-        .toc a:hover {
-            color: #2980b9;
-            text-decoration: underline;
-        }
+    .toc ul { list-style: none; margin-left: 0; }
 
-        code {
-            background-color: #f4f4f4;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-family: 'Courier New', monospace;
-            color: #e74c3c;
-            border: 1px solid #e0e0e0;
-        }
+    .toc li { margin-bottom: 6px; }
 
-        .visual-diagram {
-            background-color: #fafafa;
-            border: 2px solid #ddd;
-            padding: 20px;
-            margin: 25px 0;
-            border-radius: 4px;
-            font-family: 'Courier New', monospace;
-            overflow-x: auto;
-        }
+    .toc a { color: var(--text2); transition: color 0.2s; }
+    .toc a:hover { color: var(--accent); text-decoration: none; }
 
-        .key-point {
-            background-color: #d4edda;
-            border-left: 4px solid #28a745;
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 4px;
-        }
+    /* Inline subtitle */
+    p[style*="color: #666"] {
+      color: var(--text3) !important;
+    }
 
-        @media print {
-            body {
-                background-color: white;
-            }
-            .container {
-                box-shadow: none;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                padding: 20px;
-            }
-            h1 {
-                font-size: 2em;
-            }
-            h2 {
-                font-size: 1.5em;
-            }
-        }
-    </style>
+    @media (max-width: 768px) {
+      .container { padding: 20px; }
+      h1 { font-size: 1.8em; }
+      h2 { font-size: 1.3em; }
+    }
+  </style>
 </head>
 <body>
     <div class="container">
         <h1>AWQ: Activation-aware Weight Quantization</h1>
-        <p style="font-size: 1.1em; color: #666; margin-bottom: 30px;">A Complete Conceptual Guide to Understanding AWQ for LLM Compression</p>
+        <p style="font-size: 1.1em; color: #6b7d6e; margin-bottom: 30px;">A Complete Conceptual Guide to Understanding AWQ for LLM Compression</p>
 
         <div class="toc">
             <h3>Table of Contents</h3>

@@ -43,7 +43,7 @@ export const notes: Note[] = [
     description: "Notes on flash attention variants and memory-efficient attention mechanisms.",
   },
   {
-    title: "RAG Deep Dive — Interview Study Guide",
+    title: "RAG Deep Dive — Part 1",
     filename: "rag_study_guide.html",
     category: "RAG",
     description: "Comprehensive RAG study guide covering retrieval, chunking, reranking, and evaluation.",
