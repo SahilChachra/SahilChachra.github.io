@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLM Memory Systems — Engineering Notes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #ffffff;
+    --bg2: #f7f6f2;
+    --bg3: #efede7;
+    --border: rgba(0,0,0,0.1);
+    --border2: rgba(0,0,0,0.2);
+    --text: #1a1a18;
+    --muted: #5a5a56;
+    --hint: #9a9892;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --success-border: #1D9E75;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1a;
+      --bg2: #242422;
+      --bg3: #2c2c2a;
+      --border: rgba(255,255,255,0.1);
+      --border2: rgba(255,255,255,0.2);
+      --text: #e8e6de;
+      --muted: #a8a69e;
+      --hint: #686660;
+    }
+    .tag-blue   { background: #042C53 !important; color: #B5D4F4 !important; }
+    .tag-teal   { background: #04342C !important; color: #9FE1CB !important; }
+    .tag-amber  { background: #412402 !important; color: #FAC775 !important; }
+    .tag-red    { background: #501313 !important; color: #F7C1C1 !important; }
+    .tag-purple { background: #26215C !important; color: #CECBF6 !important; }
+    .tag-gray   { background: #2C2C2A !important; color: #D3D1C7 !important; }
+    .arch-accent-blue   { border-color: #185FA5 !important; background: #042C53 !important; }
+    .arch-accent-teal   { border-color: #0F6E56 !important; background: #04342C !important; }
+    .arch-accent-amber  { border-color: #854F0B !important; background: #412402 !important; }
+    .arch-accent-purple { border-color: #534AB7 !important; background: #26215C !important; }
+    .code { background: #242422 !important; }
+    .code .kw  { color: #AFA9EC !important; }
+    .code .str { color: #5DCAA5 !important; }
+    .code .fn  { color: #F0997B !important; }
+    .method-body { background: #1e1e1c !important; }
+    .usecase-arch { background: #242422 !important; }
+  }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--bg3);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ── Layout ── */
+  .page-wrap {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+  }
+
+  /* ── Hero ── */
+  .hero {
+    padding: 2.5rem 0 2rem;
+    border-bottom: 0.5px solid var(--border);
+    margin-bottom: 2rem;
+  }
+  .hero-label {
+    font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--hint); margin-bottom: .5rem;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .hero-title {
+    font-size: 32px; font-weight: 500; line-height: 1.2; color: var(--text);
+  }
+  .hero-sub {
+    font-size: 15px; color: var(--muted); margin-top: .6rem; line-height: 1.7;
+    max-width: 600px;
+  }
+
+  /* ── Nav ── */
+  .nav-row {
+    display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 2.5rem;
+  }
+  .nav-pill {
+    font-size: 12px; padding: 5px 14px; border-radius: 99px;
+    border: 0.5px solid var(--border2); background: var(--bg);
+    color: var(--muted); cursor: pointer; transition: all .15s;
+    font-family: 'JetBrains Mono', monospace; text-decoration: none;
+    display: inline-block;
+  }
+  .nav-pill:hover { background: var(--bg2); color: var(--text); }
+  .nav-pill.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+  /* ── Section titles ── */
+  .section { display: none; }
+  .section.visible { display: block; }
+  .section-header {
+    font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--hint); font-family: 'JetBrains Mono', monospace;
+    margin: 1.75rem 0 .75rem;
+    border-bottom: 0.5px solid var(--border);
+    padding-bottom: .4rem;
+  }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--bg); border: 0.5px solid var(--border);
+    border-radius: var(--radius); padding: 1.25rem 1.5rem; margin-bottom: 1rem;
+  }
+  .card-title {
+    font-size: 13px; font-weight: 500; margin-bottom: .75rem;
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  .card-body { font-size: 13px; color: var(--muted); line-height: 1.8; }
+
+  /* ── Grid ── */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 640px) { .grid2 { grid-template-columns: 1fr; } }
+
+  /* ── Tags ── */
+  .tag {
+    display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 99px;
+    font-family: 'JetBrains Mono', monospace; font-weight: 500; letter-spacing: .04em;
+    white-space: nowrap;
+  }
+  .tag-blue   { background: #E6F1FB; color: #0C447C; }
+  .tag-teal   { background: #E1F5EE; color: #085041; }
+  .tag-amber  { background: #FAEEDA; color: #633806; }
+  .tag-red    { background: #FCEBEB; color: #791F1F; }
+  .tag-purple { background: #EEEDFE; color: #3C3489; }
+  .tag-gray   { background: #F1EFE8; color: #444441; }
+
+  /* ── Code blocks ── */
+  .code {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    background: var(--bg2); border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm); padding: 1rem 1.25rem;
+    color: var(--text); line-height: 1.75; white-space: pre; overflow-x: auto;
+    margin: .75rem 0; tab-size: 4;
+  }
+  .code .kw  { color: #534AB7; }
+  .code .str { color: #0F6E56; }
+  .code .cmt { color: var(--hint); font-style: italic; }
+  .code .fn  { color: #993C1D; }
+
+  /* ── Arch row ── */
+  .arch-row {
+    display: flex; align-items: stretch; gap: 0; flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+  .arch-box {
+    flex: 1; min-width: 120px; padding: .65rem .9rem;
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm); font-size: 12px; text-align: center;
+    background: var(--bg);
+  }
+  .arch-box .arch-label { font-weight: 500; display: block; }
+  .arch-box .arch-sub   { font-size: 10.5px; color: var(--hint); display: block; margin-top: 2px; }
+  .arch-arrow { padding: 0 8px; color: var(--hint); font-size: 16px;
+                display: flex; align-items: center; }
+  .arch-accent-blue   { border-color: #378ADD; background: #E6F1FB; }
+  .arch-accent-teal   { border-color: #1D9E75; background: #E1F5EE; }
+  .arch-accent-amber  { border-color: #BA7517; background: #FAEEDA; }
+  .arch-accent-purple { border-color: #7F77DD; background: #EEEDFE; }
+
+  /* ── Compare table ── */
+  .compare-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .compare-table th {
+    text-align: left; padding: 8px 12px; font-weight: 500; font-size: 11px;
+    border-bottom: 0.5px solid var(--border); color: var(--muted);
+    letter-spacing: .06em; text-transform: uppercase;
+  }
+  .compare-table td {
+    padding: 9px 12px; border-bottom: 0.5px solid var(--border);
+    color: var(--muted); vertical-align: top; line-height: 1.5;
+  }
+  .compare-table tr:last-child td { border-bottom: none; }
+  .compare-table td:first-child { color: var(--text); font-weight: 500; }
+
+  /* ── Method accordion ── */
+  .method-row {
+    border: 0.5px solid var(--border); border-radius: var(--radius-sm);
+    margin-bottom: 8px; overflow: hidden;
+  }
+  .method-header {
+    padding: .8rem 1rem; display: flex; align-items: center; gap: 10px;
+    cursor: pointer; background: var(--bg); transition: background .12s;
+    flex-wrap: wrap;
+  }
+  .method-header:hover { background: var(--bg2); }
+  .method-name { font-size: 13px; font-weight: 500; flex: 1; }
+  .method-body {
+    display: none; padding: 1rem 1.25rem;
+    border-top: 0.5px solid var(--border);
+    background: var(--bg2); font-size: 12.5px;
+    color: var(--muted); line-height: 1.8;
+  }
+  .method-body.open { display: block; }
+  .chevron { font-size: 10px; color: var(--hint); transition: transform .15s; flex-shrink: 0; }
+  .chevron.open { transform: rotate(90deg); }
+
+  /* ── Alert rows ── */
+  .alert-row {
+    display: flex; gap: 12px; padding: .8rem 1rem;
+    border: 0.5px solid var(--border); border-radius: var(--radius-sm);
+    margin-bottom: 8px; align-items: flex-start; background: var(--bg);
+  }
+  .alert-icon { font-size: 15px; margin-top: 1px; flex-shrink: 0; }
+  .alert-content { font-size: 12.5px; color: var(--muted); line-height: 1.7; }
+  .alert-content strong {
+    color: var(--text); display: block; font-size: 13px; margin-bottom: 3px;
+  }
+  .bp-row { border-left: 2px solid #1D9E75; }
+
+  /* ── Usecase card ── */
+  .usecase-arch {
+    font-size: 12px; font-family: 'JetBrains Mono', monospace;
+    color: var(--hint); background: var(--bg2);
+    padding: .4rem .8rem; border-radius: var(--radius-sm);
+    margin: .5rem 0; display: block;
+  }
+  .usecase-tradeoff { margin-top: .5rem; font-size: 12px; color: var(--hint); }
+  .usecase-tradeoff b { color: var(--muted); }
+
+  /* ── Short-term pills ── */
+  .short-item {
+    display: flex; gap: 10px; padding: .75rem 1rem;
+    border: 0.5px solid var(--border); border-radius: var(--radius-sm);
+    margin-bottom: 8px; align-items: flex-start; background: var(--bg);
+  }
+  .short-icon { font-size: 16px; flex-shrink: 0; }
+  .short-content { font-size: 12.5px; color: var(--muted); line-height: 1.6; }
+  .short-content strong { color: var(--text); font-size: 13px; display: block; margin-bottom: 2px; }
+
+  /* ── Misc ── */
+  .spacer { margin-bottom: 1rem; }
+  p.note { font-size: 12.5px; color: var(--hint); margin-bottom: 1rem; }
+</style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-label">Engineering Notes · LLM Memory Systems</div>
+    <div class="hero-title">Memory in LLMs</div>
+    <div class="hero-sub">Short-term vs long-term, architectures, patterns, tradeoffs, and production hacks.</div>
+  </div>
+
+  <!-- Nav -->
+  <div class="nav-row" id="nav">
+    <span class="nav-pill active" onclick="show('overview', this)">Overview</span>
+    <span class="nav-pill" onclick="show('short', this)">Short-term</span>
+    <span class="nav-pill" onclick="show('long', this)">Long-term</span>
+    <span class="nav-pill" onclick="show('methods', this)">Methods</span>
+    <span class="nav-pill" onclick="show('usecases', this)">Use cases</span>
+    <span class="nav-pill" onclick="show('bottlenecks', this)">Bottlenecks</span>
+    <span class="nav-pill" onclick="show('hacks', this)">Hacks</span>
+    <span class="nav-pill" onclick="show('bestpractice', this)">Best practices</span>
+  </div>
+
+  <!-- ═══ OVERVIEW ═══ -->
+  <div class="section visible" id="section-overview">
+    <div class="section-header">Mental model</div>
+    <div class="arch-row">
+      <div class="arch-box arch-accent-blue">
+        <span class="arch-label">User input</span>
+        <span class="arch-sub">prompt / message</span>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-box arch-accent-purple">
+        <span class="arch-label">Context window</span>
+        <span class="arch-sub">short-term memory</span>
+      </div>
+      <div class="arch-arrow">↔</div>
+      <div class="arch-box arch-accent-teal">
+        <span class="arch-label">External stores</span>
+        <span class="arch-sub">long-term memory</span>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-box arch-accent-amber">
+        <span class="arch-label">LLM output</span>
+        <span class="arch-sub">response</span>
+      </div>
+    </div>
+
+    <div class="section-header">Four memory types</div>
+    <div class="grid2">
+      <div class="card">
+        <div class="card-title"><span class="tag tag-purple">IN-CONTEXT</span> Short-term</div>
+        <div class="card-body">Everything inside the current context window. Zero-latency, zero-setup. Wiped when session ends. Bounded by token limit (4K–2M tokens depending on model).</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="tag tag-teal">RETRIEVAL</span> Long-term RAG</div>
+        <div class="card-body">Vector DBs, BM25, semantic search. Relevant chunks retrieved at query time and injected into context. Scales to millions of docs but adds latency + complexity.</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="tag tag-amber">PARAMETRIC</span> In-weights</div>
+        <div class="card-body">Knowledge baked into model weights via pre-training or fine-tuning. Cannot be updated at inference. Fast retrieval, but static — stale knowledge is a hard problem.</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="tag tag-blue">STRUCTURED</span> External DB</div>
+        <div class="card-body">SQL/NoSQL/KV stores the model reads/writes via tool calls. User profile DBs, session stores, knowledge graphs. Explicit, queryable, updateable.</div>
+      </div>
+    </div>
+
+    <div class="section-header">Key distinction</div>
+    <div class="card">
+      <table class="compare-table">
+        <thead><tr><th>Dimension</th><th>Short-term</th><th>Long-term</th></tr></thead>
+        <tbody>
+          <tr><td>Storage</td><td>Context window (RAM-like)</td><td>Disk/DB (persistent)</td></tr>
+          <tr><td>Lifetime</td><td>One session</td><td>Persists across sessions</td></tr>
+          <tr><td>Capacity</td><td>Thousands of tokens</td><td>Millions of records</td></tr>
+          <tr><td>Latency</td><td>~0ms (already loaded)</td><td>5ms–500ms (retrieve)</td></tr>
+          <tr><td>Update cost</td><td>Free (just append)</td><td>Indexing, embeddings</td></tr>
+          <tr><td>Retrieval</td><td>Full attention over all tokens</td><td>Approximate / semantic</td></tr>
+          <tr><td>Forgetting</td><td>Abrupt (token limit hit)</td><td>Gradual (controlled)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══ SHORT-TERM ═══ -->
+  <div class="section" id="section-short">
+    <div class="section-header">What is short-term memory?</div>
+    <div class="card">
+      <div class="card-body">
+        The context window <code style="font-family:'JetBrains Mono',monospace;font-size:12px">[system] + [history] + [retrieved_chunks] + [user_turn]</code> is the LLM's working memory. The model has perfect attention over every token in it — no retrieval needed. The bottleneck is purely token count and cost.
+      </div>
+    </div>
+
+    <div class="section-header">What lives in the context window</div>
+    <div class="grid2">
+      <div class="short-item"><div class="short-icon">📌</div><div class="short-content"><strong>System prompt</strong>Persona, rules, tools, current date/time. Usually static per deployment.</div></div>
+      <div class="short-item"><div class="short-icon">💬</div><div class="short-content"><strong>Conversation history</strong>All prior turns. Grows each message. First thing compressed/truncated when limit approaches.</div></div>
+      <div class="short-item"><div class="short-icon">📄</div><div class="short-content"><strong>Retrieved context</strong>Chunks from RAG injected before the user's question. Temporary — injected fresh every turn.</div></div>
+      <div class="short-item"><div class="short-icon">🛠</div><div class="short-content"><strong>Tool call results</strong>Outputs from function calls, search results, code execution output.</div></div>
+      <div class="short-item"><div class="short-icon">🖼</div><div class="short-content"><strong>Multimodal content</strong>Images, PDFs (expanded to thousands of tokens each).</div></div>
+      <div class="short-item"><div class="short-icon">🔢</div><div class="short-content"><strong>Scratchpad / CoT</strong>Chain-of-thought tokens, extended thinking blocks.</div></div>
+    </div>
+
+    <div class="section-header">Sliding window patterns</div>
+    <div class="code"><span class="cmt"># Strategy 1: simple truncation (bad for coherence)</span>
+messages = messages[<span class="fn">-MAX_TURNS</span>:]
+
+<span class="cmt"># Strategy 2: keep system + last N + summarize middle</span>
+<span class="kw">def</span> <span class="fn">compress_history</span>(messages, max_tokens=6000):
+    system = messages[0]
+    recent = messages[<span class="fn">-6</span>:]       <span class="cmt"># always keep last 3 turns</span>
+    middle = messages[1:-6]
+    summary = <span class="fn">summarize</span>(middle)   <span class="cmt"># LLM summarization call</span>
+    <span class="kw">return</span> [system, {<span class="str">"role"</span>:<span class="str">"system"</span>, <span class="str">"content"</span>:summary}] + recent
+
+<span class="cmt"># Strategy 3: token-budget sliding window</span>
+<span class="kw">while</span> <span class="fn">count_tokens</span>(messages) > MAX_TOKENS:
+    messages.<span class="fn">pop</span>(1)   <span class="cmt"># drop oldest non-system message</span></div>
+
+    <div class="section-header">Context window sizes (2025)</div>
+    <div class="card">
+      <table class="compare-table">
+        <thead><tr><th>Model</th><th>Context</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>GPT-4o</td><td>128K tokens</td><td>~96K usable in practice</td></tr>
+          <tr><td>Claude 3.7 / Sonnet 4</td><td>200K tokens</td><td>~150K economic sweet spot</td></tr>
+          <tr><td>Gemini 1.5 Pro</td><td>1M tokens</td><td>Degraded recall past 200K</td></tr>
+          <tr><td>Gemini 2.0 Ultra</td><td>2M tokens</td><td>Best long-ctx recall so far</td></tr>
+          <tr><td>Llama 3.3 70B</td><td>128K tokens</td><td>Open weights, self-hosted</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══ LONG-TERM ═══ -->
+  <div class="section" id="section-long">
+    <div class="section-header">Long-term memory architecture</div>
+    <div class="card">
+      <div class="card-body">Anything that persists beyond a single context window. Implemented as an external system the LLM reads from (retrieval) or writes to (tool call). The model itself never "remembers" — it reads a summary/chunk injected into context each turn.</div>
+    </div>
+
+    <div class="section-header">Storage backends</div>
+    <div class="grid2">
+      <div class="card">
+        <div class="card-title"><span class="tag tag-teal">VECTOR DB</span> Semantic retrieval</div>
+        <div class="card-body">Embed text → store vectors → ANN search at query time. Best for fuzzy, semantic lookup.<br><br>
+          <span class="tag tag-gray">Pinecone</span> <span class="tag tag-gray">Qdrant</span> <span class="tag tag-gray">Weaviate</span> <span class="tag tag-gray">pgvector</span> <span class="tag tag-gray">ChromaDB</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="tag tag-blue">KV STORE</span> Exact lookup</div>
+        <div class="card-body">Redis / DynamoDB for fast exact-key retrieval. User profile, session state, preferences. O(1) lookup, no semantic search.<br><br>
+          <span class="tag tag-gray">Redis</span> <span class="tag tag-gray">DynamoDB</span> <span class="tag tag-gray">MongoDB</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="tag tag-purple">GRAPH DB</span> Relational memory</div>
+        <div class="card-body">Entities + relationships. Best for knowledge graphs, multi-hop reasoning ("Alice works with Bob who knows Carol").<br><br>
+          <span class="tag tag-gray">Neo4j</span> <span class="tag tag-gray">Memgraph</span> <span class="tag tag-gray">Graphiti</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="tag tag-amber">RELATIONAL</span> Structured data</div>
+        <div class="card-body">SQL for tabular user data. LLM generates SQL via Text2SQL or retrieves via structured filters.<br><br>
+          <span class="tag tag-gray">PostgreSQL</span> <span class="tag tag-gray">SQLite</span> <span class="tag tag-gray">Supabase</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-header">Memory write pipeline</div>
+    <div class="code"><span class="cmt"># After each conversation turn — extract + store memories</span>
+<span class="kw">async def</span> <span class="fn">persist_memory</span>(user_id, turn_text, llm):
+    <span class="cmt"># 1. Extract memorable facts from the turn</span>
+    facts = <span class="kw">await</span> llm.<span class="fn">extract</span>(
+        prompt=<span class="str">f"Extract key facts from: {turn_text}"</span>,
+        schema=<span class="str">"List[{fact: str, importance: 1-5}]"</span>
+    )
+    <span class="cmt"># 2. Deduplicate against existing memories</span>
+    existing = <span class="kw">await</span> vector_db.<span class="fn">search</span>(query=facts, top_k=5)
+    novel_facts = <span class="fn">deduplicate</span>(facts, existing)
+
+    <span class="cmt"># 3. Embed + upsert</span>
+    embeddings = <span class="kw">await</span> embedder.<span class="fn">embed_batch</span>(novel_facts)
+    <span class="kw">await</span> vector_db.<span class="fn">upsert</span>(
+        vectors=embeddings,
+        metadata={<span class="str">"user_id"</span>: user_id, <span class="str">"timestamp"</span>: <span class="fn">now</span>()}
+    )</div>
+
+    <div class="section-header">Memory read pipeline</div>
+    <div class="code"><span class="cmt"># At the start of each turn — retrieve + inject</span>
+<span class="kw">async def</span> <span class="fn">build_context</span>(user_id, user_query):
+    query_embedding = <span class="kw">await</span> embedder.<span class="fn">embed</span>(user_query)
+    memories = <span class="kw">await</span> vector_db.<span class="fn">search</span>(
+        vector=query_embedding,
+        filter={<span class="str">"user_id"</span>: user_id},
+        top_k=5
+    )
+    memory_block = <span class="str">"\n"</span>.<span class="fn">join</span>([m.text <span class="kw">for</span> m <span class="kw">in</span> memories])
+    <span class="kw">return</span> <span class="str">f"[Relevant memories]\n{memory_block}\n\n[User query]\n{user_query}"</span></div>
+  </div>
+
+  <!-- ═══ METHODS ═══ -->
+  <div class="section" id="section-methods">
+    <div class="section-header">Implementation methods</div>
+    <p class="note">Click to expand each method</p>
+    <div id="methods-list"></div>
+  </div>
+
+  <!-- ═══ USE CASES ═══ -->
+  <div class="section" id="section-usecases">
+    <div class="section-header">Architecture by use case</div>
+    <div id="usecases-list"></div>
+  </div>
+
+  <!-- ═══ BOTTLENECKS ═══ -->
+  <div class="section" id="section-bottlenecks">
+    <div class="section-header">Known problems</div>
+    <div id="bottlenecks-list"></div>
+  </div>
+
+  <!-- ═══ HACKS ═══ -->
+  <div class="section" id="section-hacks">
+    <div class="section-header">Production hacks &amp; tricks</div>
+    <div id="hacks-list"></div>
+  </div>
+
+  <!-- ═══ BEST PRACTICES ═══ -->
+  <div class="section" id="section-bestpractice">
+    <div class="section-header">Best practices</div>
+    <div id="bp-list"></div>
+  </div>
+
+</div><!-- /page-wrap -->
+
+<script>
+const METHODS = [
+  {
+    name: "Full context window (naive)",
+    tags: [["IN-CONTEXT","tag-purple"],["SHORT-TERM","tag-purple"]],
+    body: `The simplest approach: dump the entire conversation into context every turn.
+
+<b>When to use:</b> Short sessions, ≤50 turns, or when using models with ≥200K context.
+<b>Implementation:</b> messages = [{role, content}, ...] — just keep appending.
+<b>Limit:</b> Degrades past 50% of max context due to "lost in the middle" attention phenomenon.`,
+    code: `messages = [
+    {"role": "system", "content": system_prompt},
+    *conversation_history,          # all prior turns
+    {"role": "user", "content": user_input}
+]
+response = llm.chat(messages)`
+  },
+  {
+    name: "Summarization compression",
+    tags: [["COMPRESSION","tag-blue"],["SHORT-TERM","tag-purple"]],
+    body: `When history grows too long, summarize the oldest N turns into a compact block, then discard them. Preserves semantic continuity without blowing token budget.
+
+<b>Variants:</b> rolling summary (update progressively), recursive summary (summarize summaries), hierarchical (different granularities).
+<b>Tradeoff:</b> Information loss is unavoidable — details not captured in summary are permanently gone.`,
+    code: `# Rolling summary pattern
+def compress(messages, threshold=8000):
+    if count_tokens(messages) < threshold:
+        return messages
+
+    old = messages[1:-4]       # everything except system + last 2 turns
+    summary = llm.complete(
+        f"Summarize this conversation:\\n{format(old)}"
+    )
+    return [messages[0],
+            {"role":"system","content":f"[Summary] {summary}"},
+            *messages[-4:]]`
+  },
+  {
+    name: "RAG (Retrieval-Augmented Generation)",
+    tags: [["RETRIEVAL","tag-teal"],["LONG-TERM","tag-teal"]],
+    body: `Index documents as vector embeddings. At query time, embed the user question, ANN-search for top-K relevant chunks, inject into context.
+
+<b>When to use:</b> Knowledge bases, docs Q&A, product catalogs, codebases.
+<b>Chunking strategies:</b> Fixed-size, sentence, recursive, semantic, document-level.
+<b>Retrieval strategies:</b> dense (embedding), sparse (BM25), hybrid (both), multi-vector (ColBERT).`,
+    code: `# Minimal RAG pipeline
+def rag_query(question, collection):
+    query_vec = embed(question)
+    chunks = collection.search(query_vec, top_k=5)
+    context = "\\n---\\n".join([c.text for c in chunks])
+
+    return llm.complete(f"""
+Context:
+{context}
+
+Question: {question}
+Answer based only on the context above.""")`
+  },
+  {
+    name: "Entity memory / user profile",
+    tags: [["STRUCTURED","tag-amber"],["LONG-TERM","tag-teal"]],
+    body: `Maintain a structured profile of entities (users, products, concepts). After each turn, extract entity updates and merge into the profile. At turn start, inject relevant profile fields.
+
+<b>Best for:</b> Personalization, customer service, assistant apps.
+<b>Tools:</b> Mem0, Zep, custom Redis + LLM extraction.`,
+    code: `# User profile memory (Mem0-style)
+from mem0 import Memory
+m = Memory()
+
+# After turn: auto-extract + store
+m.add(messages, user_id=user_id)
+
+# At turn start: inject relevant memories
+memories = m.search(query=user_message, user_id=user_id)
+context = "\\n".join([x["memory"] for x in memories[:5]])`
+  },
+  {
+    name: "Episodic memory (conversation log)",
+    tags: [["RETRIEVAL","tag-teal"],["LONG-TERM","tag-teal"]],
+    body: `Store entire past conversations (or summaries thereof) in a vector DB. At start of new session, retrieve past sessions relevant to current topic.
+
+<b>Best for:</b> Support agents remembering past tickets, coaching apps, research assistants.
+<b>Granularity options:</b> full conversation, per-turn, per-topic-segment.`,
+    code: `# Store session summary on close
+async def close_session(session_id, messages, user_id):
+    summary = await llm.summarize(messages)
+    embedding = await embed(summary)
+    await vector_db.upsert({
+        "id": session_id,
+        "vector": embedding,
+        "metadata": {"user_id": user_id,
+                     "summary": summary,
+                     "timestamp": now()}
+    })
+
+# Retrieve relevant past episodes at session open
+async def open_session(user_query, user_id):
+    past = await vector_db.search(
+        embed(user_query),
+        filter={"user_id": user_id},
+        top_k=3
+    )
+    return [p["metadata"]["summary"] for p in past]`
+  },
+  {
+    name: "Graph memory (knowledge graph)",
+    tags: [["GRAPH","tag-purple"],["LONG-TERM","tag-teal"]],
+    body: `Extract entities and relationships, store as a graph. Query via traversal, Cypher, or GraphRAG patterns. Enables multi-hop reasoning.
+
+<b>Best for:</b> Research, enterprise knowledge bases, anything with complex entity relationships.
+<b>Tools:</b> Neo4j + LangChain GraphRAG, Graphiti, Microsoft GraphRAG.`,
+    code: `# Graphiti — temporal knowledge graph
+from graphiti_core import Graphiti
+g = Graphiti(neo4j_uri, user, pwd)
+
+# Auto-extract entities + relations from message
+await g.add_episode(
+    name="turn_42",
+    episode_body=user_message,
+    source_description="user conversation"
+)
+
+# Search with hybrid BFS + semantic
+results = await g.search("Alice's project deadlines")`
+  },
+  {
+    name: "Cache-augmented generation",
+    tags: [["CACHING","tag-gray"],["SHORT-TERM","tag-purple"]],
+    body: `Use model provider's prompt caching to cheaply reuse large static context blocks (system prompt, docs, rules). The KV-cache is recomputed only when the cached prefix changes.
+
+<b>Claude:</b> cache_control on system blocks. <b>OpenAI:</b> automatic prefix caching.
+<b>Savings:</b> Up to 90% cost reduction on repeated static prefixes.`,
+    code: `# Claude prompt caching
+messages = [{
+    "role": "user",
+    "content": [{
+        "type": "text",
+        "text": large_document,
+        "cache_control": {"type": "ephemeral"}  # cache this
+    }, {
+        "type": "text",
+        "text": user_question  # not cached — changes each turn
+    }]
+}]`
+  },
+  {
+    name: "External tool / function memory",
+    tags: [["AGENTIC","tag-amber"],["LONG-TERM","tag-teal"]],
+    body: `Give the LLM tools to read and write memory explicitly. The model decides when to save or recall. Best for agentic systems where the model drives its own memory.
+
+<b>Upside:</b> Model controls relevance — saves what it thinks matters.
+<b>Downside:</b> Can miss implicit information, inconsistent saves.`,
+    code: `tools = [
+  {"name": "save_memory", "description": "Store important info",
+   "parameters": {"text": "str", "category": "str"}},
+  {"name": "recall_memory", "description": "Search past memories",
+   "parameters": {"query": "str", "top_k": "int"}}
+]
+
+# LLM will call save_memory when it decides something is important
+# and recall_memory when it needs past context`
+  }
+];
+
+const USECASES = [
+  {
+    name: "Chatbot / assistant",
+    tags: [["CONTEXT","tag-purple"],["SUMMARIZE","tag-blue"],["PROFILE","tag-amber"]],
+    arch: "Context window → rolling summary → user profile KV",
+    detail: "Keep last 10 turns verbatim. Summarize older turns. Store user preferences (name, preferences, history) in a Redis profile injected at session start. Use Mem0 or a custom extraction LLM to update profile after each session.",
+    tradeoffs: "Good latency. May lose specific details from old turns."
+  },
+  {
+    name: "RAG knowledge base (docs Q&A)",
+    tags: [["RAG","tag-teal"],["VECTOR DB","tag-teal"],["RERANKING","tag-blue"]],
+    arch: "Embed query → ANN search → rerank → inject top-K chunks",
+    detail: "Chunk docs at ~512 tokens with 10% overlap. Embed with text-embedding-3-large or voyage-3. Use hybrid retrieval (dense + BM25). Rerank with Cohere or a cross-encoder before injecting. Add metadata filters (date, source, doc_type) for precision.",
+    tradeoffs: "High recall with hybrid. Reranking adds ~200ms. Chunking strategy is the #1 quality lever."
+  },
+  {
+    name: "Coding assistant (codebase-aware)",
+    tags: [["RAG","tag-teal"],["GRAPH","tag-purple"],["CONTEXT","tag-purple"]],
+    arch: "AST parsing → code graph → semantic search over symbols",
+    detail: "Parse codebase into AST. Build symbol graph (function → calls → modules). Embed at function/class level. At query time: retrieve semantically relevant functions + their call graph neighbors. Use tree-sitter for language-agnostic parsing.",
+    tradeoffs: "Must re-index on code changes. AST-aware chunking >> naive line-based."
+  },
+  {
+    name: "Multi-session personal assistant",
+    tags: [["EPISODIC","tag-blue"],["ENTITY","tag-amber"],["GRAPH","tag-purple"]],
+    arch: "Session summary → vector store → entity graph → profile KV",
+    detail: "Three layers: (1) per-session episode summaries for temporal recall, (2) entity memory for facts about people/projects, (3) user preference profile. At session start, retrieve top-3 past episodes + relevant entities + profile. Write-on-close or write-on-event.",
+    tradeoffs: "Complex pipeline. Memory quality degrades if extraction LLM is weak. Use GPT-4o or Claude 3.5+ for extraction."
+  },
+  {
+    name: "Agentic / long-horizon task",
+    tags: [["TOOL MEMORY","tag-amber"],["SCRATCHPAD","tag-purple"],["EPISODIC","tag-blue"]],
+    arch: "Agent scratchpad → tool-based read/write → episodic session log",
+    detail: "Agent uses scratchpad (extended context) for current-task state. Has save_memory / recall_memory tools. On task completion, compress scratchpad to episode summary. Use a separate short-term working memory (structured dict) for task variables.",
+    tradeoffs: "Model must be prompted to save memory — unreliable without explicit scaffolding. Consider forced memory checkpoints."
+  },
+  {
+    name: "Customer support agent",
+    tags: [["TICKET HISTORY","tag-blue"],["ENTITY","tag-amber"],["RAG","tag-teal"]],
+    arch: "Customer profile + past tickets (vector) + product KB (RAG)",
+    detail: "On contact: fetch customer profile (structured), retrieve similar past tickets (episodic RAG), query product KB (RAG). Inject all three into context with clear delimiters. Save ticket summary + outcome on close.",
+    tradeoffs: "Privacy: user data in vector DBs needs careful access control. Ticket retrieval works best with BM25 on ticket IDs + dense on issue descriptions."
+  }
+];
+
+const BOTTLENECKS = [
+  {icon:"⛔", title:"Lost in the middle", body:"LLMs have lower recall for information placed in the middle of long contexts. Critical info placed at the start or end of context is recalled ~40% better. Mitigation: always place most important context at the very beginning or end of the injected block."},
+  {icon:"⛔", title:"Context window cost explosion", body:"At 200K tokens × 100 users × 1000 req/day, costs spiral fast. Injecting full docs each turn is a common beginner mistake. Use aggressive chunking, caching (Claude's cache_control), and selective injection."},
+  {icon:"⛔", title:"Retrieval relevance failure", body:"Top-K retrieval returns semantically similar but contextually irrelevant chunks. Query expansion, HyDE (Hypothetical Document Embeddings), or multi-query retrieval helps. Reranking is mandatory for production."},
+  {icon:"⛔", title:"Stale long-term memories", body:"User facts change. A memory stored 6 months ago ('I work at Google') may now be wrong. Need TTL on memories, contradiction detection, or versioned memory with recency weighting."},
+  {icon:"⛔", title:"Memory hallucination", body:"LLMs sometimes confidently cite 'memories' they've inferred rather than retrieved. Provide retrieved memories with source metadata. Use factual grounding prompts: 'Only state things from [Memory] below.'"},
+  {icon:"⛔", title:"Chunking pathology", body:"Fixed-size chunking splits sentences/ideas mid-thought. Naive overlap causes contradictions across chunks. Use semantic chunking (split on topic shifts) or sentence-level chunking with recursive merging up to token limit."},
+  {icon:"⛔", title:"Embedding model mismatch", body:"Embedding model used at indexing time must match retrieval time. Switching models invalidates the entire index. Pin embedding model version. Re-embed corpus on model updates."},
+  {icon:"⛔", title:"Write amplification in agentic loops", body:"Agents running in tight loops can write redundant or conflicting memories. Need deduplication logic, memory consolidation passes, and write-rate limiting."}
+];
+
+const HACKS = [
+  {icon:"⚡", title:"HyDE — Hypothetical Document Embeddings", body:"Instead of embedding the raw user query, prompt the LLM to generate a 'hypothetical ideal answer' and embed THAT. The hypothetical answer matches the embedding space of actual answers much better than the question itself. Gives 15–30% retrieval quality improvement with no index changes."},
+  {icon:"⚡", title:"Prompt caching for large static contexts", body:"If your system prompt or injected docs are static across many requests, use Claude's cache_control or OpenAI's prefix caching. The KV-cache is reused, cutting input token costs by up to 90% and reducing TTFT."},
+  {icon:"⚡", title:"Memory as a separate micro-LLM call", body:"Don't extract memories in-line with the main response. Run a separate, cheap LLM call (Haiku/mini) asynchronously after each turn to extract and store facts. Keeps main response latency low."},
+  {icon:"⚡", title:"Structured memory schema with importance scoring", body:"Store memories as {text, importance:1–5, category, created_at, last_accessed}. Retrieve by a weighted combo of semantic similarity × recency × importance. Forget low-importance, old, never-accessed memories first."},
+  {icon:"⚡", title:"Multi-query retrieval", body:"Generate 3–5 rephrased versions of the user query, embed all, retrieve top-K per query, deduplicate. RRF (Reciprocal Rank Fusion) to merge result lists. Massively improves recall for ambiguous queries."},
+  {icon:"⚡", title:"Contextual compression", body:"After retrieval, run a second LLM call: 'Given this question, extract only the relevant parts of these chunks.' Compresses 5 large chunks into a tight, relevant passage. Reduces context pollution."},
+  {icon:"⚡", title:"Memory tiering (hot / warm / cold)", body:"Hot: last 5 turns verbatim in context. Warm: entity profile + recent episodes in context. Cold: full episodic log in vector DB (only retrieved if semantically relevant). Keeps most interactions fast and cheap."},
+  {icon:"⚡", title:"Speculative prefill for memory", body:"Pre-generate likely memory blocks (for returning users) during idle time. When user sends next message, the memory context is already embedded and cached. Cuts first-token latency significantly."}
+];
+
+const BEST_PRACTICES = [
+  {icon:"✓", title:"Separate concerns: storage vs retrieval vs injection", body:"Don't mix memory write logic with response generation. Use async write pipelines. Memory injection should be deterministic and inspectable — log what was retrieved."},
+  {icon:"✓", title:"Always add source attribution to retrieved memories", body:"Format: '[Memory from 2024-12-01]: User prefers Python over JS'. Helps model distinguish retrieved facts from parametric knowledge. Reduces hallucination of fake memories."},
+  {icon:"✓", title:"Test retrieval independently from generation", body:"Evaluate retrieval recall@K and precision@K separately. A common mistake: optimize the LLM prompt while the retrieval is broken. Use LLM-as-judge or annotated eval sets for retrieval quality."},
+  {icon:"✓", title:"Implement memory TTL and contradiction detection", body:"Old memories go stale. Either TTL-expire them or run a periodic 'memory consolidation' pass: cluster similar memories, resolve contradictions, prune outdated ones. Graphiti does this automatically for graph memory."},
+  {icon:"✓", title:"Use different embedding models for different content types", body:"Code: voyage-code-2 or text-embedding-3-large with code fine-tuning. Natural language: voyage-3 or text-embedding-3-large. Don't use one generic model for all content."},
+  {icon:"✓", title:"Monitor context utilization, not just cost", body:"Track: avg tokens used per request, % of context from RAG vs history vs system, retrieval hit rate, user-visible memory errors. These metrics reveal compression/retrieval failures before they hurt quality."},
+  {icon:"✓", title:"Gate memory writes behind importance threshold", body:"Don't store everything. Run extraction LLM with prompt: 'What is worth remembering? Score 1–5. Only return items ≥4.' Keeps DB from filling with noise."},
+  {icon:"✓", title:"Simulate memory loss in evals", body:"Test your system by deliberately withholding key context and verifying the LLM correctly queries memory rather than hallucinating. Test the seams, not just the happy path."}
+];
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderMethods() {
+  document.getElementById('methods-list').innerHTML = METHODS.map((m, i) => `
+    <div class="method-row">
+      <div class="method-header" onclick="toggleMethod(${i})">
+        <div class="method-name">${m.name}</div>
+        ${m.tags.map(([t,c]) => `<span class="tag ${c}">${t}</span>`).join('')}
+        <span class="chevron" id="chev-${i}">▶</span>
+      </div>
+      <div class="method-body" id="mb-${i}">
+        <p style="margin-bottom:.75rem;white-space:pre-line">${m.body}</p>
+        <div class="code">${escapeHtml(m.code)}</div>
+      </div>
+    </div>`).join('');
+}
+
+function toggleMethod(i) {
+  document.getElementById('mb-'+i).classList.toggle('open');
+  document.getElementById('chev-'+i).classList.toggle('open');
+}
+
+function renderUsecases() {
+  document.getElementById('usecases-list').innerHTML = USECASES.map(u => `
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-title">
+        ${u.name}
+        ${u.tags.map(([t,c]) => `<span class="tag ${c}">${t}</span>`).join('')}
+      </div>
+      <span class="usecase-arch">${u.arch}</span>
+      <div class="card-body">${u.detail}</div>
+      <div class="usecase-tradeoff"><b>Tradeoffs:</b> ${u.tradeoffs}</div>
+    </div>`).join('');
+}
+
+function renderAlertList(id, items, extraClass='') {
+  document.getElementById(id).innerHTML = items.map(item => `
+    <div class="alert-row ${extraClass}">
+      <div class="alert-icon">${item.icon}</div>
+      <div class="alert-content">
+        <strong>${item.title}</strong>${item.body}
+      </div>
+    </div>`).join('');
+}
+
+function show(id, el) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('visible'));
+  document.getElementById('section-'+id).classList.add('visible');
+  document.querySelectorAll('.nav-pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+}
+
+renderMethods();
+renderUsecases();
+renderAlertList('bottlenecks-list', BOTTLENECKS);
+renderAlertList('hacks-list', HACKS);
+renderAlertList('bp-list', BEST_PRACTICES, 'bp-row');
+</script>
+</body>
+</html>

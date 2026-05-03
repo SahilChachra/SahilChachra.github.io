@@ -1,0 +1,1806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agentic AI vs MCP — Engineering Notes</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #16161f;
+    --surface3: #1c1c28;
+    --border: #2a2a3a;
+    --border-bright: #3d3d55;
+    --accent: #7c6af7;
+    --accent2: #f97316;
+    --accent3: #22d3ee;
+    --accent4: #4ade80;
+    --accent5: #f59e0b;
+    --text: #e8e8f0;
+    --text-muted: #8888aa;
+    --text-dim: #555570;
+    --tag-agentic: rgba(124, 106, 247, 0.15);
+    --tag-mcp: rgba(249, 115, 22, 0.15);
+    --tag-both: rgba(34, 211, 238, 0.12);
+    --tag-warn: rgba(239, 68, 68, 0.12);
+    --tag-good: rgba(74, 222, 128, 0.12);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+  }
+
+  /* ── SIDEBAR NAV ── */
+  .sidebar {
+    position: fixed;
+    left: 0; top: 0;
+    width: 240px;
+    height: 100vh;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    z-index: 100;
+    padding: 28px 0 40px;
+  }
+
+  .sidebar-brand {
+    padding: 0 20px 24px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+
+  .sidebar-brand .logo {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .sidebar-brand .title {
+    font-family: 'Playfair Display', serif;
+    font-size: 15px;
+    color: var(--text);
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  .nav-section {
+    padding: 0 12px;
+    margin-bottom: 8px;
+  }
+
+  .nav-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--text-dim);
+    padding: 6px 8px 4px;
+  }
+
+  .nav-link {
+    display: block;
+    padding: 6px 10px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    color: var(--text-muted);
+    transition: all 0.15s;
+    cursor: pointer;
+  }
+
+  .nav-link:hover {
+    background: var(--surface3);
+    color: var(--text);
+  }
+
+  .nav-link.active {
+    background: rgba(124, 106, 247, 0.15);
+    color: var(--accent);
+  }
+
+  .nav-dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+
+  /* ── MAIN CONTENT ── */
+  .main {
+    margin-left: 240px;
+    min-height: 100vh;
+  }
+
+  .hero {
+    background: linear-gradient(135deg, #0d0d1a 0%, #0a0a0f 60%, #0d0a1a 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 64px 60px 52px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -80px; right: -80px;
+    width: 360px; height: 360px;
+    background: radial-gradient(circle, rgba(124,106,247,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero::after {
+    content: '';
+    position: absolute;
+    bottom: -60px; left: 200px;
+    width: 280px; height: 280px;
+    background: radial-gradient(circle, rgba(249,115,22,0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero-kicker {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 14px;
+  }
+
+  .hero h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 46px;
+    font-weight: 900;
+    line-height: 1.1;
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, #e8e8f0 30%, #7c6af7 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-sub {
+    color: var(--text-muted);
+    font-size: 16px;
+    max-width: 600px;
+    line-height: 1.6;
+  }
+
+  .hero-tags {
+    display: flex;
+    gap: 10px;
+    margin-top: 28px;
+    flex-wrap: wrap;
+  }
+
+  .badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    letter-spacing: 0.05em;
+  }
+
+  .badge-purple { background: rgba(124,106,247,0.2); color: #a89af9; border: 1px solid rgba(124,106,247,0.3); }
+  .badge-orange { background: rgba(249,115,22,0.2); color: #fb923c; border: 1px solid rgba(249,115,22,0.3); }
+  .badge-cyan   { background: rgba(34,211,238,0.15); color: #67e8f9; border: 1px solid rgba(34,211,238,0.25); }
+
+  /* ── CONTENT SECTIONS ── */
+  .content {
+    padding: 0 60px 80px;
+  }
+
+  .section {
+    padding-top: 56px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 48px;
+  }
+
+  .section:last-child { border-bottom: none; }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 28px;
+  }
+
+  .section-icon {
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .section-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.12em;
+  }
+
+  .section h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.2;
+  }
+
+  h3 {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 28px 0 12px;
+  }
+
+  h3:first-child { margin-top: 0; }
+
+  p { color: var(--text-muted); margin-bottom: 14px; }
+  p:last-child { margin-bottom: 0; }
+
+  /* ── COMPARE TABLE ── */
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin: 24px 0;
+  }
+
+  .compare-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .compare-card-header {
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .compare-card-header .dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .compare-card-header h4 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+  }
+
+  .compare-card-body { padding: 16px 20px; }
+
+  .feature-list {
+    list-style: none;
+  }
+
+  .feature-list li {
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13.5px;
+    color: var(--text-muted);
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .feature-list li:last-child { border-bottom: none; }
+
+  .feature-list li .icon { flex-shrink: 0; margin-top: 2px; }
+
+  /* ── DECISION TABLE ── */
+  .decision-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-size: 13.5px;
+  }
+
+  .decision-table th {
+    background: var(--surface3);
+    padding: 12px 16px;
+    text-align: left;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    border-bottom: 2px solid var(--border-bright);
+  }
+
+  .decision-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-muted);
+    vertical-align: top;
+  }
+
+  .decision-table tr:last-child td { border-bottom: none; }
+  .decision-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .decision-table .scenario { color: var(--text); font-weight: 500; }
+
+  .pill {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  .pill-agentic { background: var(--tag-agentic); color: #a89af9; border: 1px solid rgba(124,106,247,0.25); }
+  .pill-mcp     { background: var(--tag-mcp); color: #fb923c; border: 1px solid rgba(249,115,22,0.25); }
+  .pill-both    { background: var(--tag-both); color: #67e8f9; border: 1px solid rgba(34,211,238,0.2); }
+
+  /* ── CODE BLOCK ── */
+  .code-block {
+    background: #0d0d16;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 18px 0;
+  }
+
+  .code-header {
+    padding: 10px 16px;
+    background: var(--surface3);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .code-lang {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .code-dots { display: flex; gap: 6px; }
+  .code-dots span { width: 8px; height: 8px; border-radius: 50%; }
+
+  pre {
+    padding: 20px;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    line-height: 1.75;
+    color: #c9c9e8;
+  }
+
+  .kw { color: #7c6af7; }
+  .fn { color: #67e8f9; }
+  .str { color: #86efac; }
+  .cmt { color: #555570; font-style: italic; }
+  .num { color: #fb923c; }
+  .cls { color: #f9c74f; }
+
+  /* ── CALLOUTS ── */
+  .callout {
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin: 18px 0;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+  }
+
+  .callout-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+
+  .callout-body h4 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .callout-body p { font-size: 13.5px; margin: 0; }
+
+  .callout-warn { background: var(--tag-warn); border: 1px solid rgba(239,68,68,0.2); }
+  .callout-warn .callout-body h4 { color: #f87171; }
+
+  .callout-tip  { background: var(--tag-good); border: 1px solid rgba(74,222,128,0.2); }
+  .callout-tip  .callout-body h4 { color: #4ade80; }
+
+  .callout-info { background: var(--tag-both); border: 1px solid rgba(34,211,238,0.2); }
+  .callout-info .callout-body h4 { color: #22d3ee; }
+
+  .callout-note { background: var(--tag-agentic); border: 1px solid rgba(124,106,247,0.2); }
+  .callout-note .callout-body h4 { color: #a89af9; }
+
+  /* ── CARDS GRID ── */
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    margin: 20px 0;
+  }
+
+  .card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    transition: border-color 0.2s;
+  }
+
+  .card:hover { border-color: var(--border-bright); }
+
+  .card-icon { font-size: 22px; margin-bottom: 10px; }
+
+  .card h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+
+  .card p {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin: 0;
+  }
+
+  /* ── PITFALL LIST ── */
+  .pitfall-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 16px 0;
+  }
+
+  .pitfall-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-left: 3px solid;
+    border-radius: 0 10px 10px 0;
+    padding: 16px 20px;
+  }
+
+  .pitfall-item.danger  { border-left-color: #ef4444; }
+  .pitfall-item.warning { border-left-color: var(--accent5); }
+  .pitfall-item.info    { border-left-color: var(--accent); }
+  .pitfall-item.tip     { border-left-color: var(--accent4); }
+
+  .pitfall-item h4 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .pitfall-item.danger h4  { color: #f87171; }
+  .pitfall-item.warning h4 { color: #fbbf24; }
+  .pitfall-item.info h4    { color: #a89af9; }
+  .pitfall-item.tip h4     { color: #4ade80; }
+
+  .pitfall-item p { font-size: 13.5px; margin: 0; }
+
+  /* ── FLOW DIAGRAM ── */
+  .flow-diagram {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    margin: 20px 0;
+    overflow-x: auto;
+  }
+
+  .flow {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex-wrap: nowrap;
+    min-width: max-content;
+  }
+
+  .flow-node {
+    background: var(--surface3);
+    border: 1px solid var(--border-bright);
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 12.5px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text);
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .flow-node.highlight { background: rgba(124,106,247,0.15); border-color: rgba(124,106,247,0.4); color: #a89af9; }
+  .flow-node.tool { background: rgba(249,115,22,0.12); border-color: rgba(249,115,22,0.3); color: #fb923c; }
+  .flow-node.result { background: rgba(74,222,128,0.1); border-color: rgba(74,222,128,0.25); color: #4ade80; }
+
+  .flow-arrow {
+    color: var(--text-dim);
+    font-size: 16px;
+    padding: 0 8px;
+    flex-shrink: 0;
+  }
+
+  /* ── CHECKLIST ── */
+  .checklist {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 12px 0;
+  }
+
+  .checklist li {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    font-size: 13.5px;
+    color: var(--text-muted);
+  }
+
+  .checklist li .check {
+    width: 18px; height: 18px;
+    border-radius: 4px;
+    background: rgba(74,222,128,0.1);
+    border: 1px solid rgba(74,222,128,0.3);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+    color: #4ade80;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  /* ── TABS ── */
+  .tabs { margin: 20px 0; }
+
+  .tab-buttons {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 20px;
+  }
+
+  .tab-btn {
+    padding: 10px 20px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    color: var(--text-dim);
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+
+  .tab-btn:hover { color: var(--text-muted); }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── ARCH DIAGRAM ── */
+  .arch-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin: 20px 0;
+  }
+
+  .arch-layer {
+    background: var(--surface3);
+    border: 1px solid var(--border-bright);
+    border-radius: 8px;
+    padding: 12px 18px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+  }
+
+  .arch-layer::after {
+    content: '↓';
+    position: absolute;
+    bottom: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: var(--text-dim);
+    font-size: 14px;
+  }
+
+  .arch-layer:last-child::after { display: none; }
+
+  .arch-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    min-width: 80px;
+  }
+
+  .arch-content {
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  .arch-content strong { color: var(--text); }
+
+  /* ── FOOTER ── */
+  .doc-footer {
+    margin-left: 240px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 24px 60px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 3px; }
+
+  @media (max-width: 900px) {
+    .sidebar { display: none; }
+    .main, .doc-footer { margin-left: 0; }
+    .hero, .content { padding-left: 24px; padding-right: 24px; }
+    .compare-grid { grid-template-columns: 1fr; }
+    .hero h1 { font-size: 32px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <div class="logo">Engineering Notes</div>
+    <div class="title">Agentic AI vs MCP</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Foundations</div>
+    <a class="nav-link" href="#s1"><span class="nav-dot" style="background:#7c6af7"></span>Definitions</a>
+    <a class="nav-link" href="#s2"><span class="nav-dot" style="background:#f97316"></span>Core Differences</a>
+    <a class="nav-link" href="#s3"><span class="nav-dot" style="background:#22d3ee"></span>Architecture</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Decision Making</div>
+    <a class="nav-link" href="#s4"><span class="nav-dot" style="background:#4ade80"></span>When to Use Which</a>
+    <a class="nav-link" href="#s5"><span class="nav-dot" style="background:#f59e0b"></span>Together: Hybrid</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Implementation</div>
+    <a class="nav-link" href="#s6"><span class="nav-dot" style="background:#7c6af7"></span>Agentic Patterns</a>
+    <a class="nav-link" href="#s7"><span class="nav-dot" style="background:#f97316"></span>MCP Implementation</a>
+    <a class="nav-link" href="#s8"><span class="nav-dot" style="background:#22d3ee"></span>Eval & Observability</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Safety & Quality</div>
+    <a class="nav-link" href="#s9"><span class="nav-dot" style="background:#ef4444"></span>Pitfalls & Loopholes</a>
+    <a class="nav-link" href="#s10"><span class="nav-dot" style="background:#4ade80"></span>Best Practices</a>
+    <a class="nav-link" href="#s11"><span class="nav-dot" style="background:#a78bfa"></span>Security</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Production</div>
+    <a class="nav-link" href="#s12"><span class="nav-dot" style="background:#f59e0b"></span>Scaling Patterns</a>
+    <a class="nav-link" href="#s13"><span class="nav-dot" style="background:#22d3ee"></span>Tool Design</a>
+    <a class="nav-link" href="#s14"><span class="nav-dot" style="background:#7c6af7"></span>Quick Reference</a>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-kicker">// Engineering Notes · 2025</div>
+    <h1>Agentic AI vs MCP</h1>
+    <p class="hero-sub">A complete field guide to the paradigms, patterns, pitfalls, and production realities of autonomous AI systems and the Model Context Protocol.</p>
+    <div class="hero-tags">
+      <span class="badge badge-purple">Agentic AI</span>
+      <span class="badge badge-orange">MCP</span>
+      <span class="badge badge-cyan">LangGraph · Tool Use · RAG</span>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ══ SECTION 1: DEFINITIONS ══ -->
+    <div class="section" id="s1">
+      <div class="section-header">
+        <div class="section-icon" style="background:rgba(124,106,247,0.15)">🧠</div>
+        <div>
+          <div class="section-num">01</div>
+          <h2>Definitions & Mental Models</h2>
+        </div>
+      </div>
+
+      <div class="compare-grid">
+        <div class="compare-card">
+          <div class="compare-card-header">
+            <div class="dot" style="background:#7c6af7"></div>
+            <h4 style="color:#a89af9">Agentic AI</h4>
+          </div>
+          <div class="compare-card-body">
+            <p style="font-size:13.5px">An <strong>autonomous reasoning loop</strong> where an LLM plans, takes actions, observes outcomes, and iterates toward a goal — without a fixed, pre-specified execution path.</p>
+            <ul class="feature-list">
+              <li><span class="icon">🔁</span>Think → Act → Observe loop</li>
+              <li><span class="icon">🎯</span>Goal-directed, not instruction-directed</li>
+              <li><span class="icon">🛠️</span>Decides what tools to use and when</li>
+              <li><span class="icon">📐</span>Can decompose multi-step tasks</li>
+              <li><span class="icon">🧩</span>Framework: LangGraph, AutoGen, CrewAI</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="compare-card">
+          <div class="compare-card-header">
+            <div class="dot" style="background:#f97316"></div>
+            <h4 style="color:#fb923c">MCP (Model Context Protocol)</h4>
+          </div>
+          <div class="compare-card-body">
+            <p style="font-size:13.5px">A <strong>standardized protocol</strong> (by Anthropic) that defines how LLMs connect to external tools, data sources, and services — a universal plug-in interface.</p>
+            <ul class="feature-list">
+              <li><span class="icon">🔌</span>Protocol, not a framework</li>
+              <li><span class="icon">📦</span>Exposes: Tools, Resources, Prompts</li>
+              <li><span class="icon">🌐</span>Transport: stdio, HTTP/SSE</li>
+              <li><span class="icon">📋</span>JSON-RPC 2.0 message format</li>
+              <li><span class="icon">🏗️</span>Hosts: Claude Desktop, custom apps</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout callout-info">
+        <div class="callout-icon">💡</div>
+        <div class="callout-body">
+          <h4>The Key Mental Model</h4>
+          <p><strong>Agentic AI is the <em>behavior</em> — MCP is the <em>plumbing</em>.</strong> Agentic AI describes how an LLM reasons autonomously across multiple steps. MCP describes how the LLM accesses external capabilities. You can have agentic AI without MCP (raw function calls), and MCP without agentic AI (single-turn tool use).</p>
+        </div>
+      </div>
+
+      <h3>Core Primitives</h3>
+      <div class="cards-grid">
+        <div class="card">
+          <div class="card-icon">🤖</div>
+          <h4>Agent</h4>
+          <p>An LLM + instructions + tools that can autonomously execute multi-step workflows. Has its own memory, reasoning chain, and decision loop.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🔧</div>
+          <h4>MCP Tool</h4>
+          <p>A callable function exposed by an MCP server. The LLM can discover, invoke, and get results from tools. Tools have JSON Schema inputs.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">📚</div>
+          <h4>MCP Resource</h4>
+          <p>Read-only data the model can access (files, DB rows, API responses). Unlike tools, resources don't perform actions — they provide context.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">📝</div>
+          <h4>MCP Prompt</h4>
+          <p>Pre-built, parameterized prompt templates exposed by an MCP server. Useful for standardizing how an LLM interacts with a specific domain.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🗂️</div>
+          <h4>Tool Call (native)</h4>
+          <p>Raw function-calling in OpenAI/Anthropic APIs. Not standardized — each integration is bespoke. Predecessor pattern to MCP.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">⚙️</div>
+          <h4>Orchestrator</h4>
+          <p>The system that manages agent state, routes between agents, and aggregates results. Can be LangGraph, custom state machine, or a parent agent.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ SECTION 2: CORE DIFFERENCES ══ -->
+    <div class="section" id="s2">
+      <div class="section-header">
+        <div class="section-icon" style="background:rgba(249,115,22,0.12)">⚖️</div>
+        <div>
+          <div class="section-num">02</div>
+          <h2>Core Differences</h2>
+        </div>
+      </div>
+
+      <table class="decision-table">
+        <thead>
+          <tr>
+            <th>Dimension</th>
+            <th>Agentic AI</th>
+            <th>MCP</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="scenario">Nature</td>
+            <td>Behavioral paradigm / system design</td>
+            <td>Communication protocol / standard</td>
+          </tr>
+          <tr>
+            <td class="scenario">Scope</td>
+            <td>End-to-end task completion, reasoning loops</td>
+            <td>How LLMs connect to external capabilities</td>
+          </tr>
+          <tr>
+            <td class="scenario">Decision-making</td>
+            <td>LLM decides <em>what</em> to do and <em>when</em></td>
+            <td>Protocol delivers <em>how</em> to access a capability</td>
+          </tr>
+          <tr>
+            <td class="scenario">State</td>
+            <td>Maintains task state, memory, context across steps</td>
+            <td>Stateless per call (server can be stateful)</td>
+          </tr>
+          <tr>
+            <td class="scenario">Composability</td>
+            <td>Agents can spawn sub-agents (multi-agent)</td>
+            <td>Servers can be composed by listing multiple</td>
+          </tr>
+          <tr>
+            <td class="scenario">Failure handling</td>
+            <td>Agent retries, replans, backtracks</td>
+            <td>Protocol errors → caller handles</td>
+          </tr>
+          <tr>
+            <td class="scenario">Auth</td>
+            <td>Embedded in agent design (API keys, tokens)</td>
+            <td>OAuth 2.1 / bearer tokens in protocol headers</td>
+          </tr>
+          <tr>
+            <td class="scenario">Portability</td>
+            <td>Framework-specific (LangGraph ≠ CrewAI)</td>
+            <td>Any MCP host can use any MCP server</td>
+          </tr>
+          <tr>
+            <td class="scenario">Latency</td>
+            <td>Multi-step = higher end-to-end latency</td>
+            <td>Single server roundtrip per tool call</td>
+          </tr>
+          <tr>
+            <td class="scenario">Cost</td>
+            <td>Multiple LLM calls accumulate fast</td>
+            <td>N/A (protocol layer, not LLM calls)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ══ SECTION 3: ARCHITECTURE ══ -->
+    <div class="section" id="s3">
+      <div class="section-header">
+        <div class="section-icon" style="background:rgba(34,211,238,0.1)">🏗️</div>
+        <div>
+          <div class="section-num">03</div>
+          <h2>Architecture Patterns</h2>
+        </div>
+      </div>
+
+      <h3>MCP Architecture</h3>
+      <div class="arch-box">
+        <div class="arch-layer">
+          <div class="arch-label">HOST</div>
+          <div class="arch-content"><strong>MCP Host</strong> — Claude Desktop, your app, IDE plugin. Manages LLM lifecycle.</div>
+        </div>
+        <div class="arch-layer">
+          <div class="arch-label">CLIENT</div>
+          <div class="arch-content"><strong>MCP Client</strong> — Embedded in the host. Handles protocol negotiation, capability listing, tool invocation.</div>
+        </div>
+        <div class="arch-layer">
+          <div class="arch-label">TRANSPORT</div>
+          <div class="arch-content"><strong>stdio</strong> (local process) or <strong>HTTP + SSE</strong> (remote). JSON-RPC 2.0 messages.</div>
+        </div>
+        <div class="arch-layer">
+          <div class="arch-label">SERVER</div>
+          <div class="arch-content"><strong>MCP Server</strong> — Exposes Tools, Resources, Prompts. Can be Python (FastMCP), TypeScript, or any language.</div>
+        </div>
+        <div class="arch-layer">
+          <div class="arch-label">BACKEND</div>
+          <div class="arch-content"><strong>External Services</strong> — GitHub, Postgres, Slack, internal APIs, file system, etc.</div>
+        </div>
+      </div>
+
+      <h3>Agentic Loop Architecture (ReAct Pattern)</h3>
+      <div class="flow-diagram">
+        <div class="flow">
+          <div class="flow-node highlight">User Goal</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node highlight">LLM Thinks<br><small>(plan step)</small></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node tool">Select Tool<br><small>(function call)</small></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node tool">Execute Tool</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node">Observation<br><small>(result)</small></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node highlight">LLM Evaluates<br><small>(done?)</small></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-node result">Final Answer</div>
+        </div>
+      </div>
+
+      <div class="callout callout-note">
+        <div class="callout-icon">🔁</div>
+        <div class="callout-body">
+          <h4>Loop continues</h4>
+          <p>If "done?" → No, the arrow from "LLM Evaluates" loops back to "LLM Thinks" with the new observation appended to context. This is the fundamental agentic loop.</p>
+        </div>
+      </div>
+
+      <h3>Multi-Agent Architecture</h3>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">LangGraph · Python</span>
+          <div class="code-dots"><span style="background:#ef4444"></span><span style="background:#f59e0b"></span><span style="background:#4ade80"></span></div>
+        </div>
+        <pre><span class="cmt"># Orchestrator → Specialist Agent pattern</span>
+<span class="kw">from</span> langgraph.graph <span class="kw">import</span> <span class="cls">StateGraph</span>, <span class="cls">END</span>
+<span class="kw">from</span> langgraph.prebuilt <span class="kw">import</span> create_react_agent
+
+<span class="cmt"># Specialist agents (each has focused tools)</span>
+researcher = create_react_agent(llm, tools=[web_search, arxiv_search])
+writer     = create_react_agent(llm, tools=[draft_doc, format_output])
+validator  = create_react_agent(llm, tools=[fact_check, cite_sources])
+
+<span class="kw">def</span> <span class="fn">router</span>(state):
+    <span class="cmt"># Orchestrator decides next node</span>
+    <span class="kw">if</span> state[<span class="str">"phase"</span>] == <span class="str">"research"</span>: <span class="kw">return</span> <span class="str">"researcher"</span>
+    <span class="kw">if</span> state[<span class="str">"phase"</span>] == <span class="str">"write"</span>:    <span class="kw">return</span> <span class="str">"writer"</span>
+    <span class="kw">if</span> state[<span class="str">"phase"</span>] == <span class="str">"validate"</span>: <span class="kw">return</span> <span class="str">"validator"</span>
+    <span class="kw">return</span> END
+
+graph = <span class="cls">StateGraph</span>(AgentState)
+graph.add_node(<span class="str">"researcher"</span>, researcher)
+graph.add_node(<span class="str">"writer"</span>,     writer)
+graph.add_node(<span class="str">"validator"</span>,  validator)
+graph.add_conditional_edges(<span class="str">"orchestrator"</span>, router)</pre>
+      </div>
+    </div>
+
+    <!-- ══ SECTION 4: WHEN TO USE WHICH ══ -->
+    <div class="section" id="s4">
+      <div class="section-header">
+        <div class="section-icon" style="background:rgba(74,222,128,0.1)">🎯</div>
+        <div>
+          <div class="section-num">04</div>
+          <h2>When to Use Which</h2>
+        </div>
+      </div>
+
+      <table class="decision-table">
+        <thead>
+          <tr>
+            <th>Scenario</th>
+            <th>Use</th>
+            <th>Why</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="scenario">Simple Q&A with a database lookup</td>
+            <td><span class="pill pill-mcp">MCP Only</span></td>
+            <td>Single tool call, no planning needed. MCP server wraps the DB query.</td>
+          </tr>
+          <tr>
+            <td class="scenario">Research a topic and write a report</td>
+            <td><span class="pill pill-agentic">Agentic</span></td>
+            <td>Requires iterative search → synthesize → draft → refine loops.</td>
+          </tr>
+          <tr>
+            <td class="scenario">Standardize tool access across teams</td>
+            <td><span class="pill pill-mcp">MCP Only</span></td>
+            <td>Protocol portability. One MCP server, many host applications.</td>
+          </tr>
+          <tr>
+            <td class="scenario">Execute a multi-step manufacturing workflow</td>
+            <td><span class="pill pill-both">Both</span></td>
+            <td>Agent orchestrates logic; MCP servers expose ERP/MES APIs.</td>
+          </tr>
+          <tr>
+            <td class="scenario">IDE code completion + context</td>
+            <td><span class="pill pill-mcp">MCP Only</span></td>
+            <td>File system + repo resources via MCP. No autonomous loop needed.</td>
+          </tr>
+          <tr>
+            <td class="scenario">Autonomous bug fix with PR submission</td>
+            <td><span class="pill pill-both">Both</span></td>
+            <td>Agent plans fix; MCP tools for GitHub, file I/O, test runners.</td>
+          </tr>
+          <tr>
+            <td class="scenario">LLM-as-Judge evaluation pipeline</td>
+            <td><span class="pill pill-agentic">Agentic</span></td>
+            <td>Judge LLM needs to reason across criteria, aggregate scores, decide.</td>
+          </tr>
+          <tr>
+            <td class="scenario">Real-time customer support bot</td>
+            <td><span class="pill pill-both">Both</span></td>
+            <td>Lightweight agent loop + MCP tools for CRM, ticketing, KB search.</td>
+          </tr>
+          <tr>
+            <td class="scenario">BOM data enrichment pipeline</td>
+            <td><span class="pill pill-agentic">Agentic</span></td>
+            <td>Multi-stage transform (classify → enrich → validate) with branching.</td>
+          </tr>
+          <tr>
+            <td class="scenario">Expose internal data to Claude Desktop</td>
+            <td><span class="pill pill-mcp">MCP Only</span></td>
+            <td>MCP server is the right primitive for exposing context to a host.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Decision Flowchart</h3>
+      <div class="arch-box">
+        <p style="font-family:'JetBrains Mono',monospace; font-size:12.5px; color:#a89af9; margin-bottom:16px">// Ask these questions in order:</p>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="background:var(--surface3);border:1px solid var(--border-bright);border-radius:8px;padding:14px 18px">
+            <div style="font-size:12px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;margin-bottom:4px">Q1</div>
+            <div style="font-size:14px;color:var(--text);font-weight:500">Is this a single-turn action with a known, fixed tool?</div>
+            <div style="font-size:13px;color:var(--text-muted);margin-top:6px">→ Yes: <span style="color:#fb923c">Use native tool call or MCP tool</span> — no agent needed.</div>
+          </div>
+          <div style="background:var(--surface3);border:1px solid var(--border-bright);border-radius:8px;padding:14px 18px">
+            <div style="font-size:12px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;margin-bottom:4px">Q2</div>
+            <div style="font-size:14px;color:var(--text);font-weight:500">Does the task require planning, iteration, or sub-task decomposition?</div>
+            <div style="font-size:13px;color:var(--text-muted);margin-top:6px">→ Yes: <span style="color:#a89af9">You need an Agentic loop</span> — pick a framework.</div>
+          </div>
+          <div style="background:var(--surface3);border:1px solid var(--border-bright);border-radius:8px;padding:14px 18px">
+            <div style="font-size:12px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;margin-bottom:4px">Q3</div>
+            <div style="font-size:14px;color:var(--text);font-weight:500">Will the tools be reused across multiple host apps or teams?</div>
+            <div style="font-size:13px;color:var(--text-muted);margin-top:6px">→ Yes: <span style="color:#fb923c">Wrap tools in MCP servers</span> for portability and standardized auth.</div>
+          </div>
+          <div style="background:var(--surface3);border:1px solid var(--border-bright);border-radius:8px;padding:14px 18px">
+            <div style="font-size:12px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;margin-bottom:4px">Q4</div>
+            <div style="font-size:14px;color:var(--text);font-weight:500">Do you need both complex reasoning AND standardized tool access?</div>
+            <div style="font-size:13px;color:var(--text-muted);margin-top:6px">→ Yes: <span style="color:#67e8f9">Use Agentic AI + MCP together</span> — agent calls MCP tools.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ SECTION 5: HYBRID ══ -->
+    <div class="section" id="s5">
+      <div class="section-header">
+        <div class="section-icon" style="background:rgba(245,158,11,0.1)">🔀</div>
+        <div>
+          <div class="section-num">05</div>
+          <h2>The Hybrid Pattern: Agentic AI + MCP</h2>
+        </div>
+      </div>
+
+      <p>The most production-ready systems combine both. The agent provides reasoning and orchestration; MCP provides standardized, portable, discoverable tool access.</p>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">Python · LangGraph + MCP</span>
+          <div class="code-dots"><span style="background:#ef4444"></span><span style="background:#f59e0b"></span><span style="background:#4ade80"></span></div>
+        </div>
+        <pre><span class="kw">from</span> langchain_mcp_adapters.client <span class="kw">import</span> <span class="cls">MultiServerMCPClient</span>
+<span class="kw">from</span> langgraph.prebuilt <span class="kw">import</span> create_react_agent
+<span class="kw">from</span> langchain_anthropic <span class="kw">import</span> <span class="cls">ChatAnthropic</span>
+
+<span class="cmt"># Connect to MCP servers (tools discovered automatically)</span>
+client = <span class="cls">MultiServerMCPClient</span>({
+    <span class="str">"filesystem"</span>: {<span class="str">"command"</span>: <span class="str">"npx"</span>, <span class="str">"args"</span>: [<span class="str">"@modelcontextprotocol/server-filesystem"</span>, <span class="str">"/data"</span>]},
+    <span class="str">"postgres"</span>:   {<span class="str">"url"</span>: <span class="str">"http://localhost:8001/sse"</span>},
+    <span class="str">"slack"</span>:      {<span class="str">"url"</span>: <span class="str">"http://localhost:8002/sse"</span>},
+})
+
+<span class="kw">async def</span> <span class="fn">run_agent</span>(task: str):
+    <span class="cmt"># Tools are auto-discovered from MCP servers</span>
+    tools = <span class="kw">await</span> client.get_tools()
+
+    agent = create_react_agent(
+        <span class="cls">ChatAnthropic</span>(model=<span class="str">"claude-opus-4-5"</span>),
+        tools=tools,
+        state_modifier=<span class="str">"You are a factory planning assistant..."</span>
+    )
+
+    <span class="kw">async for</span> chunk <span class="kw">in</span> agent.astream({<span class="str">"messages"</span>: [(<span class="str">"user"</span>, task)]}):
+        <span class="fn">print</span>(chunk)  <span class="cmt"># streamed agent steps</span></pre>
+      </div>
+
+      <div class="callout callout-tip">
+        <div class="callout-icon">✅</div>
+        <div class="callout-body">
+          <h4>Why this pattern wins</h4>
+          <p>Agent logic stays in your code. Tool implementations stay in MCP servers. Swapping an MCP server (e.g., upgrading your Postgres MCP) doesn't change the agent. Swapping the agent (e.g., from LangGraph to custom) doesn't change the tools.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ SECTION 6: AGENTIC PATTERNS ══ -->
+    <div class="section" id="s6">
+      <div class="section-header">
+        <div class="section-icon" style="background:rgba(124,106,247,0.15)">🤖</div>
+        <div>
+          <div class="section-num">06</div>
+          <h2>Agentic AI Implementation Patterns</h2>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <div class="tab-buttons">
+          <button class="tab-btn active" onclick="switchTab(this,'react')">ReAct</button>
+          <button class="tab-btn" onclick="switchTab(this,'plan-exec')">Plan & Execute</button>
+          <button class="tab-btn" onclick="switchTab(this,'multi-agent')">Multi-Agent</button>
+          <button class="tab-btn" onclick="switchTab(this,'reflexion')">Reflexion</button>
+        </div>
+
+        <div class="tab-panel active" id="tab-react">
+          <p>The most common pattern. Interleaves <strong>Reasoning</strong> and <strong>Acting</strong>. The LLM generates a thought, picks an action, gets an observation, repeats.</p>
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">ReAct · Pseudo</span><div class="code-dots"><span style="background:#ef4444"></span><span style="background:#f59e0b"></span><span style="background:#4ade80"></span></div></div>
+            <pre>Thought: I need to find the TAKT time for Station 3.
+Action: query_database(table="stations", filter="id=3")
+Observation: {"id":3, "cycle_time":27, "unit":"seconds"}
+Thought: Cycle time is 27s. I need to compare with demand.
+Action: calculate_takt(demand=1000, shift_hours=8)
+Observation: {"takt_time": 28.8, "unit": "seconds"}
+Thought: Station 3 (27s) is under TAKT (28.8s). OK.
+Final Answer: Station 3 is within capacity.</pre>
+          </div>
+        </div>
+
+        <div class="tab-panel" id="tab-plan-exec">
+          <p>Two-phase: an LLM <strong>Planner</strong> creates a structured task list, then an <strong>Executor</strong> works through each step. Better for complex, predictable workflows.</p>
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">Python · Plan & Execute</span><div class="code-dots"><span style="background:#ef4444"></span><span style="background:#f59e0b"></span><span style="background:#4ade80"></span></div></div>
+            <pre><span class="cmt"># Phase 1: Planner generates structured steps</span>
+plan = planner_llm.invoke({
+    <span class="str">"task"</span>: <span class="str">"Validate machine selection for bearing line"</span>
+})
+<span class="cmt"># plan.steps = ["1. Fetch BOM", "2. Get TAKT", "3. Match machines", "4. Validate"]</span>
+
+<span class="cmt"># Phase 2: Executor runs each step with tools</span>
+results = []
+<span class="kw">for</span> step <span class="kw">in</span> plan.steps:
+    result = executor_agent.run(step, context=results)
+    results.append(result)
+    <span class="kw">if</span> result.should_replan:
+        plan = planner_llm.replan(plan, results)  <span class="cmt"># replan if stuck</span></pre>
+          </div>
+        </div>
+
+        <div class="tab-panel" id="tab-multi-agent">
+          <p>An <strong>Orchestrator</strong> agent routes subtasks to <strong>Specialist</strong> agents. Each specialist has a focused system prompt and tool set. Great for domain isolation.</p>
+          <div class="callout callout-info" style="margin-top:0">
+            <div class="callout-icon">⚠️</div>
+            <div class="callout-body">
+              <h4>Trust Boundary Warning</h4>
+              <p>In multi-agent systems, the orchestrator should not blindly trust sub-agent outputs. Validate outputs structurally (Pydantic) before feeding to the next agent. An adversarial tool result could inject malicious instructions.</p>
+            </div>
+          </div>
+          <div class="cards-grid" style="margin-top:16px">
+            <div class="card">
+              <h4>Supervisor Pattern</h4>
+              <p>One orchestrator LLM decides which agent to invoke next. Clean but bottlenecked on the orchestrator.</p>
+            </div>
+            <div class="card">
+              <h4>Swarm / Handoff</h4>
+              <p>Agents pass control peer-to-peer. More flexible, harder to reason about execution paths.</p>
+            </div>
+            <div class="card">
+              <h4>Hierarchical</h4>
+              <p>Multiple layers of orchestrators. Use when tasks decompose into deeply nested subtasks.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-panel" id="tab-reflexion">
+          <p>Agent <strong>reflects on its own failures</strong>, generates critique, and retries. Particularly powerful for code generation and factual tasks.</p>
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">Reflexion · Loop</span><div class="code-dots"><span style="background:#ef4444"></span><span style="background:#f59e0b"></span><span style="background:#4ade80"></span></div></div>
+            <pre><span class="kw">for</span> attempt <span class="kw">in</span> range(max_retries):
+    output = agent.generate(task)
+    evaluation = evaluator_llm.score(output, rubric)
+
+    <span class="kw">if</span> evaluation.score >= threshold:
+        <span class="kw">break</span>
+
+    reflection = reflector_llm.critique(
+        task=task, output=output, score=evaluation
+    )
+    task = task + <span class="str">"\n\nPrevious attempt critique:\n"</span> + reflection</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ SECTION 7: MCP IMPLEMENTATION ══ -->
+    <div class="section" id="s7">
+      <div class="section-header">
+        <div class="section-icon" style="background:rgba(249,115,22,0.12)">🔌</div>
+        <div>
+          <div class="section-num">07</div>
+          <h2>MCP Implementation Guide</h2>
+        </div>
+      </div>
+
+      <h3>Minimal MCP Server (Python / FastMCP)</h3>
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">Python · FastMCP</span>
+          <div class="code-dots"><span style="background:#ef4444"></span><span style="background:#f59e0b"></span><span style="background:#4ade80"></span></div>
+        </div>
+        <pre><span class="kw">from</span> fastmcp <span class="kw">import</span> <span class="cls">FastMCP</span>
+<span class="kw">from</span> pydantic <span class="kw">import</span> <span class="cls">BaseModel</span>
+
+mcp = <span class="cls">FastMCP</span>(<span class="str">"factory-tools"</span>, description=<span class="str">"NeoFAB manufacturing tools"</span>)
+
+<span class="cmt"># ── Tool: callable action ──</span>
+<span class="kw">@mcp</span>.tool()
+<span class="kw">def</span> <span class="fn">calculate_takt_time</span>(demand_per_day: int, shift_hours: float = <span class="num">8.0</span>) -> dict:
+    <span class="str">"""Calculate TAKT time in seconds given daily demand and shift hours."""</span>
+    available_seconds = shift_hours * <span class="num">3600</span>
+    takt = available_seconds / demand_per_day
+    <span class="kw">return</span> {<span class="str">"takt_seconds"</span>: round(takt, <span class="num">2</span>), <span class="str">"demand"</span>: demand_per_day}
+
+<span class="cmt"># ── Resource: read-only data ──</span>
+<span class="kw">@mcp</span>.resource(<span class="str">"machines://catalog"</span>)
+<span class="kw">def</span> <span class="fn">get_machine_catalog</span>() -> str:
+    <span class="str">"""Returns the full machine database as JSON."""</span>
+    <span class="kw">return</span> load_machine_db().to_json()
+
+<span class="cmt"># ── Prompt template ──</span>
+<span class="kw">@mcp</span>.prompt()
+<span class="kw">def</span> <span class="fn">validate_line_prompt</span>(line_name: str, takt: float) -> str:
+    <span class="kw">return</span> <span class="str">f"Validate machine selections for {line_name} with TAKT={takt}s..."</span>
+
+<span class="kw">if</span> __name__ == <span class="str">"__main__"</span>:
+    mcp.run(transport=<span class="str">"stdio"</span>)  <span class="cmt"># or transport="sse" for remote</span></pre>
+      </div>
+
+      <h3>MCP Server via HTTP/SSE (remote / multi-tenant)</h3>
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">Python · FastMCP SSE</span>
+          <div class="code-dots"><span style="background:#ef4444"></span><span style="background:#f59e0b"></span><span style="background:#4ade80"></span></div>
+        </div>
+        <pre><span class="cmt"># Production: run as a service, connect over HTTP</span>
+mcp.run(
+    transport=<span class="str">"sse"</span>,
+    host=<span class="str">"0.0.0.0"</span>,
+    port=<span class="num">8001</span>,
+    <span class="cmt"># Add auth middleware in production!</span>
+)</pre>
+      </div>
+
+      <h3>Client Registration (claude_desktop_config.json)</h3>
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">JSON · Config</span>
+          <div class="code-dots"><span style="background:#ef4444"></span><span style="background:#f59e0b"></span><span style="background:#4ade80"></span></div>
+        </div>
+        <pre>{
+  <span class="str">"mcpServers"</span>: {
+    <span class="str">"factory-tools"</span>: {
+      <span class="str">"command"</span>: <span class="str">"python"</span>,
+      <span class="str">"args"</span>: [<span class="str">"/path/to/server.py"</span>]
+    },
+    <span class="str">"remote-db"</span>: {
+      <span class="str">"url"</span>: <span class="str">"http://localhost:8001/sse"</span>
+    }
+  }
+}</pre>
+      </div>
+
+      <div class="callout callout-tip">
+        <div class="callout-icon">✅</div>
+        <div class="callout-body">
+          <h4>Tool Description is a First-Class Citizen</h4>
+          <p>The docstring of your tool IS the prompt the LLM uses to decide when to call it. Be precise: what it does, what inputs it expects, and what it returns. Vague docstrings = wrong tool invocations.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ SECTION 8: EVAL ══ -->
+    <div class="section" id="s8">
+      <div class="section-header">
+        <div class="section-icon" style="background:rgba(34,211,238,0.1)">📊</div>
+        <div>
+          <div class="section-num">08</div>
+          <h2>Evaluation & Observability</h2>
+        </div>
+      </div>
+
+      <h3>LLM-as-Judge for Agentic Pipelines</h3>
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">Python · LLM-as-Judge</span>
+          <div class="code-dots"><span style="background:#ef4444"></span><span style="background:#f59e0b"></span><span style="background:#4ade80"></span></div>
+        </div>
+        <pre><span class="kw">from</span> pydantic <span class="kw">import</span> <span class="cls">BaseModel</span>
+
+<span class="kw">class</span> <span class="cls">AgentEvalResult</span>(<span class="cls">BaseModel</span>):
+    correctness:  float   <span class="cmt"># 0-1: did it get the right answer?</span>
+    tool_usage:   float   <span class="cmt"># 0-1: did it use the right tools?</span>
+    efficiency:   float   <span class="cmt"># 0-1: fewest steps needed?</span>
+    faithfulness: float   <span class="cmt"># 0-1: no hallucinations?</span>
+    reasoning:    str     <span class="cmt"># explanation of scores</span>
+
+<span class="cmt"># Run judge against agent trace</span>
+judge_result = judge_llm.with_structured_output(<span class="cls">AgentEvalResult</span>).invoke({
+    <span class="str">"task"</span>:       original_task,
+    <span class="str">"agent_trace"</span>: tool_call_history,
+    <span class="str">"final_answer"</span>: agent_output,
+    <span class="str">"ground_truth"</span>: expected_answer  <span class="cmt"># optional</span>
+})</pre>
+      </div>
+
+      <h3>Key Metrics to Track</h3>
+      <div class="cards-grid">
+        <div class="card">
+          <div class="card-icon">🔢</div>
+          <h4>Step Count</h4>
+          <p>Average tool calls per task. Proxy for efficiency. Spikes indicate prompt drift or tool confusion.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">💸</div>
+          <h4>Token Cost / Task</h4>
+          <p>Agentic loops accumulate context fast. Track tokens per task, not per call. Set hard budgets.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🔄</div>
+          <h4>Retry Rate</h4>
+          <p>How often does the agent fail and retry? High retry rate = poor tool design or ambiguous prompts.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">⏱️</div>
+          <h4>End-to-End Latency</h4>
+          <p>Multi-step latency can be 10-50× single-call latency. Use streaming and parallelism where possible.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🎯</div>
+          <h4>Task Success Rate</h4>
+          <p>Fraction of tasks completed correctly. Define "correct" explicitly with a rubric, not vibes.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🛑</div>
+          <h4>Hallucination Rate</h4>
+          <p>MCP tool results are ground truth. Any agent claim contradicting tool results = hallucination.</p>
+        </div>
+      </div>
+
+      <h3>Observability Stack</h3>
+      <div class="callout callout-info">
+        <div class="callout-icon">🔍</div>
+        <div class="callout-body">
+          <h4>Recommended Tools</h4>
+          <p><strong>LangSmith</strong> — trace every LangGraph step, inspect tool inputs/outputs. <strong>Weights & Biases</strong> — log eval metrics, compare runs. <strong>OpenTelemetry</strong> — for custom spans in production. <strong>Arize / Phoenix</strong> — drift detection over time. Always log: model, version, tool_calls, latency_ms, token_count, success/fail.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ SECTION 9: PITFALLS ══ -->
+    <div class="section" id="s9">
+      <div class="section-header">
+        <div class="section-icon" style="background:rgba(239,68,68,0.1)">⚠️</div>
+        <div>
+          <div class="section-num">09</div>
+          <h2>Pitfalls, Loopholes & Anti-Patterns</h2>
+        </div>
+      </div>
+
+      <h3>Agentic AI Pitfalls</h3>
+      <div class="pitfall-list">
+        <div class="pitfall-item danger">
+          <h4>🔥 Infinite Loop / Runaway Agent</h4>
+          <p>Agent gets stuck in a loop, making tool calls without converging. Always set <code>max_iterations</code> and a budget cap. Use LangGraph's interrupt/checkpoint mechanism.</p>
+        </div>
+        <div class="pitfall-item danger">
+          <h4>🔥 Prompt Injection via Tool Results</h4>
+          <p>A malicious tool result contains instructions like "Ignore previous instructions...". Sanitize all tool outputs before re-injecting into context. Never trust external data as instructions.</p>
+        </div>
+        <div class="pitfall-item warning">
+          <h4>⚡ Context Window Explosion</h4>
+          <p>Agentic loops accumulate tool results in context. A 20-step task with verbose tool outputs can exceed 128K tokens. Summarize observations, prune history, or use external memory (Redis).</p>
+        </div>
+        <div class="pitfall-item warning">
+          <h4>⚡ Over-Reliance on the LLM's Plan</h4>
+          <p>The model's plan is often wrong, especially for novel domains. Validate intermediate outputs structurally (Pydantic schemas). Use human-in-the-loop checkpoints for critical actions.</p>
+        </div>
+        <div class="pitfall-item warning">
+          <h4>⚡ Tool Overload</h4>
+          <p>Giving an agent 40+ tools degrades performance. LLMs struggle with large tool sets. Keep per-agent tool count under 10-15. Use routing to assign agents specialized subsets.</p>
+        </div>
+        <div class="pitfall-item info">
+          <h4>🔵 Non-Determinism in Evaluations</h4>
+          <p>Two runs of the same task may take different paths. Don't evaluate on single runs. Use statistical aggregates over N runs (typically 10-50) for reliable metrics.</p>
+        </div>
+        <div class="pitfall-item info">
+          <h4>🔵 "Works in Dev, Fails in Prod" Drift</h4>
+          <p>Dev runs on clean, small datasets; prod encounters messy, unexpected data. Test agents against adversarial inputs. Add fallback/default behaviors for unrecognized inputs.</p>
+        </div>
+      </div>
+
+      <h3>MCP Pitfalls</h3>
+      <div class="pitfall-list">
+        <div class="pitfall-item danger">
+          <h4>🔥 No Auth on SSE Servers</h4>
+          <p>An HTTP/SSE MCP server without auth is a public API. Always add bearer token middleware or mTLS in production. Never expose internal tools to the internet without auth.</p>
+        </div>
+        <div class="pitfall-item danger">
+          <h4>🔥 Overly Permissive Tool Permissions</h4>
+          <p>A <code>execute_sql</code> tool with write access is a footgun. Design tools with least privilege. Separate read tools from write tools. Gate destructive operations with confirmation.</p>
+        </div>
+        <div class="pitfall-item warning">
+          <h4>⚡ Schema Drift</h4>
+          <p>MCP server tool schema changes without notifying the LLM. The model's in-context tool list gets stale. Use versioning in tool names (<code>v2_get_machine</code>) and test after schema changes.</p>
+        </div>
+        <div class="pitfall-item warning">
+          <h4>⚡ Poor Tool Descriptions</h4>
+          <p>Vague docstrings cause wrong tool selection. The model is doing semantic matching on descriptions. Write descriptions as if explaining to a smart intern who doesn't know your system.</p>
+        </div>
+        <div class="pitfall-item info">
+          <h4>🔵 Long-running Tool Calls with No Timeout</h4>
+          <p>An MCP tool that calls a slow API can hang the agent indefinitely. Add timeouts (e.g., 30s) to all tool calls. Return structured errors that the agent can reason about.</p>
+        </div>
+        <div class="pitfall-item tip">
+          <h4>✅ Mitigation: Error Types Matter</h4>
+          <p>Return structured error types (<code>TIMEOUT</code>, <code>NOT_FOUND</code>, <code>AUTH_FAILED</code>) so the agent can decide whether to retry, escalate, or skip. A generic "error" string is useless for recovery.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ SECTION 10: BEST PRACTICES ══ -->
+    <div class="section" id="s10">
+      <div class="section-header">
+        <div class="section-icon" style="background:rgba(74,222,128,0.1)">✅</div>
+        <div>
+          <div class="section-num">10</div>
+          <h2>Best Practices</h2>
+        </div>
+      </div>
+
+      <h3>Agentic AI</h3>
+      <ul class="checklist">
+        <li><div class="check">✓</div>Always define a <strong>maximum iteration limit</strong> and a <strong>token budget</strong> per task run.</li>
+        <li><div class="check">✓</div>Use <strong>structured outputs (Pydantic)</strong> for all inter-agent communication. Never pass raw strings between agents.</li>
+        <li><div class="check">✓</div>Design a <strong>human-in-the-loop checkpoint</strong> for any irreversible action (write to DB, send email, trigger API with side effects).</li>
+        <li><div class="check">✓</div>Keep agent <strong>system prompts short and precise</strong>. Bloated system prompts dilute the signal. Use structured role + constraint + tool guidance.</li>
+        <li><div class="check">✓</div>Build and run an <strong>offline eval harness</strong> before deploying changes. Track task success rate across versions.</li>
+        <li><div class="check">✓</div>Use <strong>checkpointing / persistence</strong> (LangGraph Checkpointer) so long-running agents survive restarts.</li>
+        <li><div class="check">✓</div>Instrument every tool call with <strong>structured logging</strong>: tool_name, args_hash, latency_ms, success, token_cost.</li>
+        <li><div class="check">✓</div>For multi-agent: define a <strong>clear handoff contract</strong> (schema) for what each agent passes to the next.</li>
+        <li><div class="check">✓</div>Test agents on <strong>adversarial inputs</strong>: empty results, malformed data, contradictory tool responses.</li>
+        <li><div class="check">✓</div>Prefer <strong>small, focused agents</strong> over one monolithic agent with 50 tools.</li>
+      </ul>
+
+      <h3>MCP</h3>
+      <ul class="checklist">
+        <li><div class="check">✓</div>Write tool docstrings as <strong>LLM-first documentation</strong>: what the tool does, when to use it, what it returns.</li>
+        <li><div class="check">✓</div>Use <strong>Pydantic models</strong> as tool input schemas — they auto-generate JSON Schema and validate inputs.</li>
+        <li><div class="check">✓</div>Keep tools <strong>single-responsibility</strong>. One tool = one action. Don't build a Swiss army knife tool.</li>
+        <li><div class="check">✓</div>Return <strong>structured, typed data</strong> (not raw strings) so the LLM can reliably parse results.</li>
+        <li><div class="check">✓</div>Add <strong>request timeouts and circuit breakers</strong> for any tool that calls external APIs.</li>
+        <li><div class="check">✓</div>Version your tools. Use <strong>semantic versioning</strong> in the server name. Deprecate old versions explicitly.</li>
+        <li><div class="check">✓</div>Implement <strong>idempotency</strong> for write tools. The agent may call a tool multiple times on retry.</li>
+        <li><div class="check">✓</div>Log every MCP invocation with <strong>client_id, tool_name, input_hash, duration_ms, status</strong>.</li>
+      </ul>
+    </div>
+
+    <!-- ══ SECTION 11: SECURITY ══ -->
+    <div class="section" id="s11">
+      <div class="section-header">
+        <div class="section-icon" style="background:rgba(167,139,250,0.1)">🔐</div>
+        <div>
+          <div class="section-num">11</div>
+          <h2>Security Considerations</h2>
+        </div>
+      </div>
+
+      <div class="pitfall-list">
+        <div class="pitfall-item danger">
+          <h4>🔥 Prompt Injection Attacks</h4>
+          <p>External data (web pages, DB rows, emails) fed to the agent can contain adversarial instructions. Always clearly delimit user data from instructions in prompts. Use XML tags: <code>&lt;data&gt;...&lt;/data&gt;</code> and instruct the model never to follow instructions found inside data tags.</p>
+        </div>
+        <div class="pitfall-item danger">
+          <h4>🔥 Credential Leakage via Tools</h4>
+          <p>Agents can be prompted to call tools with credentials as arguments. Never expose credentials in tool inputs. Use server-side secret injection; tools should retrieve secrets from vault, not accept them as params.</p>
+        </div>
+        <div class="pitfall-item warning">
+          <h4>⚡ Confused Deputy Problem</h4>
+          <p>The LLM acts on behalf of the user but may be tricked into using elevated permissions for unauthorized tasks. Design tools with the permission level of the calling user, not the system.</p>
+        </div>
+        <div class="pitfall-item warning">
+          <h4>⚡ MCP Server Spoofing</h4>
+          <p>A malicious MCP server can return crafted tool descriptions to hijack agent behavior. Validate MCP servers against a known-good registry. Use mTLS for server identity verification.</p>
+        </div>
+        <div class="pitfall-item tip">
+          <h4>✅ Sandbox Tool Execution</h4>
+          <p>Run code-execution tools in isolated containers (Docker, gVisor). Limit filesystem access, network egress, and CPU time per tool execution.</p>
+        </div>
+        <div class="pitfall-item tip">
+          <h4>✅ Audit Trail</h4>
+          <p>Log every tool call in an immutable append-only log. In regulated environments (manufacturing, finance), this is non-negotiable for compliance and incident investigation.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ SECTION 12: SCALING ══ -->
+    <div class="section" id="s12">
+      <div class="section-header">
+        <div class="section-icon" style="background:rgba(245,158,11,0.1)">📈</div>
+        <div>
+          <div class="section-num">12</div>
+          <h2>Scaling Patterns</h2>
+        </div>
+      </div>
+
+      <div class="compare-grid">
+        <div class="compare-card">
+          <div class="compare-card-header">
+            <div class="dot" style="background:#7c6af7"></div>
+            <h4 style="color:#a89af9">Scale Agentic Throughput</h4>
+          </div>
+          <div class="compare-card-body">
+            <ul class="feature-list">
+              <li><span class="icon">⚡</span><strong>Parallel sub-tasks</strong>: Use <code>asyncio.gather</code> for independent agent steps</li>
+              <li><span class="icon">🗂️</span><strong>External memory</strong>: Redis / Postgres for agent state (not in-context)</li>
+              <li><span class="icon">📊</span><strong>Batch processing</strong>: Anthropic Batch API for offline eval at low cost</li>
+              <li><span class="icon">💾</span><strong>Prompt caching</strong>: Cache system prompt + tool schemas (large prefix)</li>
+              <li><span class="icon">🔀</span><strong>Model routing</strong>: Use Haiku for simple tool selection, Opus for reasoning</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="compare-card">
+          <div class="compare-card-header">
+            <div class="dot" style="background:#f97316"></div>
+            <h4 style="color:#fb923c">Scale MCP Servers</h4>
+          </div>
+          <div class="compare-card-body">
+            <ul class="feature-list">
+              <li><span class="icon">🐳</span><strong>Containerize</strong>: Each MCP server in its own Docker service</li>
+              <li><span class="icon">⚖️</span><strong>Load balance</strong>: Multiple server instances behind a proxy</li>
+              <li><span class="icon">📦</span><strong>Connection pooling</strong>: Pool DB connections inside MCP servers</li>
+              <li><span class="icon">🔒</span><strong>Rate limiting</strong>: Per-client rate limits at the MCP layer</li>
+              <li><span class="icon">🌐</span><strong>Caching layer</strong>: Cache read-heavy tool results (Redis TTL)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <h3>Cost Optimization</h3>
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">Cost Control Strategies</span>
+          <div class="code-dots"><span style="background:#ef4444"></span><span style="background:#f59e0b"></span><span style="background:#4ade80"></span></div>
+        </div>
+        <pre><span class="cmt"># 1. Prompt caching — static prefix cached at ~10% cost</span>
+client.messages.create(
+    system=[{<span class="str">"type"</span>: <span class="str">"text"</span>, <span class="str">"text"</span>: LARGE_SYSTEM_PROMPT,
+             <span class="str">"cache_control"</span>: {<span class="str">"type"</span>: <span class="str">"ephemeral"</span>}}],  <span class="cmt"># cache this!</span>
+    ...
+)
+
+<span class="cmt"># 2. Model tiering — route by complexity</span>
+model = <span class="str">"claude-haiku-4-5"</span> <span class="kw">if</span> task.complexity == <span class="str">"low"</span> <span class="kw">else</span> <span class="str">"claude-opus-4-5"</span>
+
+<span class="cmt"># 3. Observation truncation — don't re-inject full tool result</span>
+truncated_obs = tool_result[:<span class="num">2000</span>] + <span class="str">"... [truncated]"</span> <span class="kw">if</span> len(tool_result) > <span class="num">2000</span> <span class="kw">else</span> tool_result
+
+<span class="cmt"># 4. Batch API for offline evals (50% cost savings)</span>
+batch = client.beta.messages.batches.create(requests=[...])</pre>
+      </div>
+    </div>
+
+    <!-- ══ SECTION 13: TOOL DESIGN ══ -->
+    <div class="section" id="s13">
+      <div class="section-header">
+        <div class="section-icon" style="background:rgba(34,211,238,0.1)">🔧</div>
+        <div>
+          <div class="section-num">13</div>
+          <h2>Tool Design Principles</h2>
+        </div>
+      </div>
+
+      <h3>The SMART Tool Framework</h3>
+      <div class="cards-grid">
+        <div class="card" style="border-left:3px solid var(--accent)">
+          <h4>S — Specific</h4>
+          <p>One tool = one action. <code>get_machine_by_id</code> not <code>manage_machines</code>. Specific names → correct LLM selection.</p>
+        </div>
+        <div class="card" style="border-left:3px solid var(--accent2)">
+          <h4>M — Minimal Input</h4>
+          <p>Require only what's necessary. Optional params with sensible defaults. The LLM will hallucinate unknown required params.</p>
+        </div>
+        <div class="card" style="border-left:3px solid var(--accent3)">
+          <h4>A — Atomic</h4>
+          <p>Tools should not call other tools internally. Composition is the orchestrator's job. Atomic tools are independently testable.</p>
+        </div>
+        <div class="card" style="border-left:3px solid var(--accent4)">
+          <h4>R — Rich Error Returns</h4>
+          <p>Return structured errors with codes, not exceptions or empty strings. The agent needs actionable error info to recover.</p>
+        </div>
+        <div class="card" style="border-left:3px solid var(--accent5)">
+          <h4>T — Typed Outputs</h4>
+          <p>Return typed data (dict with known keys) not raw strings. LLMs parse structured data much more reliably.</p>
+        </div>
+      </div>
+
+      <h3>Tool Description Template</h3>
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">Good Tool Docstring</span>
+          <div class="code-dots"><span style="background:#ef4444"></span><span style="background:#f59e0b"></span><span style="background:#4ade80"></span></div>
+        </div>
+        <pre><span class="kw">def</span> <span class="fn">get_station_cycle_time</span>(station_id: str, product_line: str) -> dict:
+    <span class="str">"""
+    Retrieve the measured cycle time for a manufacturing station.
+
+    Use this when you need the actual (measured) cycle time for a station
+    to compare against TAKT time. Do NOT use for theoretical times.
+
+    Args:
+        station_id: Station identifier (e.g., "ST-003", "WASH-01")
+        product_line: Product line code (e.g., "2kWh", "12kWh", "HeroPack")
+
+    Returns:
+        {
+          "station_id": str,
+          "cycle_time_seconds": float,
+          "last_measured": ISO8601 date,
+          "measurement_count": int
+        }
+
+    Errors:
+        STATION_NOT_FOUND — station_id does not exist
+        LINE_NOT_FOUND    — product_line does not exist
+        NO_DATA           — station exists but no measurements yet
+    """</span></pre>
+      </div>
+    </div>
+
+    <!-- ══ SECTION 14: QUICK REFERENCE ══ -->
+    <div class="section" id="s14">
+      <div class="section-header">
+        <div class="section-icon" style="background:rgba(124,106,247,0.15)">⚡</div>
+        <div>
+          <div class="section-num">14</div>
+          <h2>Quick Reference Cheatsheet</h2>
+        </div>
+      </div>
+
+      <table class="decision-table">
+        <thead>
+          <tr>
+            <th>Topic</th>
+            <th>Key Fact</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="scenario">MCP Transport (local)</td>
+            <td>stdio — subprocess communication, zero network overhead</td>
+          </tr>
+          <tr>
+            <td class="scenario">MCP Transport (remote)</td>
+            <td>HTTP + SSE — stateful connection per session, supports auth headers</td>
+          </tr>
+          <tr>
+            <td class="scenario">MCP Message Format</td>
+            <td>JSON-RPC 2.0 — <code>{"jsonrpc":"2.0","method":"tools/call","params":{},"id":1}</code></td>
+          </tr>
+          <tr>
+            <td class="scenario">MCP Lifecycle</td>
+            <td>initialize → list capabilities → call tools → terminate</td>
+          </tr>
+          <tr>
+            <td class="scenario">ReAct max steps</td>
+            <td>Default: 10-15. For complex tasks: 25-50. Always set explicitly.</td>
+          </tr>
+          <tr>
+            <td class="scenario">LangGraph state</td>
+            <td>TypedDict. All agent data lives in state. Nodes read + write state.</td>
+          </tr>
+          <tr>
+            <td class="scenario">Prompt caching savings</td>
+            <td>~90% cost reduction on cached tokens. Min 1024 tokens to cache.</td>
+          </tr>
+          <tr>
+            <td class="scenario">Best tool count per agent</td>
+            <td>5-15 tools. Over 20 → significant performance degradation.</td>
+          </tr>
+          <tr>
+            <td class="scenario">Structured output reliability</td>
+            <td>Pydantic + <code>with_structured_output()</code> &gt; regex parsing &gt; raw string parsing</td>
+          </tr>
+          <tr>
+            <td class="scenario">Agent memory types</td>
+            <td>In-context (ephemeral), External DB (persistent), Semantic (vector store)</td>
+          </tr>
+          <tr>
+            <td class="scenario">FastMCP install</td>
+            <td><code>uv add fastmcp</code> (Python 3.10+)</td>
+          </tr>
+          <tr>
+            <td class="scenario">LangGraph install</td>
+            <td><code>uv pip install langgraph langchain-anthropic langchain-mcp-adapters</code></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout callout-note">
+        <div class="callout-icon">📌</div>
+        <div class="callout-body">
+          <h4>The 3-Layer Stack for Production</h4>
+          <p><strong>Layer 1 — Tool Layer:</strong> MCP servers expose capabilities (domain tools, data access). <strong>Layer 2 — Agent Layer:</strong> LangGraph agents orchestrate multi-step reasoning using MCP tools. <strong>Layer 3 — Eval Layer:</strong> LLM-as-Judge + W&B track quality over time and catch regressions.</p>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<footer class="doc-footer">
+  <span>Agentic AI × MCP Engineering Notes</span>
+  <span>Last updated: 2025 · Claude Sonnet</span>
+</footer>
+
+<script>
+  function switchTab(btn, id) {
+    btn.parentElement.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const container = btn.closest('.tabs');
+    container.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    container.querySelector('#tab-' + id).classList.add('active');
+  }
+
+  // Active nav link on scroll
+  const sections = document.querySelectorAll('.section');
+  const navLinks = document.querySelectorAll('.nav-link');
+
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        const id = e.target.id;
+        navLinks.forEach(l => {
+          l.classList.toggle('active', l.getAttribute('href') === '#' + id);
+        });
+      }
+    });
+  }, { threshold: 0.3, rootMargin: '-10% 0px -60% 0px' });
+
+  sections.forEach(s => obs.observe(s));
+</script>
+
+</body>
+</html>

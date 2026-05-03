@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#18181b"/>
+      <stop offset="100%" stop-color="#09090b"/>
+    </linearGradient>
+  </defs>
+  <!-- Background rounded square -->
+  <rect width="32" height="32" rx="8" fill="url(#bg)" stroke="rgba(255,255,255,0.08)" stroke-width="0.75"/>
+  <!-- Emerald accent dot -->
+  <circle cx="25" cy="7" r="2.8" fill="#10b981"/>
+  <!-- SC text -->
+  <text x="16" y="21" font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="800" fill="#f4f4f5" text-anchor="middle" letter-spacing="-0.5">SC</text>
+</svg>

@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AWQ (Activation-aware Weight Quantization) - Complete Guide</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.7;
+            color: #2c3e50;
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            padding: 40px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 8px;
+        }
+
+        h1 {
+            color: #1a1a1a;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            border-bottom: 4px solid #3498db;
+            padding-bottom: 15px;
+        }
+
+        h2 {
+            color: #2c3e50;
+            font-size: 1.8em;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            padding-left: 15px;
+            border-left: 5px solid #3498db;
+        }
+
+        h3 {
+            color: #34495e;
+            font-size: 1.4em;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+
+        h4 {
+            color: #555;
+            font-size: 1.2em;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+
+        ul, ol {
+            margin-left: 30px;
+            margin-bottom: 20px;
+        }
+
+        li {
+            margin-bottom: 10px;
+        }
+
+        .concept-box {
+            background-color: #e8f4f8;
+            border-left: 4px solid #3498db;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 4px;
+        }
+
+        .example-box {
+            background-color: #fff9e6;
+            border-left: 4px solid #f39c12;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 4px;
+        }
+
+        .warning-box {
+            background-color: #ffe6e6;
+            border-left: 4px solid #e74c3c;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 4px;
+        }
+
+        .success-box {
+            background-color: #e8f8f5;
+            border-left: 4px solid #27ae60;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 4px;
+        }
+
+        .formula {
+            background-color: #f4f4f4;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            border: 1px solid #ddd;
+            overflow-x: auto;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .comparison-table th {
+            background-color: #3498db;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .comparison-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .comparison-table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        .comparison-table tr:hover {
+            background-color: #e8f4f8;
+        }
+
+        strong {
+            color: #2c3e50;
+            font-weight: 600;
+        }
+
+        em {
+            color: #555;
+            font-style: italic;
+        }
+
+        .highlight {
+            background-color: #fff3cd;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        .step-number {
+            display: inline-block;
+            background-color: #3498db;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 30px;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+
+        .toc {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 20px 30px;
+            margin: 30px 0;
+        }
+
+        .toc h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+
+        .toc ul {
+            list-style-type: none;
+            margin-left: 0;
+        }
+
+        .toc li {
+            margin-bottom: 8px;
+        }
+
+        .toc a {
+            color: #3498db;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .toc a:hover {
+            color: #2980b9;
+            text-decoration: underline;
+        }
+
+        code {
+            background-color: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #e74c3c;
+            border: 1px solid #e0e0e0;
+        }
+
+        .visual-diagram {
+            background-color: #fafafa;
+            border: 2px solid #ddd;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+        }
+
+        .key-point {
+            background-color: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        @media print {
+            body {
+                background-color: white;
+            }
+            .container {
+                box-shadow: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            h1 {
+                font-size: 2em;
+            }
+            h2 {
+                font-size: 1.5em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AWQ: Activation-aware Weight Quantization</h1>
+        <p style="font-size: 1.1em; color: #666; margin-bottom: 30px;">A Complete Conceptual Guide to Understanding AWQ for LLM Compression</p>
+
+        <div class="toc">
+            <h3>Table of Contents</h3>
+            <ul>
+                <li><a href="#part1">1. The Problem AWQ Solves</a></li>
+                <li><a href="#part2">2. The Key Discovery</a></li>
+                <li><a href="#part3">3. The AWQ Solution - The Clever Trick</a></li>
+                <li><a href="#part4">4. Why This Works - Visual Analogy</a></li>
+                <li><a href="#part5">5. The AWQ Process Step-by-Step</a></li>
+                <li><a href="#part6">6. Why Alpha = 0.5 is Optimal</a></li>
+                <li><a href="#part7">7. Comparison with Other Methods</a></li>
+                <li><a href="#part8">8. Real-World Impact</a></li>
+                <li><a href="#part9">9. Why AWQ is Special</a></li>
+                <li><a href="#part10">10. Limitations and Considerations</a></li>
+                <li><a href="#summary">Summary</a></li>
+            </ul>
+        </div>
+
+        <h2 id="part1">Part 1: The Problem AWQ Solves</h2>
+
+        <h3>The Core Issue with Standard Quantization</h3>
+        
+        <p>When you quantize an LLM normally, you treat all weights equally. But here's the problem:</p>
+
+        <div class="concept-box">
+            <strong>In neural networks, the final output depends on:</strong>
+            <div class="formula">
+Output = Weight × Activation
+
+If Activation is huge, even tiny Weight errors become big Output errors!
+If Activation is tiny, even large Weight errors barely matter!
+            </div>
+        </div>
+
+        <div class="example-box">
+            <h4>Example:</h4>
+            <p><strong>Channel A:</strong> Weight = 2.0, Activation = 0.1</p>
+            <ul>
+                <li>Output contribution = 2.0 × 0.1 = 0.2</li>
+                <li>If weight has 10% error (becomes 1.8): 1.8 × 0.1 = 0.18</li>
+                <li>Output error: 0.02 (small!)</li>
+            </ul>
+
+            <p><strong>Channel B:</strong> Weight = 2.0, Activation = 10.0</p>
+            <ul>
+                <li>Output contribution = 2.0 × 10.0 = 20.0</li>
+                <li>If weight has 10% error (becomes 1.8): 1.8 × 10.0 = 18.0</li>
+                <li>Output error: 2.0 (huge!)</li>
+            </ul>
+        </div>
+
+        <div class="key-point">
+            <strong>The lesson:</strong> Channels with large activations need more precision!
+        </div>
+
+        <h2 id="part2">Part 2: The Key Discovery</h2>
+
+        <h3>What the AWQ Researchers Found</h3>
+
+        <p>The AWQ team discovered something critical about LLMs:</p>
+
+        <ol>
+            <li><strong>Only ~1% of channels have large activations</strong> (called "outlier channels" or "salient channels")</li>
+            <li>These salient channels are <strong>consistent</strong> - the same channels are always important</li>
+            <li>Protecting just these 1% of channels preserves 99% of model quality</li>
+        </ol>
+
+        <div class="concept-box">
+            <h4>Why this happens in LLMs:</h4>
+            <p>Transformers develop "specialized" neurons that activate strongly for specific patterns. For example:</p>
+            <ul>
+                <li>One channel might activate for "numbers"</li>
+                <li>Another for "proper nouns"</li>
+                <li>Another for "sentiment"</li>
+            </ul>
+            <p>These specialized channels have much larger activation magnitudes than average channels.</p>
+        </div>
+
+        <h2 id="part3">Part 3: The AWQ Solution - The Clever Trick</h2>
+
+        <h3>The Mathematical Insight</h3>
+
+        <p>AWQ uses a brilliant mathematical property:</p>
+
+        <div class="formula">
+(Weight × Activation) = (Weight/s) × (Activation×s)
+
+Where s is any scaling factor.
+        </div>
+
+        <div class="key-point">
+            <strong>Both sides give the SAME result!</strong> This is called "mathematical equivalence."
+        </div>
+
+        <h3>How AWQ Exploits This</h3>
+
+        <p><span class="step-number">1</span><strong>Identify salient channels</strong></p>
+        <ul>
+            <li>Run calibration data through the model</li>
+            <li>Measure average activation magnitude for each channel</li>
+            <li>High magnitude = salient channel</li>
+        </ul>
+
+        <p><span class="step-number">2</span><strong>Compute scaling factors</strong></p>
+        <ul>
+            <li>For salient channels (high activation): Use large scaling factor</li>
+            <li>For normal channels (low activation): Use small scaling factor</li>
+            <li>Formula: <code>s = activation_magnitude^0.5</code></li>
+        </ul>
+
+        <p><span class="step-number">3</span><strong>Scale weights DOWN</strong></p>
+        <ul>
+            <li>Divide weights by their scaling factor</li>
+            <li>Salient channel weights become smaller</li>
+            <li>Normal channel weights stay similar or get bigger</li>
+        </ul>
+
+        <p><span class="step-number">4</span><strong>Quantize the scaled weights</strong></p>
+        <ul>
+            <li>Now when you quantize, salient weights have less error (they're smaller)</li>
+            <li>Normal weights have more error, but it doesn't matter (their activations are tiny)</li>
+        </ul>
+
+        <p><span class="step-number">5</span><strong>During inference</strong></p>
+        <ul>
+            <li>Multiply activations by the scaling factors (scale UP)</li>
+            <li>Multiply with quantized weights (which were scaled DOWN)</li>
+            <li>The scaling factors cancel out mathematically</li>
+            <li>You get the correct result!</li>
+        </ul>
+
+        <h2 id="part4">Part 4: Why This Works - Visual Analogy</h2>
+
+        <h3>The Volume Analogy</h3>
+
+        <p>Think of quantization like measuring liquids with cups:</p>
+
+        <div class="example-box">
+            <h4>Standard Quantization:</h4>
+            <ul>
+                <li>You have one measuring cup (let's say 100ml)</li>
+                <li>Channel A needs 5ml → Use the 100ml cup → Terrible precision!</li>
+                <li>Channel B needs 500ml → Use the 100ml cup → Good precision (use it 5 times)</li>
+            </ul>
+
+            <h4>AWQ:</h4>
+            <ul>
+                <li>For Channel A (small): Use a 10ml cup → Much better precision!</li>
+                <li>For Channel B (large): Use a 100ml cup → Still good precision!</li>
+            </ul>
+        </div>
+
+        <p>But we only have ONE type of quantization (4-bit). How do we get "different cups"?</p>
+
+        <div class="success-box">
+            <h4>AWQ's trick:</h4>
+            <ul>
+                <li>Before measuring Channel B's 500ml, dilute it 10× → becomes 50ml</li>
+                <li>Measure with the 100ml cup → Good precision</li>
+                <li>After measuring, multiply back by 10 → Get 500ml back</li>
+            </ul>
+            <p><strong>This is exactly what AWQ does!</strong> Scale large values down, quantize, then scale back up.</p>
+        </div>
+
+        <h2 id="part5">Part 5: The AWQ Process Step-by-Step</h2>
+
+        <h3>Detailed Walkthrough</h3>
+
+        <div class="concept-box">
+            <h4>Phase 1: Calibration (One-Time Setup)</h4>
+
+            <p><span class="step-number">1</span><strong>Collect activation samples</strong></p>
+            <ul>
+                <li>Run ~128-512 examples through the model</li>
+                <li>Record the activations for each layer</li>
+                <li>These should be representative of real usage</li>
+            </ul>
+
+            <p><span class="step-number">2</span><strong>Compute salience per channel</strong></p>
+            <ul>
+                <li>For each input channel, calculate average activation magnitude</li>
+                <li>Example: Channel 0 average = 0.2, Channel 50 average = 15.3</li>
+                <li>Channel 50 is salient (high activation)</li>
+            </ul>
+
+            <p><span class="step-number">3</span><strong>Calculate scaling factors</strong></p>
+            <ul>
+                <li>Formula: <code>s = (activation_magnitude)^0.5</code></li>
+                <li>Why square root (0.5)? It's the optimal balance found by research</li>
+                <li>Salient channels get large s, normal channels get small s</li>
+            </ul>
+
+            <p><span class="step-number">4</span><strong>Apply scaling to weights</strong></p>
+            <ul>
+                <li>For each weight matrix: <code>W_scaled = W / s</code></li>
+                <li>This makes salient channel weights numerically smaller</li>
+            </ul>
+
+            <p><span class="step-number">5</span><strong>Quantize the scaled weights</strong></p>
+            <ul>
+                <li>Use standard 4-bit quantization on W_scaled</li>
+                <li>Because salient weights are smaller, they fit better in 4-bit</li>
+                <li>Save: quantized weights + scaling factors</li>
+            </ul>
+        </div>
+
+        <div class="concept-box">
+            <h4>Phase 2: Inference (Every Forward Pass)</h4>
+
+            <p><span class="step-number">1</span><strong>Load quantized weights</strong></p>
+            <ul>
+                <li>These are the scaled-down, quantized values</li>
+            </ul>
+
+            <p><span class="step-number">2</span><strong>Dequantize weights</strong></p>
+            <ul>
+                <li>Convert 4-bit integers back to float</li>
+                <li>Weights are still "scaled down"</li>
+            </ul>
+
+            <p><span class="step-number">3</span><strong>Scale activations UP</strong></p>
+            <ul>
+                <li>Before matrix multiply: <code>X_scaled = X × s</code></li>
+                <li>This compensates for weights being scaled down</li>
+            </ul>
+
+            <p><span class="step-number">4</span><strong>Matrix multiply</strong></p>
+            <ul>
+                <li><code>Output = W_scaled @ X_scaled</code></li>
+                <li>Mathematically equivalent to original!</li>
+            </ul>
+        </div>
+
+        <h2 id="part6">Part 6: Why Alpha = 0.5 is Optimal</h2>
+
+        <h3>Understanding the Alpha Parameter</h3>
+
+        <p>The scaling factor formula is: <code>s = activation_magnitude^alpha</code></p>
+
+        <div class="example-box">
+            <h4>Different alpha values:</h4>
+            <ul>
+                <li><strong>Alpha = 0.0:</strong> No scaling at all (standard quantization)</li>
+                <li><strong>Alpha = 0.5:</strong> Square root scaling (AWQ default)</li>
+                <li><strong>Alpha = 1.0:</strong> Full scaling by activation magnitude</li>
+            </ul>
+        </div>
+
+        <h3>Why not alpha = 1.0?</h3>
+
+        <p>If you scale exactly by activation magnitude:</p>
+        <ul>
+            <li>Very salient channels: s = 20 → weights divided by 20</li>
+            <li>Weights become extremely small</li>
+            <li>Numerical instability issues</li>
+            <li>Also, you're over-protecting them</li>
+        </ul>
+
+        <div class="success-box">
+            <h4>Why alpha = 0.5 is best:</h4>
+            <ul>
+                <li>It's a balance between protection and stability</li>
+                <li>Square root "compresses" the range
+                    <ul>
+                        <li>Activation 100 → s = 10 (not 100)</li>
+                        <li>Activation 4 → s = 2 (not 4)</li>
+                    </ul>
+                </li>
+                <li>Protects salient channels without extreme values</li>
+                <li>Empirically tested to give best accuracy</li>
+            </ul>
+        </div>
+
+        <h2 id="part7">Part 7: Comparison with Other Methods</h2>
+
+        <h3>AWQ vs Naive Quantization</h3>
+
+        <table class="comparison-table">
+            <tr>
+                <th>Aspect</th>
+                <th>Naive Quantization</th>
+                <th>AWQ</th>
+            </tr>
+            <tr>
+                <td><strong>Approach</strong></td>
+                <td>Treats all weights equally</td>
+                <td>Protects salient channels specifically</td>
+            </tr>
+            <tr>
+                <td><strong>Salient Channels</strong></td>
+                <td>Suffer large errors</td>
+                <td>Errors minimized where they matter most</td>
+            </tr>
+            <tr>
+                <td><strong>Error Amplification</strong></td>
+                <td>Large activations amplify errors</td>
+                <td>Scaling prevents amplification</td>
+            </tr>
+            <tr>
+                <td><strong>Result</strong></td>
+                <td>Poor model quality</td>
+                <td>2-5× better quality at same compression</td>
+            </tr>
+        </table>
+
+        <h3>AWQ vs GPTQ</h3>
+
+        <div class="concept-box">
+            <h4>GPTQ approach:</h4>
+            <ul>
+                <li>Uses optimization to minimize reconstruction error</li>
+                <li>Quantizes weights one-by-one</li>
+                <li>Compensates future weights for past errors</li>
+                <li>Very accurate but slow (hours for large models)</li>
+            </ul>
+
+            <h4>AWQ approach:</h4>
+            <ul>
+                <li>Uses activation statistics to guide quantization</li>
+                <li>Simple scaling trick</li>
+                <li>Fast (minutes for large models)</li>
+                <li>Slightly less accurate than GPTQ, but close</li>
+            </ul>
+        </div>
+
+        <table class="comparison-table">
+            <tr>
+                <th>Metric</th>
+                <th>AWQ</th>
+                <th>GPTQ</th>
+            </tr>
+            <tr>
+                <td><strong>Quantization Speed</strong></td>
+                <td>Very Fast (minutes)</td>
+                <td>Slow (hours)</td>
+            </tr>
+            <tr>
+                <td><strong>Calibration Data</strong></td>
+                <td>128-512 samples</td>
+                <td>128-1024 samples</td>
+            </tr>
+            <tr>
+                <td><strong>Quality (4-bit)</strong></td>
+                <td>Excellent (1-2% perplexity ↑)</td>
+                <td>Excellent (1-2% perplexity ↑)</td>
+            </tr>
+            <tr>
+                <td><strong>Best For</strong></td>
+                <td>Fast deployment, iteration</td>
+                <td>Maximum quality</td>
+            </tr>
+        </table>
+
+        <div class="key-point">
+            <strong>Trade-off:</strong>
+            <ul>
+                <li>GPTQ: Best quality, slow quantization</li>
+                <li>AWQ: Near-best quality, fast quantization</li>
+                <li>Both achieve ~4× compression with &lt;2% quality loss</li>
+            </ul>
+        </div>
+
+        <h2 id="part8">Part 8: Real-World Impact</h2>
+
+        <h3>What Happens in Practice</h3>
+
+        <p><strong>For a Llama 70B model:</strong></p>
+
+        <table class="comparison-table">
+            <tr>
+                <th>Metric</th>
+                <th>FP16 (No Quantization)</th>
+                <th>AWQ (4-bit)</th>
+            </tr>
+            <tr>
+                <td><strong>Size</strong></td>
+                <td>140 GB</td>
+                <td>35 GB</td>
+            </tr>
+            <tr>
+                <td><strong>GPU Requirement</strong></td>
+                <td>2× A100 80GB GPUs</td>
+                <td>1× A100 40GB GPU</td>
+            </tr>
+            <tr>
+                <td><strong>Speed</strong></td>
+                <td>20 tokens/second</td>
+                <td>25 tokens/second</td>
+            </tr>
+            <tr>
+                <td><strong>Hardware Cost</strong></td>
+                <td>$2,000</td>
+                <td>$800</td>
+            </tr>
+            <tr>
+                <td><strong>Quality Loss</strong></td>
+                <td>None (baseline)</td>
+                <td>1-2% perplexity increase</td>
+            </tr>
+        </table>
+
+        <div class="success-box">
+            <h4>Key benefits:</h4>
+            <ul>
+                <li>4× smaller model</li>
+                <li>Fits on cheaper GPUs</li>
+                <li>Actually faster (less memory to move)</li>
+                <li>Minimal quality loss</li>
+            </ul>
+        </div>
+
+        <h2 id="part9">Part 9: Why AWQ is Special</h2>
+
+        <h3>The Key Innovations</h3>
+
+        <div class="concept-box">
+            <h4>1. Activation-aware (not weight-aware)</h4>
+            <p>Most quantization methods look at weight magnitudes to decide importance. AWQ realized activations matter more for determining which weights to protect.</p>
+
+            <h4>2. Per-channel scaling</h4>
+            <p>Each input channel gets its own scaling factor based on its activation pattern. This fine-grained approach is more effective than global scaling.</p>
+
+            <h4>3. Simple and fast</h4>
+            <p>Unlike GPTQ which requires iterative optimization, AWQ is just:</p>
+            <ul>
+                <li>Measure activations (forward passes)</li>
+                <li>Compute scales (simple math)</li>
+                <li>Apply scaling and quantize (standard operation)</li>
+            </ul>
+
+            <h4>4. Zero inference overhead</h4>
+            <p>The scaling during inference is just element-wise multiplication before the matrix multiply. Modern GPUs do this essentially for free.</p>
+        </div>
+
+        <h2 id="part10">Part 10: Limitations and Considerations</h2>
+
+        <h3>What AWQ Doesn't Solve</h3>
+
+        <div class="warning-box">
+            <h4>1. Still needs calibration data</h4>
+            <ul>
+                <li>You need representative examples</li>
+                <li>Poor calibration data = poor quantization</li>
+                <li>Typically need 128-512 samples</li>
+            </ul>
+
+            <h4>2. Fixed after quantization</h4>
+            <ul>
+                <li>Once quantized, the scaling factors are baked in</li>
+                <li>Can't easily adjust for different use cases</li>
+                <li>Unlike some methods that allow re-quantization</li>
+            </ul>
+
+            <h4>3. Assumes consistent activation patterns</h4>
+            <ul>
+                <li>Works because LLMs have stable outlier channels</li>
+                <li>Might not work as well for models with dynamic patterns</li>
+                <li>Generally not an issue for transformer LLMs</li>
+            </ul>
+
+            <h4>4. Still 4-bit (not lower)</h4>
+            <ul>
+                <li>AWQ excels at 4-bit quantization</li>
+                <li>Going to 3-bit or 2-bit still challenging</li>
+                <li>Below 4-bit, even AWQ shows quality degradation</li>
+            </ul>
+        </div>
+
+        <h2 id="summary">Summary: The Core Concept</h2>
+
+        <div class="success-box">
+            <h3>The Problem:</h3>
+            <p>Standard quantization treats all weights equally, but weights paired with large activations need more precision.</p>
+
+            <h3>The Insight:</h3>
+            <p>In LLMs, only ~1% of channels have large activations (salient channels), and they're predictable.</p>
+
+            <h3>The Solution:</h3>
+            <ol>
+                <li>Identify salient channels by measuring activations</li>
+                <li>Scale their weights DOWN before quantizing</li>
+                <li>Scale activations UP during inference</li>
+                <li>The scaling factors cancel out mathematically</li>
+            </ol>
+
+            <h3>The Result:</h3>
+            <p>4× compression with &lt;2% quality loss, achieved in minutes instead of hours.</p>
+        </div>
+
+        <div class="key-point">
+            <h3>Why It's Brilliant:</h3>
+            <p>It's <span class="highlight">mathematically elegant</span> (uses equivalence property), <span class="highlight">empirically effective</span> (proven on real models), and <span class="highlight">practically efficient</span> (fast and simple).</p>
+            
+            <p style="margin-top: 20px;">AWQ shows that understanding the <strong>structure</strong> of how models work (outlier activations) can lead to better compression than purely numerical optimization approaches. It's a perfect example of domain knowledge (transformers have outlier features) meeting clever mathematics (scaling equivalence).</p>
+        </div>
+
+        <div class="visual-diagram">
+            <h3>AWQ in One Diagram:</h3>
+            <pre>
+Standard Quantization:
+  Weights → Quantize (treat all equally) → Poor quality
+
+AWQ:
+  1. Measure activations → Identify salient channels
+  2. Scale weights inversely (salient channels scaled DOWN)
+  3. Quantize scaled weights (better precision on salient)
+  4. Inference: Scale activations UP
+  5. Result: Scaling cancels out, quality preserved!
+            </pre>
+        </div>
+
+        <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #ddd; text-align: center; color: #666;">
+            <p>© 2024 AWQ Detailed Guide - For Educational Purposes</p>
+        </div>
+    </div>
+</body>
+</html>

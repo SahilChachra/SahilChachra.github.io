@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Menu, X } from "lucide-react";
 
@@ -10,6 +11,10 @@ const navLinks = [
   { label: "Writing", href: "#writing" },
   { label: "Projects", href: "#projects" },
   { label: "Contact", href: "#contact" },
+];
+
+const pageLinks = [
+  { label: "My Notes", href: "/notes" },
 ];
 
 export function Navigation() {
@@ -89,6 +94,16 @@ export function Navigation() {
               </li>
             );
           })}
+          {pageLinks.map((link) => (
+            <li key={link.href}>
+              <Link
+                href={link.href}
+                className="text-sm font-medium text-zinc-400 hover:text-zinc-100 transition-colors"
+              >
+                {link.label}
+              </Link>
+            </li>
+          ))}
         </ul>
 
         {/* Mobile menu button */}
@@ -122,6 +137,17 @@ export function Navigation() {
                 </li>
               );
             })}
+            {pageLinks.map((link) => (
+              <li key={link.href}>
+                <Link
+                  href={link.href}
+                  onClick={() => setMenuOpen(false)}
+                  className="text-base font-medium text-zinc-300 hover:text-zinc-100 transition-colors block py-1"
+                >
+                  {link.label}
+                </Link>
+              </li>
+            ))}
           </ul>
         </div>
       )}

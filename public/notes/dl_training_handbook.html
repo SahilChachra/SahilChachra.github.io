@@ -1,0 +1,1708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deep Learning Training — Engineer's Handbook</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Syne:wght@400;500;600;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --bg2: #0f0f17;
+    --bg3: #141420;
+    --surface: #1a1a28;
+    --surface2: #20202f;
+    --border: #2a2a3d;
+    --border2: #353550;
+    --text: #e8e8f0;
+    --text2: #a0a0b8;
+    --text3: #606078;
+    --accent: #7c6af7;
+    --accent2: #5b9cf6;
+    --accent3: #f76c6c;
+    --accent4: #6cf7c8;
+    --accent5: #f7c76c;
+    --glow: rgba(124, 106, 247, 0.15);
+    --glow2: rgba(91, 156, 246, 0.1);
+    --mono: 'JetBrains Mono', monospace;
+    --display: 'Syne', sans-serif;
+    --body: 'Inter', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    font-size: 15px;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* Noise texture overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.4;
+  }
+
+  /* Sidebar */
+  #sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 260px;
+    height: 100vh;
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    z-index: 100;
+    padding: 0 0 2rem 0;
+  }
+
+  #sidebar::-webkit-scrollbar { width: 4px; }
+  #sidebar::-webkit-scrollbar-track { background: transparent; }
+  #sidebar::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  .sidebar-header {
+    padding: 1.5rem 1.25rem 1rem;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: var(--bg2);
+    z-index: 1;
+  }
+
+  .sidebar-header .logo {
+    font-family: var(--display);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.25rem;
+  }
+
+  .sidebar-header .title {
+    font-family: var(--display);
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.3;
+  }
+
+  .nav-section {
+    padding: 0.75rem 1.25rem 0.25rem;
+  }
+
+  .nav-section-label {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 0.5rem;
+    padding-left: 0.5rem;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    color: var(--text2);
+    text-decoration: none;
+    transition: all 0.15s;
+    font-family: var(--body);
+    cursor: pointer;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+  }
+
+  .nav-item:hover {
+    background: var(--surface);
+    color: var(--text);
+  }
+
+  .nav-item .num {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--accent);
+    font-weight: 600;
+    min-width: 1.5rem;
+  }
+
+  /* Main content */
+  #main {
+    margin-left: 260px;
+    min-height: 100vh;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Hero */
+  .hero {
+    padding: 5rem 4rem 4rem;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -100px;
+    right: -100px;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(124, 106, 247, 0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero::after {
+    content: '';
+    position: absolute;
+    bottom: -50px;
+    left: 200px;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(91, 156, 246, 0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: rgba(124, 106, 247, 0.1);
+    border: 1px solid rgba(124, 106, 247, 0.2);
+    padding: 0.3rem 0.75rem;
+    border-radius: 4px;
+    margin-bottom: 1.5rem;
+  }
+
+  .hero-tag::before {
+    content: '▸';
+    font-size: 0.65rem;
+  }
+
+  .hero h1 {
+    font-family: var(--display);
+    font-size: 3.2rem;
+    font-weight: 800;
+    line-height: 1.1;
+    color: var(--text);
+    margin-bottom: 1rem;
+    letter-spacing: -0.02em;
+  }
+
+  .hero h1 span {
+    color: var(--accent);
+  }
+
+  .hero p {
+    font-size: 1rem;
+    color: var(--text2);
+    max-width: 580px;
+    line-height: 1.7;
+  }
+
+  .hero-meta {
+    display: flex;
+    gap: 2rem;
+    margin-top: 2rem;
+  }
+
+  .hero-meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+
+  .hero-meta-item .val {
+    font-family: var(--display);
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--accent2);
+  }
+
+  .hero-meta-item .lbl {
+    font-size: 0.72rem;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-family: var(--mono);
+  }
+
+  /* Content area */
+  .content {
+    padding: 0 4rem 6rem;
+  }
+
+  /* Section */
+  .section {
+    padding: 4rem 0 2rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section:last-child { border-bottom: none; }
+
+  .section-number {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .section-number::after {
+    content: '';
+    flex: 1;
+    max-width: 60px;
+    height: 1px;
+    background: var(--accent);
+    opacity: 0.3;
+  }
+
+  .section h2 {
+    font-family: var(--display);
+    font-size: 1.9rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 0.4rem;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+  }
+
+  .section-desc {
+    font-size: 0.9rem;
+    color: var(--text3);
+    margin-bottom: 2rem;
+    font-style: italic;
+  }
+
+  h3 {
+    font-family: var(--display);
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text);
+    margin: 2rem 0 0.75rem;
+  }
+
+  h4 {
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--accent4);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin: 1.5rem 0 0.5rem;
+  }
+
+  p {
+    color: var(--text2);
+    margin-bottom: 1rem;
+    font-size: 0.92rem;
+    line-height: 1.75;
+  }
+
+  strong {
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  em {
+    color: var(--accent5);
+    font-style: normal;
+  }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin: 1.25rem 0;
+  }
+
+  .card-accent {
+    border-left: 3px solid var(--accent);
+  }
+
+  .card-green {
+    border-left: 3px solid var(--accent4);
+  }
+
+  .card-yellow {
+    border-left: 3px solid var(--accent5);
+  }
+
+  .card-red {
+    border-left: 3px solid var(--accent3);
+  }
+
+  .card-blue {
+    border-left: 3px solid var(--accent2);
+  }
+
+  .card h4 {
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+  }
+
+  /* Step flow */
+  .step-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin: 1.5rem 0;
+    position: relative;
+  }
+
+  .step-flow::before {
+    content: '';
+    position: absolute;
+    left: 1.1rem;
+    top: 2rem;
+    bottom: 2rem;
+    width: 1px;
+    background: linear-gradient(to bottom, var(--accent), var(--accent2));
+    opacity: 0.3;
+  }
+
+  .step-item {
+    display: flex;
+    gap: 1.25rem;
+    padding: 1rem 0;
+  }
+
+  .step-num {
+    width: 2.2rem;
+    height: 2.2rem;
+    background: var(--surface2);
+    border: 1px solid var(--accent);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--accent);
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+  }
+
+  .step-body h5 {
+    font-family: var(--display);
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 0.3rem;
+  }
+
+  .step-body p {
+    margin: 0;
+    font-size: 0.85rem;
+  }
+
+  /* Code blocks */
+  pre {
+    background: #0d0d18;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+    overflow-x: auto;
+    margin: 1.25rem 0;
+    position: relative;
+  }
+
+  pre::before {
+    content: attr(data-lang);
+    position: absolute;
+    top: 0.6rem;
+    right: 1rem;
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    font-weight: 600;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  code {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    line-height: 1.7;
+    color: #c8d3f5;
+  }
+
+  p code, li code {
+    background: var(--surface2);
+    color: var(--accent4);
+    padding: 0.1em 0.4em;
+    border-radius: 3px;
+    font-size: 0.78rem;
+    border: 1px solid var(--border);
+  }
+
+  /* Syntax highlighting */
+  .kw { color: #c792ea; }
+  .fn { color: #82aaff; }
+  .str { color: #c3e88d; }
+  .num { color: #f78c6c; }
+  .cm { color: #546e7a; font-style: italic; }
+  .cls { color: #ffcb6b; }
+  .op { color: #89ddff; }
+  .var { color: #c8d3f5; }
+  .dec { color: #f76c6c; }
+
+  /* Tables */
+  .table-wrap {
+    overflow-x: auto;
+    margin: 1.25rem 0;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.83rem;
+  }
+
+  thead tr {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border2);
+  }
+
+  th {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 0.7rem 1rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text2);
+    vertical-align: top;
+    line-height: 1.55;
+  }
+
+  tr:last-child td { border-bottom: none; }
+
+  tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+  td strong { color: var(--text); }
+
+  td code {
+    background: var(--surface2);
+    color: var(--accent4);
+    padding: 0.1em 0.35em;
+    border-radius: 3px;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+  }
+
+  /* Math formulas */
+  .math {
+    font-family: var(--mono);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.75rem 1.25rem;
+    margin: 1rem 0;
+    color: var(--accent5);
+    font-size: 0.85rem;
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .math-inline {
+    font-family: var(--mono);
+    color: var(--accent5);
+    font-size: 0.82rem;
+  }
+
+  /* Callouts */
+  .callout {
+    display: flex;
+    gap: 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.1rem 1.25rem;
+    margin: 1.25rem 0;
+  }
+
+  .callout-icon {
+    font-size: 1rem;
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+  }
+
+  .callout-body { flex: 1; }
+
+  .callout-body p { margin: 0; font-size: 0.88rem; }
+
+  .callout-warn { border-color: rgba(247, 108, 108, 0.3); background: rgba(247, 108, 108, 0.05); }
+  .callout-tip { border-color: rgba(108, 247, 200, 0.3); background: rgba(108, 247, 200, 0.05); }
+  .callout-info { border-color: rgba(91, 156, 246, 0.3); background: rgba(91, 156, 246, 0.05); }
+  .callout-note { border-color: rgba(247, 199, 108, 0.3); background: rgba(247, 199, 108, 0.05); }
+
+  /* Grid layouts */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1.25rem 0;
+  }
+
+  .grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin: 1.25rem 0;
+  }
+
+  /* Pills */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 100px;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .pill-accent { background: rgba(124, 106, 247, 0.15); color: var(--accent); border: 1px solid rgba(124, 106, 247, 0.25); }
+  .pill-green { background: rgba(108, 247, 200, 0.12); color: var(--accent4); border: 1px solid rgba(108, 247, 200, 0.2); }
+  .pill-red { background: rgba(247, 108, 108, 0.12); color: var(--accent3); border: 1px solid rgba(247, 108, 108, 0.2); }
+  .pill-yellow { background: rgba(247, 199, 108, 0.12); color: var(--accent5); border: 1px solid rgba(247, 199, 108, 0.2); }
+  .pill-blue { background: rgba(91, 156, 246, 0.12); color: var(--accent2); border: 1px solid rgba(91, 156, 246, 0.2); }
+
+  ul, ol {
+    padding-left: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  li {
+    color: var(--text2);
+    font-size: 0.92rem;
+    margin-bottom: 0.4rem;
+    line-height: 1.65;
+  }
+
+  li strong { color: var(--text); }
+
+  /* Divider */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 2rem 0;
+  }
+
+  /* Responsive */
+  @media (max-width: 1100px) {
+    #sidebar { width: 220px; }
+    #main { margin-left: 220px; }
+    .hero { padding: 3rem 2.5rem; }
+    .content { padding: 0 2.5rem 4rem; }
+    .grid-3 { grid-template-columns: 1fr 1fr; }
+  }
+
+  @media (max-width: 768px) {
+    #sidebar { display: none; }
+    #main { margin-left: 0; }
+    .hero { padding: 2.5rem 1.5rem; }
+    .hero h1 { font-size: 2rem; }
+    .content { padding: 0 1.5rem 4rem; }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  }
+
+  /* Scroll indicator in sidebar */
+  .nav-item.active {
+    background: rgba(124, 106, 247, 0.1);
+    color: var(--accent);
+  }
+
+  /* Flow diagram */
+  .flow-diagram {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin: 1.5rem 0;
+    flex-wrap: wrap;
+    gap: 0;
+  }
+
+  .flow-node {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    padding: 0.5rem 0.85rem;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--text);
+    white-space: nowrap;
+  }
+
+  .flow-node.highlight {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(124, 106, 247, 0.08);
+  }
+
+  .flow-arrow {
+    padding: 0 0.4rem;
+    color: var(--text3);
+    font-size: 0.8rem;
+  }
+
+  /* Gradient text */
+  .grad-text {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .section-anchor { scroll-margin-top: 2rem; }
+
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<nav id="sidebar">
+  <div class="sidebar-header">
+    <div class="logo">Engineer's Handbook</div>
+    <div class="title">Deep Learning<br>Training</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">Foundations</div>
+    <a class="nav-item" href="#s1"><span class="num">01</span> Training Loop</a>
+    <a class="nav-item" href="#s2"><span class="num">02</span> Forward Pass</a>
+    <a class="nav-item" href="#s3"><span class="num">03</span> Loss Functions</a>
+    <a class="nav-item" href="#s4"><span class="num">04</span> Backpropagation</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">Optimization</div>
+    <a class="nav-item" href="#s5"><span class="num">05</span> Optimizers</a>
+    <a class="nav-item" href="#s6"><span class="num">06</span> Learning Rate</a>
+    <a class="nav-item" href="#s7"><span class="num">07</span> Gradient Mechanics</a>
+    <a class="nav-item" href="#s8"><span class="num">08</span> Activations</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">Systems</div>
+    <a class="nav-item" href="#s9"><span class="num">09</span> Precision & Efficiency</a>
+    <a class="nav-item" href="#s10"><span class="num">10</span> Memory Optimization</a>
+    <a class="nav-item" href="#s11"><span class="num">11</span> Batch Size & Scaling</a>
+    <a class="nav-item" href="#s12"><span class="num">12</span> Regularization</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">Production</div>
+    <a class="nav-item" href="#s13"><span class="num">13</span> Debugging</a>
+    <a class="nav-item" href="#s14"><span class="num">14</span> Distributed Training</a>
+    <a class="nav-item" href="#s15"><span class="num">15</span> LLMs vs CNNs vs VLMs</a>
+    <a class="nav-item" href="#s16"><span class="num">16</span> Training Pipeline</a>
+    <a class="nav-item" href="#s17"><span class="num">17</span> Engineering Tips</a>
+    <a class="nav-item" href="#s18"><span class="num">18</span> Mental Models</a>
+    <a class="nav-item" href="#s19"><span class="num">19</span> Code Snippets</a>
+  </div>
+</nav>
+
+<!-- Main -->
+<div id="main">
+  <!-- Hero -->
+  <header class="hero">
+    <div class="hero-tag">Deep Learning Systems · v1.0</div>
+    <h1>Training in<br><span>Deep Learning</span></h1>
+    <p>An engineer's internal reference for understanding, debugging, and optimizing model training — from a single forward pass to distributed multi-GPU systems.</p>
+    <div class="hero-meta">
+      <div class="hero-meta-item"><span class="val">19</span><span class="lbl">Sections</span></div>
+      <div class="hero-meta-item"><span class="val">∞</span><span class="lbl">Depth</span></div>
+      <div class="hero-meta-item"><span class="val">⚡</span><span class="lbl">Production-grade</span></div>
+    </div>
+  </header>
+
+  <div class="content">
+
+    <!-- ─── SECTION 1 ─── -->
+    <div class="section section-anchor" id="s1">
+      <div class="section-number">01</div>
+      <h2>Training Loop — End-to-End Mental Model</h2>
+      <p class="section-desc">What actually happens in one training step, tensor by tensor.</p>
+
+      <p>A training step is not magic. It is a precise sequence of tensor operations. Every step: data enters, activations flow forward, loss is computed, gradients flow backward, weights change. Repeat ~millions of times.</p>
+
+      <div class="step-flow">
+        <div class="step-item">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h5>Input → Tokenization / Preprocessing</h5>
+            <p>Raw data (text, images, audio) is converted into tensors. For text: tokenizer maps strings to integer IDs → embedding lookup creates float tensors of shape <code>[batch, seq_len, d_model]</code>. For images: normalization, resizing → <code>[B, C, H, W]</code>. <strong>Memory:</strong> input tensors and targets are loaded to GPU.</p>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h5>Forward Pass</h5>
+            <p>Inputs flow through all layers. Each layer computes output and <em>stores intermediate activations in memory</em> because they'll be needed for backprop. For a 7B LLM: 32 transformer blocks, each caching Q, K, V, attention scores, MLP outputs. This is 60–80% of training memory usage.</p>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h5>Loss Computation</h5>
+            <p>Compare model output (logits) to ground truth targets. Returns a scalar <code>loss</code> value. For LLMs: cross-entropy over next-token predictions. The loss is the error signal — all learning flows from this single number.</p>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <h5>Backpropagation</h5>
+            <p>PyTorch auto-differentiates through the computation graph. Starting from <code>loss</code>, chain rule propagates gradients backward through every operation. Each parameter <code>p</code> gets a gradient <code>p.grad</code> — the direction of steepest increase in loss (we want to go opposite).</p>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <h5>Gradient Accumulation (optional)</h5>
+            <p>If using gradient accumulation over N steps: gradients from step k are added to existing <code>p.grad</code> without zeroing. Only after N micro-steps do you take an optimizer step. <strong>Effect:</strong> effective batch size = micro-batch × N × n_gpus.</p>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">6</div>
+          <div class="step-body">
+            <h5>Optimizer Step</h5>
+            <p>The optimizer reads <code>p.grad</code> for every parameter and computes a parameter update. For Adam: maintains running mean (m) and variance (v) of gradients. Update formula: <span class="math-inline">p ← p − lr × m̂/(√v̂ + ε)</span>. This is where learning actually happens.</p>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">7</div>
+          <div class="step-body">
+            <h5>Weight Update + Zero Gradients</h5>
+            <p>Weights are now updated. <strong>Critical:</strong> call <code>optimizer.zero_grad()</code> before next step (or set <code>set_to_none=True</code> for memory efficiency). If you forget, gradients accumulate across steps — a common bug that looks like exploding gradients.</p>
+          </div>
+        </div>
+      </div>
+
+      <h3>What Lives in Memory During a Step</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Tensor</th><th>Size</th><th>When Present</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Model weights</strong></td><td>N_params × dtype_bytes</td><td>Always</td><td>7B @ FP16 = ~14GB</td></tr>
+            <tr><td><strong>Optimizer state</strong></td><td>2–4× weights</td><td>Always</td><td>Adam: m + v = 2× weights</td></tr>
+            <tr><td><strong>Activations</strong></td><td>Scales with batch × seq_len</td><td>Forward → Backward</td><td>60–80% of training mem</td></tr>
+            <tr><td><strong>Gradients</strong></td><td>Same as weights</td><td>After loss.backward()</td><td>Can be FP32 even in FP16 training</td></tr>
+            <tr><td><strong>Input/Target batch</strong></td><td>Small</td><td>During step</td><td>Usually negligible</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout callout-tip">
+        <div class="callout-icon">💡</div>
+        <div class="callout-body"><p><strong>Rule of thumb:</strong> Total training memory ≈ 16× model parameters in bytes (FP32). For mixed precision: ≈ 6× in FP16 + master FP32 copy. A 7B model needs ~112GB for full FP32 training.</p></div>
+      </div>
+    </div>
+
+    <!-- ─── SECTION 2 ─── -->
+    <div class="section section-anchor" id="s2">
+      <div class="section-number">02</div>
+      <h2>Forward Pass Deep Dive</h2>
+      <p class="section-desc">What actually happens layer by layer — and why activations eat your memory.</p>
+
+      <p>The forward pass is deterministic given weights and inputs. It is a composed function: <span class="math-inline">output = f_L(f_{L-1}(...f_1(input)))</span>. Each <code>f_i</code> is a layer. Each intermediate result is called an <em>activation</em>.</p>
+
+      <h3>Linear Layers</h3>
+      <p>Most fundamental operation. Given input <code>x: [B, in]</code>, weight <code>W: [out, in]</code>, bias <code>b: [out]</code>:</p>
+      <span class="math">y = xWᵀ + b    →  shape: [B, out]</span>
+      <p><strong>During backprop, you need:</strong> the input <code>x</code> to compute <code>∂L/∂W = xᵀ ∂L/∂y</code>. This is why <code>x</code> must be stored.</p>
+
+      <h3>Attention (Transformer)</h3>
+      <p>Self-attention is the expensive operation. For each layer:</p>
+      <span class="math">Q = XW_Q,  K = XW_K,  V = XW_V
+Attn = softmax(QKᵀ / √d_k) · V</span>
+      <p><strong>Memory cost:</strong> The attention matrix <code>QKᵀ</code> is <code>[B, H, S, S]</code> — quadratic in sequence length S. For S=8192: that's 8192² = 67M floats per layer per head. FlashAttention avoids materializing this by fusing the kernel.</p>
+
+      <div class="callout callout-warn">
+        <div class="callout-icon">⚠️</div>
+        <div class="callout-body"><p>Attention cost is O(S²) in memory and compute. Doubling sequence length = 4× more attention cost. This is the core bottleneck for long-context LLMs.</p></div>
+      </div>
+
+      <h3>Why Activations Are Stored</h3>
+      <div class="card card-accent">
+        <h4>The Fundamental Trade-off</h4>
+        <p>During backprop, the gradient of layer k needs the <em>output</em> of layer k-1 (chain rule). So every intermediate activation must be stored from the forward pass. This is activation memory — it scales with batch size and model depth.</p>
+        <p style="margin:0"><strong>Gradient checkpointing</strong> trades compute for memory: recompute activations during backward instead of storing them. ~33% more compute, ~10× less activation memory.</p>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Layer Type</th><th>Forward Operation</th><th>What's Stored</th><th>Backprop Needs</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Linear</strong></td><td><code>y = Wx + b</code></td><td>x</td><td>x to compute dW</td></tr>
+            <tr><td><strong>ReLU</strong></td><td><code>y = max(0, x)</code></td><td>mask (x > 0)</td><td>mask for gradient gating</td></tr>
+            <tr><td><strong>BatchNorm</strong></td><td>normalize + scale</td><td>x, μ, σ²</td><td>μ, σ² for gradient</td></tr>
+            <tr><td><strong>Attention</strong></td><td>softmax(QKᵀ/√d)V</td><td>Q, K, V, attn weights</td><td>All 4 tensors</td></tr>
+            <tr><td><strong>Embedding</strong></td><td>lookup table</td><td>input indices</td><td>indices to scatter gradients</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ─── SECTION 3 ─── -->
+    <div class="section section-anchor" id="s3">
+      <div class="section-number">03</div>
+      <h2>Loss Functions</h2>
+      <p class="section-desc">Choosing the right error signal is as important as the architecture.</p>
+
+      <div class="grid-2">
+        <div class="card card-accent">
+          <h4>Cross Entropy (CE)</h4>
+          <span class="math" style="font-size:0.75rem;white-space:normal">L = -Σ y_true · log(softmax(logits))</span>
+          <p style="font-size:0.85rem;margin-top:0.75rem"><strong>Use for:</strong> classification, language modeling (next token prediction). <strong>Why:</strong> maximizes log-probability of correct class. Punishes confident wrong predictions severely (log near 0 = huge loss).</p>
+        </div>
+        <div class="card card-blue">
+          <h4>Mean Squared Error (MSE)</h4>
+          <span class="math" style="font-size:0.75rem;white-space:normal">L = (1/N) Σ (y_pred - y_true)²</span>
+          <p style="font-size:0.85rem;margin-top:0.75rem"><strong>Use for:</strong> regression tasks, predicting continuous values. <strong>Warning:</strong> very sensitive to outliers (quadratic). Alternatives: MAE (L1) is more robust, Huber loss is in-between.</p>
+        </div>
+        <div class="card card-yellow">
+          <h4>Binary Cross Entropy (BCE)</h4>
+          <span class="math" style="font-size:0.75rem;white-space:normal">L = -(y·log(p) + (1-y)·log(1-p))</span>
+          <p style="font-size:0.85rem;margin-top:0.75rem"><strong>Use for:</strong> binary classification, multi-label classification. Each output is an independent Bernoulli. Use <code>BCEWithLogitsLoss</code> in PyTorch for numerical stability.</p>
+        </div>
+        <div class="card card-green">
+          <h4>Contrastive / NT-Xent</h4>
+          <span class="math" style="font-size:0.75rem;white-space:normal">L = -log[exp(sim(z,z⁺)/τ) / Σ exp(sim(z,zₙ)/τ)]</span>
+          <p style="font-size:0.85rem;margin-top:0.75rem"><strong>Use for:</strong> VLMs (CLIP), self-supervised learning. Pulls positive pairs together, pushes negatives apart in embedding space. Temperature τ controls sharpness.</p>
+        </div>
+      </div>
+
+      <h3>Logits vs Probabilities</h3>
+      <p><strong>Logits</strong> = raw unnormalized scores from the model's last linear layer. They can be any real number. <strong>Probabilities</strong> = after softmax, sum to 1.</p>
+      <div class="callout callout-tip">
+        <div class="callout-icon">💡</div>
+        <div class="callout-body"><p><strong>Always use logits + fused loss.</strong> <code>CrossEntropyLoss</code> in PyTorch applies log-softmax internally using the log-sum-exp trick: <code>log Σ exp(xᵢ) = max(x) + log Σ exp(xᵢ - max(x))</code>. This prevents overflow/underflow from <code>exp(large number)</code>. Never do <code>softmax → log → NLLLoss</code> manually — you lose numerical stability.</p></div>
+      </div>
+    </div>
+
+    <!-- ─── SECTION 4 ─── -->
+    <div class="section section-anchor" id="s4">
+      <div class="section-number">04</div>
+      <h2>Backpropagation</h2>
+      <p class="section-desc">The engine of learning — how error signals flow backward through a network.</p>
+
+      <h3>Chain Rule Intuition</h3>
+      <p>Backprop is just the chain rule applied to composed functions. If <span class="math-inline">L = f(g(h(x)))</span>, then:</p>
+      <span class="math">dL/dx = (dL/df) · (df/dg) · (dg/dh) · (dh/dx)</span>
+      <p>In a neural network: loss depends on outputs which depend on layer n-1 which depends on layer n-2... The gradient of the loss with respect to each weight is a product of local gradients chained together.</p>
+
+      <h3>Layer-by-Layer Gradient Computation</h3>
+      <div class="card card-accent">
+        <h4>What PyTorch Does</h4>
+        <p>During forward, PyTorch builds a computation graph (DAG). Every tensor records the operation that created it. <code>loss.backward()</code> traverses this graph in reverse, calling each operation's backward function, accumulating gradients via the chain rule.</p>
+        <p style="margin:0">Each node has: a <strong>forward function</strong> and a <strong>backward function</strong>. The backward function computes local gradients and passes them upstream.</p>
+      </div>
+
+      <h3>Vanishing & Exploding Gradients</h3>
+      <p>The gradient at layer k involves a product of N weight matrices and activation derivatives. This product can shrink to near-zero (vanishing) or blow up (exploding).</p>
+
+      <div class="grid-2">
+        <div class="card card-red">
+          <h4>Vanishing Gradients</h4>
+          <p style="font-size:0.85rem"><strong>Cause:</strong> Sigmoid/Tanh saturate → derivatives near 0. Deep networks → product of many small numbers → gradient = ~0 at early layers. Early layers learn nothing.</p>
+          <p style="font-size:0.85rem;margin:0"><strong>Fix:</strong> Use ReLU/GELU, residual connections (ResNet/Transformer), BatchNorm, careful init (Xavier/He).</p>
+        </div>
+        <div class="card card-yellow">
+          <h4>Exploding Gradients</h4>
+          <p style="font-size:0.85rem"><strong>Cause:</strong> Product of weight matrices with large singular values → gradient norm grows exponentially. Common in RNNs, very deep networks, high LR.</p>
+          <p style="font-size:0.85rem;margin:0"><strong>Fix:</strong> Gradient clipping (<code>clip_grad_norm_</code>), lower LR, BatchNorm, careful init, residual connections.</p>
+        </div>
+      </div>
+
+      <h3>Residual Connections are the Key Insight</h3>
+      <div class="callout callout-info">
+        <div class="callout-icon">🔑</div>
+        <div class="callout-body"><p>Residual connections (<code>y = F(x) + x</code>) create gradient highways. During backprop, <span class="math-inline">∂L/∂x = ∂L/∂y · (∂F/∂x + 1)</span>. The <code>+1</code> term ensures gradients always have a direct path to early layers, regardless of how small <code>∂F/∂x</code> gets. This is why 100+ layer networks can be trained.</p></div>
+      </div>
+    </div>
+
+    <!-- ─── SECTION 5 ─── -->
+    <div class="section section-anchor" id="s5">
+      <div class="section-number">05</div>
+      <h2>Optimizers</h2>
+      <p class="section-desc">How gradients get translated into weight updates — and the hidden state they carry.</p>
+
+      <h3>SGD (Stochastic Gradient Descent)</h3>
+      <span class="math">θ ← θ - lr · g</span>
+      <p>The simplest update rule. One gradient step in the negative gradient direction. <strong>Problem:</strong> sensitive to gradient noise, oscillates in narrow valleys. <strong>When to use:</strong> CNNs with careful tuning, when you have very large batches with low gradient noise. SGD with momentum is more commonly used.</p>
+
+      <h3>SGD + Momentum</h3>
+      <span class="math">v ← β·v + g
+θ ← θ - lr·v</span>
+      <p>Accumulates a velocity vector in the direction of consistent gradients. Dampens oscillations. β=0.9 is standard — means each step uses 90% of previous velocity + 10% new gradient. <strong>Physical intuition:</strong> ball rolling downhill with inertia.</p>
+
+      <h3>Adam (Adaptive Moment Estimation)</h3>
+      <span class="math">m ← β₁·m + (1-β₁)·g         (1st moment: mean)
+v ← β₂·v + (1-β₂)·g²        (2nd moment: variance)
+m̂ = m/(1-β₁ᵗ),  v̂ = v/(1-β₂ᵗ)  (bias correction)
+θ ← θ - lr · m̂/(√v̂ + ε)</span>
+      <p>Per-parameter adaptive learning rates. Dividing by <code>√v̂</code> normalizes the step size by the gradient's recent variance. <strong>Effect:</strong> parameters with noisy gradients take smaller steps; parameters with consistent gradients take larger steps. Defaults: β₁=0.9, β₂=0.999, ε=1e-8.</p>
+
+      <h3>AdamW</h3>
+      <span class="math">θ ← θ - lr · m̂/(√v̂ + ε) - lr·λ·θ</span>
+      <div class="callout callout-tip">
+        <div class="callout-icon">💡</div>
+        <div class="callout-body"><p><strong>AdamW ≠ Adam + L2 regularization.</strong> In Adam, adding L2 to the loss means the weight decay term gets divided by <code>√v̂</code>, making it effectively smaller for noisy parameters. AdamW decouples weight decay from the gradient update — it's applied directly to weights. <strong>Always use AdamW for LLMs/Transformers.</strong></p></div>
+      </div>
+
+      <h3>Optimizer State Memory</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Optimizer</th><th>Extra State per Param</th><th>Memory Multiplier</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><strong>SGD</strong></td><td>None</td><td>1×</td><td>+ 1× if momentum</td></tr>
+            <tr><td><strong>SGD + Momentum</strong></td><td>velocity v</td><td>2×</td><td>—</td></tr>
+            <tr><td><strong>Adam / AdamW</strong></td><td>m, v (both FP32)</td><td>3× (FP16 model) or 4× total</td><td>State always FP32 for stability</td></tr>
+            <tr><td><strong>8-bit Adam</strong></td><td>m, v (quantized)</td><td>~1.5×</td><td>bitsandbytes library</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ─── SECTION 6 ─── -->
+    <div class="section section-anchor" id="s6">
+      <div class="section-number">06</div>
+      <h2>Learning Rate &amp; Schedulers</h2>
+      <p class="section-desc">The single most important hyperparameter. Get this wrong and nothing else matters.</p>
+
+      <h3>Why LR Is #1</h3>
+      <p>Learning rate controls <em>how large a step</em> you take in the loss landscape. <strong>Too high:</strong> overshoot minima, loss diverges or oscillates. <strong>Too low:</strong> trains too slowly, gets stuck in poor local minima. There is a "Goldilocks zone" — and it changes during training.</p>
+
+      <div class="grid-2">
+        <div class="card card-red">
+          <h4>LR Too High</h4>
+          <p style="font-size:0.85rem;margin:0">Loss spikes or diverges. Training unstable. Weight norms blow up. First thing to check when you see NaN loss. Fix: halve LR, use warmup.</p>
+        </div>
+        <div class="card card-yellow">
+          <h4>LR Too Low</h4>
+          <p style="font-size:0.85rem;margin:0">Loss decreases but very slowly. May plateau early. Model underfits. Signs: training loss barely moving after hours. Fix: LR finder, increase LR, check scheduler.</p>
+        </div>
+      </div>
+
+      <h3>LR Warmup</h3>
+      <p>Start with very low LR, linearly increase to target LR over N steps. <strong>Why:</strong> at training start, parameters are random, gradients are large and noisy. High LR on random init → divergence. Warmup lets the model stabilize before taking aggressive steps.</p>
+      <span class="math">lr(t) = lr_target × (t / warmup_steps)   for t ≤ warmup_steps</span>
+      <p><strong>Rule of thumb:</strong> 1–5% of total steps as warmup. For LLMs: 1000–2000 warmup steps common.</p>
+
+      <h3>Schedulers</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Scheduler</th><th>Formula</th><th>Shape</th><th>Best For</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Step Decay</strong></td><td><code>lr × γ^⌊epoch/step⌋</code></td><td>Staircase</td><td>CNNs, simple baselines</td></tr>
+            <tr><td><strong>Cosine Decay</strong></td><td><code>lr × 0.5(1 + cos(π·t/T))</code></td><td>Smooth curve</td><td>LLMs, most modern models</td></tr>
+            <tr><td><strong>Linear Decay</strong></td><td><code>lr × (1 - t/T)</code></td><td>Straight line down</td><td>Fine-tuning, simple schedules</td></tr>
+            <tr><td><strong>OneCycleLR</strong></td><td>Up then down</td><td>Triangle</td><td>Fast training (super-convergence)</td></tr>
+            <tr><td><strong>Constant + Cooldown</strong></td><td>Flat then drop</td><td>L-shape</td><td>LLM pre-training (common now)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Cosine Schedule with Warmup (Modern Default)</h3>
+      <pre data-lang="python"><code><span class="kw">def</span> <span class="fn">get_lr</span>(<span class="var">step</span>, <span class="var">warmup_steps</span>, <span class="var">max_steps</span>, <span class="var">max_lr</span>, <span class="var">min_lr</span>=<span class="num">1e-5</span>):
+    <span class="cm"># Linear warmup</span>
+    <span class="kw">if</span> <span class="var">step</span> < <span class="var">warmup_steps</span>:
+        <span class="kw">return</span> <span class="var">max_lr</span> * <span class="var">step</span> / <span class="var">warmup_steps</span>
+    <span class="cm"># Cosine decay</span>
+    <span class="var">progress</span> = (<span class="var">step</span> - <span class="var">warmup_steps</span>) / (<span class="var">max_steps</span> - <span class="var">warmup_steps</span>)
+    <span class="kw">return</span> <span class="var">min_lr</span> + <span class="num">0.5</span> * (<span class="var">max_lr</span> - <span class="var">min_lr</span>) * (<span class="num">1</span> + <span class="fn">cos</span>(<span class="var">math</span>.<span class="var">pi</span> * <span class="var">progress</span>))</code></pre>
+
+      <div class="callout callout-note">
+        <div class="callout-icon">📌</div>
+        <div class="callout-body"><p><strong>Debug bad LR:</strong> Log loss at every step. If loss: (a) spikes immediately → LR too high at start, add warmup. (b) decreases then plateaus early → LR too high later, check schedule. (c) barely moves → LR too low. (d) oscillates with no trend → LR too high, use momentum.</p></div>
+      </div>
+    </div>
+
+    <!-- ─── SECTION 7 ─── -->
+    <div class="section section-anchor" id="s7">
+      <div class="section-number">07</div>
+      <h2>Gradient Mechanics</h2>
+      <p class="section-desc">Controlling how gradients flow — the difference between a stable run and NaN hell.</p>
+
+      <h3>Gradient Accumulation</h3>
+      <p>When your GPU can't fit a large batch, split it into micro-batches and accumulate gradients before updating weights:</p>
+      <pre data-lang="python"><code><span class="kw">for</span> <span class="var">i</span>, (<span class="var">x</span>, <span class="var">y</span>) <span class="kw">in</span> <span class="fn">enumerate</span>(<span class="var">loader</span>):
+    <span class="var">loss</span> = <span class="fn">model</span>(<span class="var">x</span>, <span class="var">y</span>) / <span class="var">accum_steps</span>   <span class="cm"># divide to normalize</span>
+    <span class="var">loss</span>.<span class="fn">backward</span>()                         <span class="cm"># grads accumulate in .grad</span>
+    <span class="kw">if</span> (<span class="var">i</span> + <span class="num">1</span>) % <span class="var">accum_steps</span> == <span class="num">0</span>:
+        <span class="var">optimizer</span>.<span class="fn">step</span>()
+        <span class="var">optimizer</span>.<span class="fn">zero_grad</span>()</code></pre>
+      <p><strong>Effective batch size</strong> = micro_batch_size × accum_steps × n_gpus. Behaves identically to a large batch if you also scale LR proportionally.</p>
+
+      <h3>Gradient Clipping</h3>
+      <p>Cap the gradient norm to prevent exploding gradients from destroying your training:</p>
+      <span class="math">if ||g|| > max_norm:  g ← g × (max_norm / ||g||)</span>
+      <pre data-lang="python"><code><span class="var">loss</span>.<span class="fn">backward</span>()
+<span class="var">torch</span>.<span class="var">nn</span>.<span class="var">utils</span>.<span class="fn">clip_grad_norm_</span>(<span class="var">model</span>.<span class="fn">parameters</span>(), <span class="var">max_norm</span>=<span class="num">1.0</span>)</code></pre>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Method</th><th>What It Does</th><th>When to Use</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Norm clipping</strong></td><td>Scale entire gradient vector so its L2 norm ≤ threshold</td><td>LLMs, Transformers — standard practice</td></tr>
+            <tr><td><strong>Value clipping</strong></td><td>Clip each gradient element to [-c, c]</td><td>Less common, use for specific known distributions</td></tr>
+            <tr><td><strong>Adaptive clipping</strong></td><td>Track gradient norms over time, set threshold dynamically</td><td>When you don't know a good threshold upfront</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout callout-tip">
+        <div class="callout-icon">💡</div>
+        <div class="callout-body"><p><strong>Monitor gradient norms.</strong> Log <code>grad_norm</code> at every step. Typical range: 0.5–2.0. If it spikes to 10+ intermittently, you have gradient instability. If it's constantly high (5+), your LR is too high or architecture has instability. If it trends to 0, vanishing gradients.</p></div>
+      </div>
+    </div>
+
+    <!-- ─── SECTION 8 ─── -->
+    <div class="section section-anchor" id="s8">
+      <div class="section-number">08</div>
+      <h2>Activations</h2>
+      <p class="section-desc">Non-linearity is what makes neural networks universal approximators.</p>
+
+      <p>Without activation functions, stacking linear layers gives you a single linear transformation — no matter how many layers. Activations introduce non-linearity, enabling the network to learn complex functions.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Activation</th><th>Formula</th><th>Range</th><th>Use Case</th><th>Pitfalls</th></tr></thead>
+          <tbody>
+            <tr><td><strong>ReLU</strong></td><td><code>max(0, x)</code></td><td>[0, ∞)</td><td>CNNs, hidden layers</td><td>Dying ReLU: if x always < 0, neuron dead forever</td></tr>
+            <tr><td><strong>GELU</strong></td><td><code>x·Φ(x)</code></td><td>(-0.17, ∞)</td><td>Transformers, BERT, GPT</td><td>Slightly more compute than ReLU</td></tr>
+            <tr><td><strong>SiLU/Swish</strong></td><td><code>x·σ(x)</code></td><td>(-0.28, ∞)</td><td>LLaMA, modern LLMs</td><td>Similar to GELU</td></tr>
+            <tr><td><strong>Sigmoid</strong></td><td><code>1/(1+e⁻ˣ)</code></td><td>(0, 1)</td><td>Binary classification output</td><td>Saturates at ±∞ → vanishing gradients</td></tr>
+            <tr><td><strong>Tanh</strong></td><td><code>(eˣ-e⁻ˣ)/(eˣ+e⁻ˣ)</code></td><td>(-1, 1)</td><td>RNNs, normalized outputs</td><td>Saturates at ±1, vanishing gradients</td></tr>
+            <tr><td><strong>Softmax</strong></td><td><code>exp(xᵢ)/Σexp(xⱼ)</code></td><td>(0,1), sum=1</td><td>Final layer, classification</td><td>Never use in hidden layers; numerically unstable raw</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Why GELU Won in Transformers</h3>
+      <p>GELU = Gaussian Error Linear Unit. Unlike ReLU's hard gate (0 or pass), GELU has a smooth probabilistic gate: inputs are weighted by how likely they are to be positive under a Gaussian. This smooth gradient behavior empirically outperforms ReLU in transformers. LLaMA uses SiLU (nearly identical) in SwiGLU: <code>SiLU(W₁x) ⊙ W₃x</code>.</p>
+
+      <div class="callout callout-warn">
+        <div class="callout-icon">⚠️</div>
+        <div class="callout-body"><p><strong>Saturation = vanishing gradients.</strong> Sigmoid derivative = σ(x)(1-σ(x)) → max 0.25 at x=0, nearly 0 at |x| > 3. Stack 10 sigmoid layers: gradient shrinks by 0.25¹⁰ ≈ 0.000001. This is why deep networks failed before ReLU + residual connections.</p></div>
+      </div>
+    </div>
+
+    <!-- ─── SECTION 9 ─── -->
+    <div class="section section-anchor" id="s9">
+      <div class="section-number">09</div>
+      <h2>Precision &amp; Training Efficiency</h2>
+      <p class="section-desc">The difference between FP32 and BF16 is not just speed — it fundamentally changes what you can train.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Format</th><th>Bits</th><th>Exponent</th><th>Mantissa</th><th>Range</th><th>Precision</th></tr></thead>
+          <tbody>
+            <tr><td><strong>FP32</strong></td><td>32</td><td>8</td><td>23</td><td>±3.4×10³⁸</td><td>~7 decimal digits</td></tr>
+            <tr><td><strong>FP16</strong></td><td>16</td><td>5</td><td>10</td><td>±65,504</td><td>~3 decimal digits</td></tr>
+            <tr><td><strong>BF16</strong></td><td>16</td><td>8</td><td>7</td><td>±3.4×10³⁸</td><td>~2 decimal digits</td></tr>
+            <tr><td><strong>INT8</strong></td><td>8</td><td>—</td><td>—</td><td>[-128, 127]</td><td>Integers only</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>FP16 vs BF16 — The Critical Distinction</h3>
+      <div class="grid-2">
+        <div class="card card-yellow">
+          <h4>FP16 Problems</h4>
+          <p style="font-size:0.85rem">Max value 65,504. Gradient values or activations > 65,504 → <strong>overflow → NaN</strong>. Very small values < 6×10⁻⁵ → <strong>underflow → 0</strong>. Requires <em>loss scaling</em> to keep gradients in representable range.</p>
+        </div>
+        <div class="card card-green">
+          <h4>BF16 Advantages</h4>
+          <p style="font-size:0.85rem">Same exponent range as FP32 → no overflow/underflow issues. Drop-in replacement for FP32 without loss scaling. Lower precision (7 mantissa bits vs 23) but in practice models don't care. <strong>Default for modern GPU training (A100+, H100).</strong></p>
+        </div>
+      </div>
+
+      <h3>Mixed Precision Training</h3>
+      <p>Store model weights in FP16/BF16 for speed, but compute loss and keep master copy of weights in FP32 for precision during optimizer step.</p>
+      <div class="flow-diagram">
+        <div class="flow-node">FP16 weights</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node highlight">Forward (FP16)</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">Loss (FP32)</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node highlight">Backward (FP16)</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">Opt step (FP32)</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">Copy to FP16</div>
+      </div>
+
+      <h3>Loss Scaling (for FP16)</h3>
+      <p>Multiply loss by a large scalar S before backward → gradients are S× larger → less underflow. After backward, divide gradients by S before optimizer step. PyTorch <code>GradScaler</code> does this automatically with dynamic scaling — if overflow detected, it halves S and skips the step.</p>
+      <pre data-lang="python"><code><span class="var">scaler</span> = <span class="cls">GradScaler</span>()
+
+<span class="kw">with</span> <span class="fn">autocast</span>(<span class="str">'cuda'</span>):
+    <span class="var">output</span> = <span class="fn">model</span>(<span class="var">x</span>)
+    <span class="var">loss</span> = <span class="fn">criterion</span>(<span class="var">output</span>, <span class="var">y</span>)
+
+<span class="var">scaler</span>.<span class="fn">scale</span>(<span class="var">loss</span>).<span class="fn">backward</span>()
+<span class="var">scaler</span>.<span class="fn">step</span>(<span class="var">optimizer</span>)
+<span class="var">scaler</span>.<span class="fn">update</span>()</code></pre>
+
+      <div class="callout callout-tip">
+        <div class="callout-icon">💡</div>
+        <div class="callout-body"><p><strong>Tensor Cores:</strong> Nvidia Tensor Cores accelerate matrix multiplications in FP16/BF16/TF32. On A100: 312 TFLOPS in BF16 vs 19.5 TFLOPS in FP32. That's 16× speedup. You must use shapes that are multiples of 8 (ideally 64) for Tensor Core utilization. This is why model dimensions are always 512, 1024, 4096, etc.</p></div>
+      </div>
+    </div>
+
+    <!-- ─── SECTION 10 ─── -->
+    <div class="section section-anchor" id="s10">
+      <div class="section-number">10</div>
+      <h2>Memory Optimization Techniques</h2>
+      <p class="section-desc">How to train models that don't fit in GPU memory — the trade-offs that define production LLM training.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Technique</th><th>What It Does</th><th>Memory Saved</th><th>Compute Cost</th><th>Use When</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Gradient Checkpointing</strong></td><td>Recompute activations during backward instead of storing</td><td>~10× activation mem</td><td>+30% compute</td><td>Large batches, deep models</td></tr>
+            <tr><td><strong>Mixed Precision</strong></td><td>FP16/BF16 weights + activations</td><td>2× activation + weight mem</td><td>~0% (often faster)</td><td>Always</td></tr>
+            <tr><td><strong>ZeRO Stage 1</strong></td><td>Shard optimizer state across GPUs</td><td>4× optimizer mem</td><td>Small comm overhead</td><td>Multi-GPU, Adam optimizer</td></tr>
+            <tr><td><strong>ZeRO Stage 2</strong></td><td>Shard optimizer state + gradients</td><td>8× total</td><td>Moderate comm</td><td>Large models, many GPUs</td></tr>
+            <tr><td><strong>ZeRO Stage 3</strong></td><td>Shard optimizer + grads + parameters</td><td>~linear with N GPUs</td><td>Higher comm</td><td>Models too large for one GPU</td></tr>
+            <tr><td><strong>CPU Offloading</strong></td><td>Move optimizer state to CPU RAM</td><td>GPU: optimizer mem freed</td><td>PCIe bandwidth bottleneck</td><td>Limited GPU mem, PCIe 4.0+</td></tr>
+            <tr><td><strong>Activation Offloading</strong></td><td>Move activations to CPU during forward</td><td>GPU: activation mem freed</td><td>High bandwidth cost</td><td>Extreme memory pressure</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Gradient Checkpointing Deep Dive</h3>
+      <div class="card card-accent">
+        <h4>How It Works</h4>
+        <p>Without checkpointing: ALL activations from forward pass stored in GPU memory for backward pass. With checkpointing: only store activations at checkpoint boundaries (e.g., every N transformer blocks). During backward, recompute activations between checkpoints on the fly.</p>
+        <p>In PyTorch:</p>
+        <pre data-lang="python" style="margin:0.5rem 0 0"><code><span class="kw">from</span> <span class="cls">torch.utils.checkpoint</span> <span class="kw">import</span> <span class="fn">checkpoint</span>
+
+<span class="var">output</span> = <span class="fn">checkpoint</span>(<span class="var">block</span>, <span class="var">x</span>)  <span class="cm"># recomputes block during backward</span></code></pre>
+      </div>
+
+      <h3>ZeRO Optimizer (DeepSpeed)</h3>
+      <p><strong>ZeRO = Zero Redundancy Optimizer.</strong> In standard DDP, every GPU holds a full copy of optimizer states. For 7B param model with Adam: 7B×4 (FP32 weights) + 7B×4 (m) + 7B×4 (v) = 84GB just for optimizer. ZeRO shards this across N GPUs. With 8 GPUs, that's 84/8 = 10.5GB per GPU.</p>
+    </div>
+
+    <!-- ─── SECTION 11 ─── -->
+    <div class="section section-anchor" id="s11">
+      <div class="section-number">11</div>
+      <h2>Batch Size &amp; Scaling</h2>
+      <p class="section-desc">Batch size is not just a throughput knob — it fundamentally changes training dynamics.</p>
+
+      <h3>What Batch Size Controls</h3>
+      <p>Each gradient update is computed on a sample of the data. Larger batches = more accurate gradient estimate (less noise), but also fewer updates per epoch. The gradient noise from small batches acts as a regularizer and helps escape sharp minima.</p>
+
+      <div class="grid-2">
+        <div class="card card-blue">
+          <h4>Small Batches (32–256)</h4>
+          <p style="font-size:0.85rem">Noisy gradients → acts like regularization. Often finds flatter minima (better generalization). More optimizer steps per epoch. Works poorly on GPUs (low utilization). Good for: fine-tuning, small models, generalization-sensitive tasks.</p>
+        </div>
+        <div class="card card-accent">
+          <h4>Large Batches (2048+)</h4>
+          <p style="font-size:0.85rem">Accurate gradient → fast convergence. Lower variance → may overfit or find sharp minima (worse generalization unless LR scaled). Excellent GPU utilization. May need LR warmup. Good for: LLM pre-training, high-throughput training.</p>
+        </div>
+      </div>
+
+      <h3>Linear Scaling Rule</h3>
+      <div class="callout callout-info">
+        <div class="callout-icon">📐</div>
+        <div class="callout-body"><p>When you increase batch size by k×, scale LR by k× to maintain the same training dynamics. <strong>Intuition:</strong> larger batch → lower gradient noise → gradient is more accurate → you can afford to take a larger step. <strong>Caveat:</strong> this holds for moderate scaling (≤32×). Very large batches need additional warmup and learning rate tuning.</p></div>
+      </div>
+
+      <h3>Effective Batch Size</h3>
+      <span class="math">effective_batch = micro_batch × grad_accum_steps × n_gpus</span>
+      <p>If micro_batch=4, accum_steps=8, n_gpus=8: effective_batch = 4×8×8 = 256. This is what matters for training dynamics. You can trade any of these three factors against each other based on hardware constraints.</p>
+    </div>
+
+    <!-- ─── SECTION 12 ─── -->
+    <div class="section section-anchor" id="s12">
+      <div class="section-number">12</div>
+      <h2>Regularization</h2>
+      <p class="section-desc">Overfitting detection and prevention — keeping your model generalizable.</p>
+
+      <h3>Detecting Overfitting</h3>
+      <p>The signature: <em>training loss continues to decrease but validation loss stagnates or increases</em>. Monitor both curves throughout training. The gap between train and val loss = degree of overfitting.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Technique</th><th>How It Works</th><th>When to Use</th><th>Key Params</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Dropout</strong></td><td>Randomly zero activations during training (force network to not rely on specific neurons)</td><td>Dense layers, not attention (usually)</td><td>p=0.1–0.3</td></tr>
+            <tr><td><strong>Weight Decay (L2)</strong></td><td>Add λ||θ||² to loss → penalizes large weights</td><td>Always, use AdamW</td><td>λ=0.01–0.1</td></tr>
+            <tr><td><strong>Data Augmentation</strong></td><td>Artificially expand training data with transforms</td><td>Vision: always. NLP: less common</td><td>Task-specific</td></tr>
+            <tr><td><strong>Early Stopping</strong></td><td>Stop when val loss stops improving</td><td>When compute is limited</td><td>patience=5–20 epochs</td></tr>
+            <tr><td><strong>Label Smoothing</strong></td><td>Soften hard targets: instead of [0,1,0], use [0.05, 0.9, 0.05]</td><td>Classification, LLMs</td><td>ε=0.1</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Dropout in Transformers</h3>
+      <p>Modern LLMs (LLaMA, GPT-4) often use very low or zero dropout during pre-training (large dataset + short training = less overfitting risk). Dropout rates of 0.0–0.1 are common. Fine-tuning on small datasets: increase to 0.1–0.3.</p>
+
+      <h3>Weight Decay Intuition</h3>
+      <p>Without weight decay, nothing prevents weights from growing arbitrarily large (as long as loss decreases). Large weights make the model sensitive to small input perturbations → poor generalization. Weight decay pulls weights back toward zero at each step, keeping the model in a well-behaved regime.</p>
+    </div>
+
+    <!-- ─── SECTION 13 ─── -->
+    <div class="section section-anchor" id="s13">
+      <div class="section-number">13</div>
+      <h2>Training Stability &amp; Debugging</h2>
+      <p class="section-desc">The practical guide to why training broke — and how to fix it.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Issue</th><th>Symptoms</th><th>Root Cause</th><th>Fix</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>Loss not decreasing</strong></td>
+              <td>Flat loss from step 1, or plateaus early</td>
+              <td>LR too low; wrong loss function; data/label bug; gradient not flowing</td>
+              <td>Check <code>p.requires_grad</code>; verify data pipeline; LR finder; check for bugs in loss</td>
+            </tr>
+            <tr>
+              <td><strong>NaN in training</strong></td>
+              <td>Loss = NaN, gradients = NaN, everything breaks</td>
+              <td>FP16 overflow; LR too high; bad input (inf/nan in data); log(0)</td>
+              <td>Check data for NaN/inf; add loss scaling; clip gradients; reduce LR; switch to BF16</td>
+            </tr>
+            <tr>
+              <td><strong>Exploding gradients</strong></td>
+              <td>Loss spikes suddenly; grad norm >>10</td>
+              <td>LR too high; bad init; no clipping; specific batch with large loss</td>
+              <td><code>clip_grad_norm_(params, 1.0)</code>; reduce LR; add warmup</td>
+            </tr>
+            <tr>
+              <td><strong>Loss oscillates</strong></td>
+              <td>Loss goes up and down, no trend</td>
+              <td>LR too high; inconsistent batch sizes; unstable architecture</td>
+              <td>Halve LR; add momentum; check BatchNorm usage</td>
+            </tr>
+            <tr>
+              <td><strong>Validation >> Train loss</strong></td>
+              <td>Big gap between train and val</td>
+              <td>Overfitting</td>
+              <td>More data; more augmentation; increase dropout; add weight decay; early stop</td>
+            </tr>
+            <tr>
+              <td><strong>Both losses high</strong></td>
+              <td>Model not learning at all</td>
+              <td>Underfitting: model too small, LR too low, too few epochs</td>
+              <td>Increase model capacity; increase LR; train longer; check data quality</td>
+            </tr>
+            <tr>
+              <td><strong>GPU OOM</strong></td>
+              <td>CUDA out of memory</td>
+              <td>Batch too large; activations not freed; large sequence length</td>
+              <td>Reduce batch size; gradient checkpointing; mixed precision; ZeRO</td>
+            </tr>
+            <tr>
+              <td><strong>Training too slow</strong></td>
+              <td>GPU util < 70%</td>
+              <td>Data loading bottleneck; small batch; Python GIL; not using Tensor Cores</td>
+              <td>More DataLoader workers; pin_memory=True; increase batch; use BF16; persistent_workers=True</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Debugging Checklist</h3>
+      <div class="card card-accent">
+        <h4>Before You Change Anything</h4>
+        <ol style="margin:0.5rem 0 0; padding-left:1.25rem;">
+          <li style="margin-bottom:0.4rem">Verify loss on random weights (should be ~log(num_classes) for CE)</li>
+          <li style="margin-bottom:0.4rem">Overfit on a single batch (loss should → 0)</li>
+          <li style="margin-bottom:0.4rem">Check data loader outputs visually</li>
+          <li style="margin-bottom:0.4rem">Verify labels are correct and not shifted</li>
+          <li style="margin-bottom:0.4rem">Log grad_norm, loss, lr at every step</li>
+          <li style="margin-bottom:0.4rem">Check if model is in train mode (<code>model.train()</code>)</li>
+          <li>Confirm optimizer.zero_grad() is called</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- ─── SECTION 14 ─── -->
+    <div class="section section-anchor" id="s14">
+      <div class="section-number">14</div>
+      <h2>Distributed Training</h2>
+      <p class="section-desc">Scaling training across multiple GPUs and machines — the architecture of modern LLM training.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Strategy</th><th>What's Split</th><th>Communication</th><th>Use When</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Data Parallelism (DDP)</strong></td><td>Data batch split across GPUs, full model on each</td><td>All-reduce gradients after each step</td><td>Model fits in 1 GPU, want more throughput</td></tr>
+            <tr><td><strong>Tensor Parallelism</strong></td><td>Weight matrices split across GPUs (column/row)</td><td>All-reduce within forward/backward</td><td>Single layer too large for 1 GPU (e.g., linear 65536→65536)</td></tr>
+            <tr><td><strong>Pipeline Parallelism</strong></td><td>Model layers split across GPUs (stages)</td><td>Activations passed between stages</td><td>Deep models, many GPUs per node</td></tr>
+            <tr><td><strong>Sequence Parallelism</strong></td><td>Sequence dimension split across GPUs</td><td>All-reduce on sequence</td><td>Very long sequences (>16k), attention memory</td></tr>
+            <tr><td><strong>ZeRO (FSDP)</strong></td><td>Optimizer state, gradients, params sharded</td><td>All-gather params when needed</td><td>Memory-constrained distributed training</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Data Parallelism (DDP) — The Standard</h3>
+      <p>Each GPU has a full model copy. Each GPU processes a subset of the batch. After backward, gradients are all-reduced (summed + divided) across GPUs — every GPU ends up with the same average gradient. <strong>Effectively multiplies batch size by N GPUs.</strong></p>
+      <pre data-lang="python"><code><span class="cm"># PyTorch DDP setup</span>
+<span class="kw">from</span> <span class="cls">torch.nn.parallel</span> <span class="kw">import</span> <span class="cls">DistributedDataParallel</span> <span class="kw">as</span> <span class="cls">DDP</span>
+<span class="var">model</span> = <span class="cls">DDP</span>(<span class="var">model</span>.<span class="fn">to</span>(<span class="var">rank</span>), <span class="var">device_ids</span>=[<span class="var">rank</span>])
+<span class="cm"># All-reduce happens automatically in .backward()</span></code></pre>
+
+      <h3>Communication Overhead</h3>
+      <p>The bottleneck in multi-node training is often not compute — it's gradient synchronization. NVLink (within a node): 600 GB/s. InfiniBand (across nodes): 200–400 Gb/s. For a 7B model, syncing gradients (28GB @ FP16) = ~0.1s over IB. At 10-step gradient accumulation, this is amortized. <strong>Overlap compute and communication wherever possible.</strong></p>
+
+      <div class="callout callout-info">
+        <div class="callout-icon">🏗️</div>
+        <div class="callout-body"><p><strong>3D Parallelism:</strong> Large LLM training (GPT-4, LLaMA 65B+) typically uses all three in combination: Tensor Parallel (within node, 8 GPUs), Pipeline Parallel (across nodes, 4–8 stages), Data Parallel (remaining GPUs). This is called "3D parallelism."</p></div>
+      </div>
+    </div>
+
+    <!-- ─── SECTION 15 ─── -->
+    <div class="section section-anchor" id="s15">
+      <div class="section-number">15</div>
+      <h2>Training LLMs vs CNNs vs VLMs</h2>
+      <p class="section-desc">Key differences in training dynamics across model families.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Property</th><th>CNN (ResNet, ConvNeXt)</th><th>LLM (GPT, LLaMA)</th><th>VLM (CLIP, LLaVA)</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Input</strong></td><td>Fixed-size image [B,C,H,W]</td><td>Token sequence [B,S]</td><td>Image + text</td></tr>
+            <tr><td><strong>Main op</strong></td><td>Convolution</td><td>Causal attention</td><td>Cross-modal attention</td></tr>
+            <tr><td><strong>Memory cost driver</strong></td><td>Activation maps (large H×W)</td><td>KV cache, O(S²) attention</td><td>Both + modality projectors</td></tr>
+            <tr><td><strong>Batch size</strong></td><td>256–4096</td><td>256–4M tokens total</td><td>Varies (often smaller)</td></tr>
+            <tr><td><strong>Precision</strong></td><td>FP16 or BF16</td><td>BF16 (critical)</td><td>BF16 for both modalities</td></tr>
+            <tr><td><strong>Optimizer</strong></td><td>SGD (with momentum) or AdamW</td><td>AdamW (always)</td><td>AdamW</td></tr>
+            <tr><td><strong>LR schedule</strong></td><td>Step / Cosine</td><td>Warmup + Cosine</td><td>Warmup + Cosine, staged</td></tr>
+            <tr><td><strong>Grad stability</strong></td><td>Generally stable</td><td>Can spike, needs clipping</td><td>Modal misalignment causes spikes</td></tr>
+            <tr><td><strong>Dominant cost</strong></td><td>Spatial convolutions</td><td>Attention O(S²), FFN</td><td>Image encoding + alignment</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Sequence Length Impact in LLMs</h3>
+      <p>Going from S=2048 to S=8192: attention memory scales as O(S²) → 16× more attention memory. KV cache during inference = <code>2 × n_layers × n_heads × d_head × S × dtype_bytes</code>. For LLaMA-7B at S=4096 in FP16: ~2GB KV cache per request. This is why long-context is expensive.</p>
+
+      <h3>VLM Training Specifics</h3>
+      <p>VLMs (e.g., LLaVA, Flamingo, CLIP) typically use contrastive loss. <strong>Key challenge:</strong> vision and text encoders are pre-trained separately and must be aligned. Training is often staged: (1) freeze both encoders, train projection layer; (2) unfreeze text encoder, joint fine-tuning; (3) optionally unfreeze vision encoder. Large negatives in contrastive learning are critical — CLIP used batch sizes of 32,768.</p>
+    </div>
+
+    <!-- ─── SECTION 16 ─── -->
+    <div class="section section-anchor" id="s16">
+      <div class="section-number">16</div>
+      <h2>Practical Training Pipeline</h2>
+      <p class="section-desc">Production-ready PyTorch training loop with all the essentials.</p>
+
+      <pre data-lang="python"><code><span class="kw">import</span> <span class="cls">torch</span>
+<span class="kw">import</span> <span class="cls">torch.nn</span> <span class="kw">as</span> <span class="cls">nn</span>
+<span class="kw">from</span> <span class="cls">torch.cuda.amp</span> <span class="kw">import</span> <span class="cls">autocast</span>, <span class="cls">GradScaler</span>
+<span class="kw">from</span> <span class="cls">torch.utils.data</span> <span class="kw">import</span> <span class="cls">DataLoader</span>
+
+<span class="cm"># ─── Setup ───────────────────────────────────────────────────</span>
+<span class="var">device</span> = <span class="cls">torch</span>.<span class="fn">device</span>(<span class="str">"cuda"</span>)
+<span class="var">model</span> = <span class="cls">MyModel</span>().<span class="fn">to</span>(<span class="var">device</span>)
+<span class="var">optimizer</span> = <span class="cls">torch.optim</span>.<span class="cls">AdamW</span>(
+    <span class="var">model</span>.<span class="fn">parameters</span>(),
+    <span class="var">lr</span>=<span class="num">3e-4</span>,
+    <span class="var">weight_decay</span>=<span class="num">0.1</span>,
+    <span class="var">betas</span>=(<span class="num">0.9</span>, <span class="num">0.95</span>),    <span class="cm"># β2=0.95 is better for LLMs</span>
+)
+<span class="var">scaler</span> = <span class="cls">GradScaler</span>()   <span class="cm"># only if using FP16 (not needed for BF16)</span>
+<span class="var">criterion</span> = <span class="cls">nn</span>.<span class="cls">CrossEntropyLoss</span>()
+<span class="var">loader</span> = <span class="cls">DataLoader</span>(<span class="var">dataset</span>, <span class="var">batch_size</span>=<span class="num">32</span>, <span class="var">num_workers</span>=<span class="num">4</span>,
+                    <span class="var">pin_memory</span>=<span class="kw">True</span>, <span class="var">persistent_workers</span>=<span class="kw">True</span>)
+
+<span class="var">ACCUM_STEPS</span> = <span class="num">4</span>
+<span class="var">MAX_GRAD_NORM</span> = <span class="num">1.0</span>
+
+<span class="cm"># ─── Training Loop ───────────────────────────────────────────</span>
+<span class="var">model</span>.<span class="fn">train</span>()
+<span class="var">optimizer</span>.<span class="fn">zero_grad</span>(<span class="var">set_to_none</span>=<span class="kw">True</span>)
+
+<span class="kw">for</span> <span class="var">step</span>, (<span class="var">x</span>, <span class="var">y</span>) <span class="kw">in</span> <span class="fn">enumerate</span>(<span class="var">loader</span>):
+    <span class="var">x</span>, <span class="var">y</span> = <span class="var">x</span>.<span class="fn">to</span>(<span class="var">device</span>), <span class="var">y</span>.<span class="fn">to</span>(<span class="var">device</span>)
+
+    <span class="cm"># Forward pass with mixed precision</span>
+    <span class="kw">with</span> <span class="fn">autocast</span>(<span class="str">"cuda"</span>, <span class="var">dtype</span>=<span class="cls">torch</span>.<span class="var">bfloat16</span>):
+        <span class="var">logits</span> = <span class="fn">model</span>(<span class="var">x</span>)
+        <span class="var">loss</span> = <span class="fn">criterion</span>(<span class="var">logits</span>, <span class="var">y</span>) / <span class="var">ACCUM_STEPS</span>
+
+    <span class="cm"># Backward</span>
+    <span class="var">scaler</span>.<span class="fn">scale</span>(<span class="var">loss</span>).<span class="fn">backward</span>()
+
+    <span class="kw">if</span> (<span class="var">step</span> + <span class="num">1</span>) % <span class="var">ACCUM_STEPS</span> == <span class="num">0</span>:
+        <span class="cm"># Unscale before clipping!</span>
+        <span class="var">scaler</span>.<span class="fn">unscale_</span>(<span class="var">optimizer</span>)
+        <span class="var">grad_norm</span> = <span class="cls">torch.nn.utils</span>.<span class="fn">clip_grad_norm_</span>(
+            <span class="var">model</span>.<span class="fn">parameters</span>(), <span class="var">MAX_GRAD_NORM</span>
+        )
+
+        <span class="var">scaler</span>.<span class="fn">step</span>(<span class="var">optimizer</span>)
+        <span class="var">scaler</span>.<span class="fn">update</span>()
+        <span class="var">scheduler</span>.<span class="fn">step</span>()
+        <span class="var">optimizer</span>.<span class="fn">zero_grad</span>(<span class="var">set_to_none</span>=<span class="kw">True</span>)
+
+        <span class="cm"># Logging</span>
+        <span class="kw">print</span>(<span class="str">f"step={step}, loss={loss.item()*ACCUM_STEPS:.4f}, "</span>
+              <span class="str">f"grad_norm={grad_norm:.3f}, lr={scheduler.get_last_lr()[0]:.6f}"</span>)</code></pre>
+
+      <h3>DataLoader Best Practices</h3>
+      <pre data-lang="python"><code><span class="var">loader</span> = <span class="cls">DataLoader</span>(
+    <span class="var">dataset</span>,
+    <span class="var">batch_size</span>=<span class="num">128</span>,
+    <span class="var">shuffle</span>=<span class="kw">True</span>,
+    <span class="var">num_workers</span>=<span class="num">8</span>,           <span class="cm"># parallel data loading</span>
+    <span class="var">pin_memory</span>=<span class="kw">True</span>,         <span class="cm"># faster CPU→GPU transfer</span>
+    <span class="var">persistent_workers</span>=<span class="kw">True</span>,<span class="cm"># avoid worker re-init overhead</span>
+    <span class="var">prefetch_factor</span>=<span class="num">2</span>,       <span class="cm"># pre-load batches ahead</span>
+    <span class="var">drop_last</span>=<span class="kw">True</span>,          <span class="cm"># avoid partial batch issues</span>
+)</code></pre>
+    </div>
+
+    <!-- ─── SECTION 17 ─── -->
+    <div class="section section-anchor" id="s17">
+      <div class="section-number">17</div>
+      <h2>Engineering Tips</h2>
+      <p class="section-desc">High-value production insights — what separates a struggling run from a clean one.</p>
+
+      <div class="card card-green">
+        <h4>✓ Always Do These</h4>
+        <ul style="margin:0">
+          <li>Log: loss, grad_norm, lr, GPU utilization, tokens/sec — every step or every 10 steps</li>
+          <li>Set seeds: <code>torch.manual_seed(42)</code>, <code>numpy.random.seed(42)</code>, <code>random.seed(42)</code>, and <code>torch.backends.cudnn.deterministic=True</code> for debugging</li>
+          <li>Use <code>set_to_none=True</code> in <code>optimizer.zero_grad()</code> — frees memory instead of zeroing</li>
+          <li>Use <code>torch.compile(model)</code> in PyTorch 2.0+ — often 30–50% speedup for free</li>
+          <li>Profile before optimizing: use <code>torch.profiler</code> to find the actual bottleneck</li>
+          <li>Use <code>pin_memory=True</code> in DataLoader when training on GPU</li>
+          <li>Save checkpoints regularly with both model state AND optimizer state</li>
+        </ul>
+      </div>
+
+      <div class="card card-red">
+        <h4>✗ Common Mistakes</h4>
+        <ul style="margin:0">
+          <li>Forgetting <code>optimizer.zero_grad()</code> → accumulated gradients = effectively higher LR → exploding</li>
+          <li>Calling <code>model.eval()</code> during training → dropout off, BatchNorm uses running stats → silent bug</li>
+          <li>Moving tensors to CPU for logging without <code>.detach()</code> → keeps computation graph → memory leak</li>
+          <li>Using <code>loss.item()</code> inside training loop every step → triggers CPU-GPU sync → 10–30% slowdown</li>
+          <li>Forgetting to unscale before gradient clipping in mixed precision → clips scaled gradients</li>
+          <li>Using SGD when Adam is clearly better (Transformers always want Adam/AdamW)</li>
+          <li>Not normalizing loss by accumulation steps → effective LR = ACCUM_STEPS × intended LR</li>
+        </ul>
+      </div>
+
+      <h3>Speed-Up Tricks</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Trick</th><th>Speedup</th><th>Cost</th></tr></thead>
+          <tbody>
+            <tr><td><strong>torch.compile()</strong></td><td>20–50%</td><td>First step slow (~30s compile)</td></tr>
+            <tr><td><strong>BF16 / Mixed Precision</strong></td><td>2–3×</td><td>Minimal accuracy loss</td></tr>
+            <tr><td><strong>FlashAttention-2</strong></td><td>2–4× for attention</td><td>Requires installation</td></tr>
+            <tr><td><strong>Fused optimizers</strong></td><td>10–20%</td><td>Use <code>fused=True</code> in AdamW</td></tr>
+            <tr><td><strong>Increase batch size</strong></td><td>Linear with GPU util</td><td>May need LR scaling</td></tr>
+            <tr><td><strong>Channels-last memory format</strong></td><td>10–40% for CNNs</td><td><code>model.to(memory_format=torch.channels_last)</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ─── SECTION 18 ─── -->
+    <div class="section section-anchor" id="s18">
+      <div class="section-number">18</div>
+      <h2>Mental Models &amp; Intuition</h2>
+      <p class="section-desc">The way to think about training that makes everything else click.</p>
+
+      <div class="grid-2">
+        <div class="card card-accent">
+          <h4>Training = Error Correction Loop</h4>
+          <p style="font-size:0.88rem">The model makes a prediction. We measure how wrong it was (loss). We figure out which weights were responsible and to what degree (backprop). We nudge each weight in the direction that would have reduced the error (optimizer step). Repeat. Training is the model progressively learning from its own mistakes.</p>
+        </div>
+        <div class="card card-blue">
+          <h4>Gradients = Direction of Improvement</h4>
+          <p style="font-size:0.88rem">A gradient is not "how much to move" — it's "which direction increases loss fastest." We move in the opposite direction. The magnitude tells us the sensitivity: a large gradient means this weight matters a lot for the current predictions. A zero gradient means this weight doesn't matter right now.</p>
+        </div>
+        <div class="card card-green">
+          <h4>Optimizer = Step Size Strategy</h4>
+          <p style="font-size:0.88rem">SGD: same step everywhere. Momentum: bigger steps in consistent directions. Adam: smaller steps for noisy parameters, bigger for consistent ones. The optimizer answers: "we know which direction to move, but how boldly should we move?" AdamW adds: "and let's not let weights grow too large."</p>
+        </div>
+        <div class="card card-yellow">
+          <h4>Loss Landscape = Terrain</h4>
+          <p style="font-size:0.88rem">Imagine the loss as a mountainous terrain in N-dimensional space. Training is hiking downhill. Flat regions = saddle points, learning stalls. Sharp valleys = good convergence, poor generalization. Flat wide minima = better generalization. The optimizer is your hiking strategy; LR is stride length.</p>
+        </div>
+      </div>
+
+      <h3>More Key Intuitions</h3>
+      <div class="card card-accent">
+        <h4>Batch Size = Signal Quality</h4>
+        <p style="margin:0;font-size:0.88rem">Small batch = one hiker taking a step based on what they can see locally. Large batch = many hikers averaging their observations. Large batches give more accurate steps but lose the "noisy exploration" that helps find better minima.</p>
+      </div>
+      <div class="card card-blue" style="margin-top:1rem">
+        <h4>Activations = What the Network "Knows"</h4>
+        <p style="margin:0;font-size:0.88rem">Each layer's output is a representation of the input at that level of abstraction. Early layers detect edges/phonemes. Middle layers detect shapes/words. Late layers detect objects/semantics. Training = learning which representations are useful for the task.</p>
+      </div>
+    </div>
+
+    <!-- ─── SECTION 19 ─── -->
+    <div class="section section-anchor" id="s19">
+      <div class="section-number">19</div>
+      <h2>Code Snippets Reference</h2>
+      <p class="section-desc">Drop-in code for the most common training operations.</p>
+
+      <h3>Mixed Precision (BF16 — Modern Best Practice)</h3>
+      <pre data-lang="python"><code><span class="kw">import</span> <span class="cls">torch</span>
+
+<span class="cm"># BF16 — no loss scaling needed (A100+, H100)</span>
+<span class="kw">with</span> <span class="cls">torch.autocast</span>(<span class="str">"cuda"</span>, <span class="var">dtype</span>=<span class="cls">torch</span>.<span class="var">bfloat16</span>):
+    <span class="var">output</span> = <span class="fn">model</span>(<span class="var">x</span>)
+    <span class="var">loss</span> = <span class="fn">criterion</span>(<span class="var">output</span>, <span class="var">y</span>)
+<span class="var">loss</span>.<span class="fn">backward</span>()
+<span class="var">optimizer</span>.<span class="fn">step</span>()</code></pre>
+
+      <h3>Gradient Clipping</h3>
+      <pre data-lang="python"><code><span class="var">loss</span>.<span class="fn">backward</span>()
+<span class="var">grad_norm</span> = <span class="cls">torch.nn.utils</span>.<span class="fn">clip_grad_norm_</span>(
+    <span class="var">model</span>.<span class="fn">parameters</span>(),
+    <span class="var">max_norm</span>=<span class="num">1.0</span>   <span class="cm"># standard for LLMs; try 0.5–2.0</span>
+)
+<span class="var">optimizer</span>.<span class="fn">step</span>()
+<span class="cm"># grad_norm tells you the norm BEFORE clipping</span></code></pre>
+
+      <h3>AdamW Optimizer Setup</h3>
+      <pre data-lang="python"><code><span class="cm"># Standard LLM setup</span>
+<span class="var">optimizer</span> = <span class="cls">torch.optim</span>.<span class="cls">AdamW</span>(
+    <span class="var">model</span>.<span class="fn">parameters</span>(),
+    <span class="var">lr</span>=<span class="num">3e-4</span>,
+    <span class="var">betas</span>=(<span class="num">0.9</span>, <span class="num">0.95</span>),    <span class="cm"># β2=0.95 for LLMs (faster adaptation)</span>
+    <span class="var">eps</span>=<span class="num">1e-8</span>,
+    <span class="var">weight_decay</span>=<span class="num">0.1</span>,
+    <span class="var">fused</span>=<span class="kw">True</span>,            <span class="cm"># fused CUDA kernel — 20% faster</span>
+)
+
+<span class="cm"># Or: parameter groups (no weight decay on embeddings/norms)</span>
+<span class="var">no_decay</span> = [<span class="str">"bias"</span>, <span class="str">"LayerNorm.weight"</span>, <span class="str">"embedding"</span>]
+<span class="var">params</span> = [
+    {<span class="str">"params"</span>: [<span class="var">p</span> <span class="kw">for</span> <span class="var">n</span>,<span class="var">p</span> <span class="kw">in</span> <span class="var">model</span>.<span class="fn">named_parameters</span>()
+               <span class="kw">if not</span> <span class="fn">any</span>(<span class="var">nd</span> <span class="kw">in</span> <span class="var">n</span> <span class="kw">for</span> <span class="var">nd</span> <span class="kw">in</span> <span class="var">no_decay</span>)], <span class="str">"weight_decay"</span>: <span class="num">0.1</span>},
+    {<span class="str">"params"</span>: [<span class="var">p</span> <span class="kw">for</span> <span class="var">n</span>,<span class="var">p</span> <span class="kw">in</span> <span class="var">model</span>.<span class="fn">named_parameters</span>()
+               <span class="kw">if</span> <span class="fn">any</span>(<span class="var">nd</span> <span class="kw">in</span> <span class="var">n</span> <span class="kw">for</span> <span class="var">nd</span> <span class="kw">in</span> <span class="var">no_decay</span>)], <span class="str">"weight_decay"</span>: <span class="num">0.0</span>},
+]
+<span class="var">optimizer</span> = <span class="cls">torch.optim</span>.<span class="cls">AdamW</span>(<span class="var">params</span>, <span class="var">lr</span>=<span class="num">3e-4</span>)</code></pre>
+
+      <h3>Gradient Checkpointing</h3>
+      <pre data-lang="python"><code><span class="kw">from</span> <span class="cls">torch.utils.checkpoint</span> <span class="kw">import</span> <span class="fn">checkpoint</span>, <span class="fn">checkpoint_sequential</span>
+
+<span class="cm"># Option 1: wrap individual expensive blocks</span>
+<span class="kw">class</span> <span class="cls">TransformerBlock</span>(<span class="cls">nn.Module</span>):
+    <span class="kw">def</span> <span class="fn">forward</span>(<span class="kw">self</span>, <span class="var">x</span>):
+        <span class="kw">return</span> <span class="fn">checkpoint</span>(<span class="kw">self</span>.<span class="var">_forward</span>, <span class="var">x</span>, <span class="var">use_reentrant</span>=<span class="kw">False</span>)
+
+<span class="cm"># Option 2: enable via HuggingFace</span>
+<span class="var">model</span>.<span class="fn">gradient_checkpointing_enable</span>()
+
+<span class="cm"># Option 3: FSDP with activation checkpointing</span>
+<span class="kw">from</span> <span class="cls">torch.distributed.fsdp.wrap</span> <span class="kw">import</span> <span class="fn">transformer_auto_wrap_policy</span></code></pre>
+
+      <h3>Checkpoint Saving/Loading</h3>
+      <pre data-lang="python"><code><span class="cm"># Save</span>
+<span class="cls">torch</span>.<span class="fn">save</span>({
+    <span class="str">"step"</span>: <span class="var">step</span>,
+    <span class="str">"model"</span>: <span class="var">model</span>.<span class="fn">state_dict</span>(),
+    <span class="str">"optimizer"</span>: <span class="var">optimizer</span>.<span class="fn">state_dict</span>(),
+    <span class="str">"scheduler"</span>: <span class="var">scheduler</span>.<span class="fn">state_dict</span>(),
+    <span class="str">"scaler"</span>: <span class="var">scaler</span>.<span class="fn">state_dict</span>(),   <span class="cm"># FP16 only</span>
+    <span class="str">"loss"</span>: <span class="var">loss</span>.<span class="fn">item</span>(),
+}, <span class="str">f"ckpt_step_{step}.pt"</span>)
+
+<span class="cm"># Load</span>
+<span class="var">ckpt</span> = <span class="cls">torch</span>.<span class="fn">load</span>(<span class="str">"ckpt_step_1000.pt"</span>, <span class="var">map_location</span>=<span class="var">device</span>)
+<span class="var">model</span>.<span class="fn">load_state_dict</span>(<span class="var">ckpt</span>[<span class="str">"model"</span>])
+<span class="var">optimizer</span>.<span class="fn">load_state_dict</span>(<span class="var">ckpt</span>[<span class="str">"optimizer"</span>])
+<span class="var">start_step</span> = <span class="var">ckpt</span>[<span class="str">"step"</span>]</code></pre>
+
+      <div class="callout callout-tip">
+        <div class="callout-icon">💡</div>
+        <div class="callout-body"><p><strong>Quick training sanity checklist:</strong> (1) Loss at random init ≈ log(N_classes) for CE? (2) Overfit single batch in &lt;100 steps? (3) Grad norm in 0.1–2.0 range? (4) GPU utilization &gt;85%? (5) No NaN anywhere? If all 5 pass, your training setup is correct — now focus on hyperparameters and data.</p></div>
+      </div>
+
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<script>
+  // Active nav highlighting
+  const sections = document.querySelectorAll('.section-anchor');
+  const navItems = document.querySelectorAll('.nav-item');
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const id = entry.target.id;
+        navItems.forEach(item => {
+          item.classList.remove('active');
+          if (item.getAttribute('href') === `#${id}`) {
+            item.classList.add('active');
+          }
+        });
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+
+  sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>

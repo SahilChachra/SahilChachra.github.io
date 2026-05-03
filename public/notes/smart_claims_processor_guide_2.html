@@ -1,0 +1,2024 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Building Production-Grade Multi-Agent AI Systems - Complete Guide</title>
+    <style>
+        :root {
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #252525;
+            --bg-tertiary: #2f2f2f;
+            --text-primary: #e8e8e8;
+            --text-secondary: #b8b8b8;
+            --text-tertiary: #888888;
+            --accent-purple: #a78bfa;
+            --accent-teal: #5eead4;
+            --accent-coral: #fb7185;
+            --accent-blue: #60a5fa;
+            --accent-amber: #fbbf24;
+            --accent-green: #4ade80;
+            --border-color: #404040;
+            --code-bg: #1e1e1e;
+            --link-color: #818cf8;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.7;
+            font-size: 16px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 60px 20px;
+            margin-bottom: 40px;
+            border-radius: 12px;
+        }
+        
+        header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: white;
+        }
+        
+        header p {
+            font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.9);
+            max-width: 800px;
+        }
+        
+        nav {
+            background-color: var(--bg-secondary);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 40px;
+            border: 1px solid var(--border-color);
+        }
+        
+        nav h3 {
+            margin-bottom: 12px;
+            color: var(--accent-purple);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        nav ul {
+            list-style: none;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 8px;
+        }
+        
+        nav a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 8px 12px;
+            display: block;
+            border-radius: 4px;
+            transition: all 0.2s;
+            font-size: 0.95rem;
+        }
+        
+        nav a:hover {
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+            transform: translateX(4px);
+        }
+        
+        section {
+            background-color: var(--bg-secondary);
+            padding: 32px;
+            margin-bottom: 32px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            scroll-margin-top: 20px;
+        }
+        
+        h2 {
+            font-size: 2rem;
+            margin-bottom: 24px;
+            color: var(--accent-purple);
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--border-color);
+        }
+        
+        h3 {
+            font-size: 1.5rem;
+            margin-top: 32px;
+            margin-bottom: 16px;
+            color: var(--accent-teal);
+        }
+        
+        h4 {
+            font-size: 1.2rem;
+            margin-top: 24px;
+            margin-bottom: 12px;
+            color: var(--accent-coral);
+        }
+        
+        p {
+            margin-bottom: 16px;
+            color: var(--text-secondary);
+        }
+        
+        ul, ol {
+            margin-bottom: 16px;
+            padding-left: 28px;
+            color: var(--text-secondary);
+        }
+        
+        li {
+            margin-bottom: 8px;
+        }
+        
+        code {
+            background-color: var(--code-bg);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: var(--accent-teal);
+        }
+        
+        pre {
+            background-color: var(--code-bg);
+            padding: 20px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+        }
+        
+        pre code {
+            background: none;
+            padding: 0;
+            color: var(--text-primary);
+            font-size: 0.85rem;
+            line-height: 1.6;
+        }
+        
+        .box {
+            background-color: var(--bg-tertiary);
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border-left: 4px solid var(--accent-blue);
+        }
+        
+        .box-warning {
+            border-left-color: var(--accent-amber);
+        }
+        
+        .box-success {
+            border-left-color: var(--accent-green);
+        }
+        
+        .box-danger {
+            border-left-color: var(--accent-coral);
+        }
+        
+        .box h4 {
+            margin-top: 0;
+            font-size: 1.1rem;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            background-color: var(--bg-tertiary);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        
+        th {
+            background-color: var(--bg-primary);
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--accent-purple);
+            border-bottom: 2px solid var(--border-color);
+        }
+        
+        td {
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+        
+        tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .card {
+            background-color: var(--bg-tertiary);
+            padding: 20px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .card h4 {
+            margin-top: 0;
+            color: var(--accent-blue);
+        }
+        
+        .highlight {
+            background-color: rgba(167, 139, 250, 0.1);
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: var(--accent-purple);
+            font-weight: 500;
+        }
+        
+        .agent-tag {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .agent-intake { background-color: rgba(167, 139, 250, 0.2); color: var(--accent-purple); }
+        .agent-fraud { background-color: rgba(251, 113, 133, 0.2); color: var(--accent-coral); }
+        .agent-damage { background-color: rgba(94, 234, 212, 0.2); color: var(--accent-teal); }
+        .agent-policy { background-color: rgba(96, 165, 250, 0.2); color: var(--accent-blue); }
+        .agent-settlement { background-color: rgba(74, 222, 128, 0.2); color: var(--accent-green); }
+        .agent-evaluator { background-color: rgba(251, 191, 36, 0.2); color: var(--accent-amber); }
+        .agent-comm { background-color: rgba(244, 114, 182, 0.2); color: #f472b6; }
+        
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-tertiary);
+            border-top: 1px solid var(--border-color);
+            margin-top: 60px;
+        }
+        
+        a {
+            color: var(--link-color);
+            text-decoration: none;
+        }
+        
+        a:hover {
+            text-decoration: underline;
+        }
+        
+        .toc-section {
+            margin-bottom: 8px;
+        }
+        
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.8rem;
+            }
+            
+            nav ul {
+                grid-template-columns: 1fr;
+            }
+            
+            section {
+                padding: 20px;
+            }
+            
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 Building Production-Grade Multi-Agent AI Systems</h1>
+            <p>A comprehensive guide based on the Smart Claims Processor case study — covering LangGraph orchestration, CrewAI sub-crews, memory systems, HITL patterns, and production best practices.</p>
+        </header>
+        
+        <nav id="toc">
+            <h3>📑 Table of Contents</h3>
+            <ul>
+                <li><a href="#overview">System Overview</a></li>
+                <li><a href="#agent1">Agent 1: Intake</a></li>
+                <li><a href="#agent2">Agent 2: Fraud Detection</a></li>
+                <li><a href="#agent3">Agent 3: Damage Assessor</a></li>
+                <li><a href="#agent4">Agent 4: Policy Checker</a></li>
+                <li><a href="#agent5">Agent 5: Settlement Calculator</a></li>
+                <li><a href="#agent6">Agent 6: Evaluator (LLM-as-Judge)</a></li>
+                <li><a href="#agent7">Agent 7: Communication</a></li>
+                <li><a href="#orchestration">LangGraph Orchestration</a></li>
+                <li><a href="#memory">Memory System (3-Tier)</a></li>
+                <li><a href="#best-practices">Production Best Practices</a></li>
+                <li><a href="#evaluation">Evaluation & Monitoring</a></li>
+                <li><a href="#pitfalls">Common Pitfalls to Avoid</a></li>
+            </ul>
+        </nav>
+
+        <section id="overview">
+            <h2>System Overview</h2>
+            
+            <p>The Smart Claims Processor is a production-grade multi-agent system that processes insurance claims end-to-end. It demonstrates key patterns for building reliable AI systems:</p>
+            
+            <div class="grid-2">
+                <div class="card">
+                    <h4>🎯 Core Technologies</h4>
+                    <ul>
+                        <li><strong>LangGraph</strong> — State machine orchestration</li>
+                        <li><strong>CrewAI</strong> — Multi-agent sub-crews</li>
+                        <li><strong>ChromaDB</strong> — Vector memory</li>
+                        <li><strong>FastAPI</strong> — REST backend</li>
+                        <li><strong>React</strong> — Frontend dashboard</li>
+                    </ul>
+                </div>
+                
+                <div class="card">
+                    <h4>📊 System Stats</h4>
+                    <ul>
+                        <li><strong>7</strong> specialized agents</li>
+                        <li><strong>5</strong> distinct pipeline paths</li>
+                        <li><strong>3</strong> memory tiers</li>
+                        <li><strong>Multiple</strong> HITL checkpoints</li>
+                        <li><strong>Country-aware</strong> configuration</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <h3>The 7 Agents</h3>
+            
+            <table>
+                <tr>
+                    <th>Agent</th>
+                    <th>Role</th>
+                    <th>LLM vs Rules</th>
+                    <th>Confidence Threshold</th>
+                </tr>
+                <tr>
+                    <td><span class="agent-tag agent-intake">Intake</span></td>
+                    <td>Validate & mask PII</td>
+                    <td>Mostly rules</td>
+                    <td>0.55</td>
+                </tr>
+                <tr>
+                    <td><span class="agent-tag agent-fraud">Fraud Crew</span></td>
+                    <td>3 specialists + manager</td>
+                    <td>LLM-heavy</td>
+                    <td>0.50</td>
+                </tr>
+                <tr>
+                    <td><span class="agent-tag agent-damage">Damage</span></td>
+                    <td>Assess severity, depreciate</td>
+                    <td>LLM + deterministic math</td>
+                    <td>0.60</td>
+                </tr>
+                <tr>
+                    <td><span class="agent-tag agent-policy">Policy</span></td>
+                    <td>Coverage & exclusions</td>
+                    <td>DB lookup + LLM reasoning</td>
+                    <td>0.60</td>
+                </tr>
+                <tr>
+                    <td><span class="agent-tag agent-settlement">Settlement</span></td>
+                    <td>Calculate final payout</td>
+                    <td>LLM validation + Python math</td>
+                    <td>0.65</td>
+                </tr>
+                <tr>
+                    <td><span class="agent-tag agent-evaluator">Evaluator</span></td>
+                    <td>Grade pipeline output</td>
+                    <td>LLM (separate model)</td>
+                    <td>0.70 composite</td>
+                </tr>
+                <tr>
+                    <td><span class="agent-tag agent-comm">Communication</span></td>
+                    <td>Generate claimant message</td>
+                    <td>LLM</td>
+                    <td>N/A (always runs)</td>
+                </tr>
+            </table>
+            
+            <h3>The 5 Pipeline Paths</h3>
+            
+            <div class="box box-success">
+                <h4>Path A: Normal (Happy Path)</h4>
+                <p><code>Intake → Fraud → Damage → Policy → Settlement → Evaluator → Communication</code></p>
+                <p>All 7 agents run sequentially. Triggers when fraud is low (&lt; 0.45), confidence is high, and no exclusions hit.</p>
+            </div>
+            
+            <div class="box box-warning">
+                <h4>Path B: HITL (Human Review)</h4>
+                <p><code>Any Agent → [PAUSE] → Reviewer Decision → Resume → Communication</code></p>
+                <p>Triggers when: fraud 0.45–0.90, confidence &lt; threshold, evaluator score &lt; 0.70, or high-value claim.</p>
+            </div>
+            
+            <div class="box box-danger">
+                <h4>Path C: Auto-Reject (Confirmed Fraud)</h4>
+                <p><code>Intake → Fraud (≥ 0.90) → Communication</code></p>
+                <p>Bypasses all other agents. Used for clear fraud patterns.</p>
+            </div>
+            
+            <div class="box box-danger">
+                <h4>Path D: Invalid (Intake Fail)</h4>
+                <p><code>Intake [FAIL] → Communication</code></p>
+                <p>Missing fields, lapsed policy, or incident date out of range.</p>
+            </div>
+            
+            <div class="box">
+                <h4>Path E: Fast Mode (&lt; $500)</h4>
+                <p><code>Intake → Fraud → Settlement → Evaluator → Communication</code></p>
+                <p>Skips Damage and Policy checks for low-value claims with clean history.</p>
+            </div>
+            
+            <h3>Key Design Principles</h3>
+            
+            <div class="box">
+                <h4>🎯 Principle 1: LLMs Reason, Code Computes</h4>
+                <p>Never trust an LLM with arithmetic that has financial consequences. Use LLMs for judgment (severity assessment, exclusion reasoning) and Python for math (depreciation, settlement formulas).</p>
+            </div>
+            
+            <div class="box">
+                <h4>🔗 Principle 2: Agents Chain Through State</h4>
+                <p>Agents don't call each other directly. They all read/write from a shared <code>ClaimState</code> TypedDict. This prevents tight coupling and makes the system composable.</p>
+            </div>
+            
+            <div class="box">
+                <h4>🚦 Principle 3: Confidence Gates Everywhere</h4>
+                <p>Every agent outputs a confidence score. Multiple checkpoints can trigger HITL review. This creates a safety net where uncertainty triggers human oversight.</p>
+            </div>
+            
+            <div class="box">
+                <h4>💾 Principle 4: Durable State via Checkpoints</h4>
+                <p>LangGraph's SqliteSaver persists state to disk. The pipeline survives server restarts. HITL pauses can last hours or days — state never gets lost.</p>
+            </div>
+        </section>
+
+        <section id="agent1">
+            <h2><span class="agent-tag agent-intake">Agent 1: Intake Agent</span></h2>
+            
+            <p><strong>Role:</strong> The gatekeeper. Validates required fields, checks policy status, and masks PII before any data reaches downstream agents.</p>
+            
+            <h3>What It Does</h3>
+            <ul>
+                <li>Validates required fields (name, policy number, incident date, claim amount)</li>
+                <li>Looks up policy in database, checks if active</li>
+                <li>Verifies incident date falls within policy coverage period</li>
+                <li>Confirms claim type matches policy coverage types</li>
+                <li>Masks PII (SSN, Aadhaar, phone numbers) before data flows downstream</li>
+                <li>Sets <code>pipeline_path</code> to "fast" if amount &lt; $500</li>
+            </ul>
+            
+            <h3>LLM vs Rules</h3>
+            <p>This agent is <span class="highlight">mostly rule-based</span>. LLMs are optional here, only used if you need to extract structured data from free-text claim descriptions.</p>
+            
+            <div class="box box-warning">
+                <h4>⚠️ When to Use LLM in Intake</h4>
+                <p>Only when claimant submits unstructured text like: <em>"My Honda was rear-ended last Tuesday, bumper damage, shop quoted $4,200"</em></p>
+                <p>The LLM extracts: <code>claim_type=auto</code>, <code>amount=4200</code>, <code>damage_type=rear_end_collision</code></p>
+                <p>If the frontend already collects structured data, skip the LLM entirely.</p>
+            </div>
+            
+            <h3>PII Masking (Critical)</h3>
+            <p>This happens <strong>before</strong> any downstream agent sees the data. Use country-specific regex patterns:</p>
+            
+            <pre><code>PII_PATTERNS = {
+    "us": [
+        (r"\b\d{3}-\d{2}-\d{4}\b", "***-**-****"),   # SSN
+        (r"\b[A-Z]\d{7}\b", "[DL-MASKED]"),          # Driver license
+        (r"\b\d{3}[-.\s]\d{3}[-.\s]\d{4}\b", "***-***-****"),  # Phone
+    ],
+    "india": [
+        (r"\b\d{4}\s\d{4}\s\d{4}\b", "**** **** ****"),  # Aadhaar
+        (r"\b[A-Z]{5}\d{4}[A-Z]\b", "[PAN-MASKED]"),     # PAN
+        (r"\b[6-9]\d{9}\b", "**********"),                # Mobile
+    ],
+}</code></pre>
+            
+            <h3>Output Structure</h3>
+            <pre><code>{
+    "intake_passed": true,
+    "masked_data": {
+        "claimant_name": "John Doe [PII-MASKED]",
+        "description": "Car accident. My number is ***-***-****",
+        "claim_amount": 4200.0
+    },
+    "pipeline_path": "normal",  # or "fast" if amount < $500
+    "confidence_scores": {
+        "intake": 0.95
+    }
+}</code></pre>
+            
+            <div class="box box-success">
+                <h4>✅ Best Practice: Fail Fast, Fail Clear</h4>
+                <p>If intake fails, immediately route to Communication Agent with a <strong>specific</strong> denial reason:</p>
+                <ul>
+                    <li>"Missing required field: incident_date"</li>
+                    <li>"Policy POL-001 is not active"</li>
+                    <li>"Incident date 2024-06-15 is outside policy coverage period"</li>
+                </ul>
+                <p>Never send a vague "your claim cannot be processed" message.</p>
+            </div>
+        </section>
+
+        <section id="agent2">
+            <h2><span class="agent-tag agent-fraud">Agent 2: Fraud Detection Crew</span></h2>
+            
+            <p><strong>Role:</strong> Multi-agent fraud analysis using CrewAI. Three specialist agents investigate the claim, a manager synthesizes their findings into one fraud score.</p>
+            
+            <h3>The Crew Structure</h3>
+            
+            <div class="grid-2">
+                <div class="card">
+                    <h4>🔍 Pattern Analyst</h4>
+                    <p><strong>Tool:</strong> <code>search_fraud_patterns()</code></p>
+                    <p>Checks claim against known fraud schemes: staged accidents, phantom passengers, inflated invoices, pre-existing damage.</p>
+                </div>
+                
+                <div class="card">
+                    <h4>📊 Anomaly Detector</h4>
+                    <p><strong>Tool:</strong> <code>check_statistical_outlier()</code></p>
+                    <p>Computes z-score vs benchmark. Flags if repair cost is 2+ standard deviations from the mean for this damage type.</p>
+                </div>
+                
+                <div class="card">
+                    <h4>🕵️ Social Validator</h4>
+                    <p><strong>Tool:</strong> <code>check_claimant_history()</code></p>
+                    <p>Cross-references claimant's prior claims. Flags multiple claims in short periods or claims across providers.</p>
+                </div>
+                
+                <div class="card">
+                    <h4>👔 Manager Agent</h4>
+                    <p><strong>No tools</strong> — reads all 3 reports</p>
+                    <p>Synthesizes findings into final fraud score (0.0–1.0) with reasoning and flags.</p>
+                </div>
+            </div>
+            
+            <h3>CrewAI Configuration</h3>
+            <pre><code>crew = Crew(
+    agents=[pattern_analyst, anomaly_detector, 
+            social_validator, manager_agent],
+    tasks=[pattern_task, anomaly_task, social_task, synthesis_task],
+    process=Process.sequential,  # each feeds into next
+    verbose=True
+)
+
+# synthesis_task has context=[pattern_task, anomaly_task, social_task]
+# This is how the manager reads all three reports</code></pre>
+            
+            <h3>Routing Logic</h3>
+            <table>
+                <tr>
+                    <th>Fraud Score</th>
+                    <th>Action</th>
+                    <th>Next Node</th>
+                </tr>
+                <tr>
+                    <td>&lt; 0.45</td>
+                    <td>Low risk, continue pipeline</td>
+                    <td>Damage Assessor (or Settlement if fast mode)</td>
+                </tr>
+                <tr>
+                    <td>0.45 – 0.89</td>
+                    <td>Suspicious, pause for review</td>
+                    <td>HITL Checkpoint</td>
+                </tr>
+                <tr>
+                    <td>≥ 0.90</td>
+                    <td>Confirmed fraud, auto-reject</td>
+                    <td>Communication Agent</td>
+                </tr>
+            </table>
+            
+            <h3>Why CrewAI for Fraud?</h3>
+            <div class="box">
+                <p>Fraud detection benefits from <strong>multiple perspectives</strong>. A single LLM call might miss patterns that a team of specialists catches. CrewAI's crew abstraction with a manager maps perfectly to this — three analysts submit reports, the manager synthesizes.</p>
+                <p>You <em>could</em> do this with three separate LangGraph nodes, but CrewAI's built-in delegation and debate mechanisms produce better fraud scores with less code.</p>
+            </div>
+            
+            <h3>Tool Design Pattern</h3>
+            <p>Notice the tools return <strong>structured JSON</strong>, not prose. The LLM reads the JSON and incorporates it into its reasoning:</p>
+            
+            <pre><code>@tool("check_statistical_outlier")
+def check_statistical_outlier(claim_type: str, amount: float) -> str:
+    benchmarks = {"auto": {"mean": 4000, "std": 1500}}
+    b = benchmarks.get(claim_type)
+    z_score = (amount - b["mean"]) / b["std"]
+    
+    return json.dumps({
+        "z_score": round(z_score, 2),
+        "is_outlier": abs(z_score) > 2,
+        "benchmark_mean": b["mean"]
+    })</code></pre>
+            
+            <div class="box box-warning">
+                <h4>⚠️ Common Mistake: Letting LLM Query Database</h4>
+                <p>Never give the LLM direct database access. Always have a Python tool that runs the query and returns structured data. The LLM reasons about the data, not about SQL.</p>
+            </div>
+            
+            <h3>Output Structure</h3>
+            <pre><code>{
+    "fraud_score": 0.23,
+    "decision": "low_risk",
+    "reasoning": "No known patterns matched. Claim amount within normal range...",
+    "flags": ["low_risk"],
+    "pattern_matches": [],
+    "anomaly_detected": false,
+    "history_clean": true
+}</code></pre>
+        </section>
+
+        <section id="agent3">
+            <h2><span class="agent-tag agent-damage">Agent 3: Damage Assessor</span></h2>
+            
+            <p><strong>Role:</strong> Assess damage severity and estimate repair cost. Apply country-specific depreciation rules deterministically.</p>
+            
+            <h3>The Pattern: LLM Judges, Python Computes</h3>
+            
+            <div class="grid-2">
+                <div class="card">
+                    <h4>🤖 LLM Responsibilities</h4>
+                    <ul>
+                        <li>Assess damage severity (low/medium/high/total_loss)</li>
+                        <li>Estimate <strong>raw</strong> pre-depreciation repair cost</li>
+                        <li>Call <code>search_similar_claims()</code> tool to calibrate</li>
+                        <li>Provide reasoning and flags</li>
+                    </ul>
+                </div>
+                
+                <div class="card">
+                    <h4>🐍 Python Responsibilities</h4>
+                    <ul>
+                        <li>Apply depreciation formula (NOT left to LLM)</li>
+                        <li>Use country-specific depreciation tables</li>
+                        <li>Compute final post-depreciation cost</li>
+                        <li>Handle edge cases (vehicle age, part types)</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <h3>Depreciation by Country</h3>
+            
+            <h4>US: Year-Based Depreciation</h4>
+            <pre><code>def apply_depreciation_us(raw_cost: float, vehicle_age_years: int) -> dict:
+    rates = {1: 0.20, 2: 0.15, 3: 0.12, 4: 0.10}
+    rate = rates.get(vehicle_age_years, 0.08)  # 8% for 5+ years
+    
+    depreciation = raw_cost * rate
+    final = raw_cost - depreciation
+    
+    return {
+        "raw_cost": raw_cost,
+        "depreciation_rate": rate,
+        "depreciation_amount": round(depreciation, 2),
+        "final_cost": round(final, 2),
+        "method": "year_based"
+    }</code></pre>
+            
+            <h4>India: IRDAI Part-Wise Depreciation</h4>
+            <pre><code>def apply_depreciation_india(parts: dict) -> dict:
+    # parts = {"rubber": 2000, "metal": 8000, "glass": 1500}
+    rates = {"rubber": 0.50, "metal": 0.05, "glass": 0.00}
+    
+    total_raw = 0
+    total_after = 0
+    
+    for part, cost in parts.items():
+        rate = rates.get(part, 0.10)
+        after = cost * (1 - rate)
+        total_raw += cost
+        total_after += after
+    
+    return {
+        "total_raw_cost": round(total_raw, 2),
+        "total_after_dep": round(total_after, 2),
+        "method": "part_wise_irdai"
+    }</code></pre>
+            
+            <h3>Memory Integration</h3>
+            <p>The LLM can call <code>search_similar_claims()</code> to calibrate its estimate against historical data:</p>
+            
+            <pre><code>@tool("search_similar_claims")
+def search_similar_claims(claim_type: str, description: str) -> str:
+    # ChromaDB semantic search (covered in memory section)
+    results = long_term_collection.query(
+        query_embeddings=[embed_text(description)],
+        n_results=5
+    )
+    
+    avg_settlement = sum(r["settlement"] for r in results) / len(results)
+    
+    return json.dumps({
+        "similar_claims_found": len(results),
+        "average_settlement": avg_settlement,
+        "common_severity": "medium"
+    })</code></pre>
+            
+            <div class="box box-success">
+                <h4>✅ Why This Pattern Works</h4>
+                <p>On day 1 with zero historical claims, the LLM relies on its training data. By day 100 with 500 completed claims, it searches memory and finds: <em>"Similar 2020 Honda Civics averaged $4,200"</em>. The system gets smarter over time.</p>
+            </div>
+            
+            <h3>Confidence Gate</h3>
+            <p>If <code>confidence &lt; 0.60</code>, the pipeline pauses for HITL review. Common reasons:</p>
+            <ul>
+                <li>Damage description is vague or contradictory</li>
+                <li>No similar claims found in memory</li>
+                <li>Estimate significantly differs from claimed amount</li>
+            </ul>
+            
+            <h3>Output Structure</h3>
+            <pre><code>{
+    "llm_assessment": {
+        "severity": "medium",
+        "raw_cost_estimate": 4200.0,
+        "confidence": 0.88,
+        "reasoning": "Front-end collision with bumper and hood damage...",
+        "vehicle_age_years": 3
+    },
+    "after_depreciation": {
+        "method": "year_based",
+        "depreciation_rate": 0.15,
+        "depreciation_amount": 630.0,
+        "final_cost": 3570.0
+    }
+}</code></pre>
+        </section>
+
+        <section id="agent4">
+            <h2><span class="agent-tag agent-policy">Agent 4: Policy Checker</span></h2>
+            
+            <p><strong>Role:</strong> Determine if the claim is covered under the policy. Check exclusions, apply deductible, calculate maximum payout.</p>
+            
+            <h3>The Pattern: Python Fetches Facts, LLM Reasons</h3>
+            
+            <div class="box">
+                <p>Policy rules are <strong>structured data</strong> (coverage limits, deductibles, exclusions). Python fetches those facts from the database. The LLM then applies <strong>judgment</strong>:</p>
+                <ul>
+                    <li>"Does this flood damage claim trigger the water damage exclusion?"</li>
+                    <li>"Is pre-existing damage clearly documented?"</li>
+                    <li>"Should this edge case be escalated?"</li>
+                </ul>
+            </div>
+            
+            <h3>Tool 1: Get Policy Details</h3>
+            <pre><code>@tool("get_policy_details")
+def get_policy_details(policy_number: str, claim_type: str) -> str:
+    policy = POLICY_DB.get(policy_number)
+    
+    return json.dumps({
+        "coverage_limit": policy["limits"].get(claim_type, 0),
+        "deductible": policy["deductibles"].get(claim_type, 0),
+        "exclusions": policy["exclusions"],
+        "prior_claims": policy["prior_approved_claims"],
+        "total_prior_paid": sum(c["amount"] for c in policy["prior_claims"])
+    })</code></pre>
+            
+            <h3>Tool 2: Check Remaining Coverage</h3>
+            <pre><code>@tool("check_remaining_coverage")
+def check_remaining_coverage(policy_number: str, 
+                              claim_type: str,
+                              damage_estimate: float) -> str:
+    policy = POLICY_DB.get(policy_number)
+    
+    limit = policy["limits"].get(claim_type, 0)
+    deductible = policy["deductibles"].get(claim_type, 0)
+    prior_paid = sum(c["amount"] for c in policy["prior_claims"])
+    
+    remaining_limit = limit - prior_paid
+    payable_damage = max(0, damage_estimate - deductible)
+    max_payout = min(payable_damage, remaining_limit)
+    
+    return json.dumps({
+        "remaining_limit": remaining_limit,
+        "deductible": deductible,
+        "max_payout": round(max_payout, 2),
+        "coverage_exhausted": remaining_limit <= 0
+    })</code></pre>
+            
+            <h3>LLM Reasoning Prompt</h3>
+            <p>The system prompt explicitly guides exclusion reasoning:</p>
+            
+            <div class="box">
+                <h4>Exclusion Reasoning Rules</h4>
+                <ul>
+                    <li>Apply exclusions strictly but fairly</li>
+                    <li>"flood_damage" exclusion: only applies if primary cause is flooding</li>
+                    <li>"pre_existing_damage": only if damage clearly predates the incident</li>
+                    <li><strong>When in doubt, flag for human review rather than denying</strong></li>
+                </ul>
+            </div>
+            
+            <p>This creates a bias toward the claimant — wrongful denial is worse than human review.</p>
+            
+            <h3>Routing Logic</h3>
+            <table>
+                <tr>
+                    <th>Condition</th>
+                    <th>Next Node</th>
+                </tr>
+                <tr>
+                    <td>Ineligible (exclusion hit)</td>
+                    <td>Communication Agent (denial)</td>
+                </tr>
+                <tr>
+                    <td>Confidence &lt; 0.60</td>
+                    <td>HITL Checkpoint</td>
+                </tr>
+                <tr>
+                    <td>Eligible</td>
+                    <td>Settlement Calculator</td>
+                </tr>
+            </table>
+            
+            <h3>Output Structure</h3>
+            <pre><code>{
+    "eligible": true,
+    "max_payout": 8000.0,
+    "deductible": 500.0,
+    "exclusions_hit": [],
+    "coverage_limit": 15000.0,
+    "remaining_coverage": 13800.0,
+    "confidence": 0.85,
+    "reasoning": "Claim falls within auto coverage. No exclusions apply...",
+    "flags": []
+}</code></pre>
+            
+            <div class="box box-warning">
+                <h4>⚠️ Critical: Cite Specific Policy Clauses</h4>
+                <p>When denying for an exclusion, the LLM must cite the exact policy section:</p>
+                <p><em>"Your policy (POL-001) includes a flood damage exclusion under Section 4.2(c). The incident was caused by rising floodwater, which falls under this exclusion."</em></p>
+                <p>This is both a UX requirement and a legal one in insurance.</p>
+            </div>
+        </section>
+
+        <section id="agent5">
+            <h2><span class="agent-tag agent-settlement">Agent 5: Settlement Calculator</span></h2>
+            
+            <p><strong>Role:</strong> Compute the final settlement amount using country-specific formulas. The LLM validates inputs, Python does the math.</p>
+            
+            <h3>Settlement Formulas</h3>
+            
+            <h4>US: Damage-Based (115% Cap)</h4>
+            <pre><code>settlement = min(
+    damage_after_depreciation,
+    damage_after_depreciation * 1.15,  # 115% buffer
+    remaining_coverage_limit
+) - deductible</code></pre>
+            
+            <p>The 115% cap is a real insurance industry rule — allows slight over-assessment buffer for unforeseen costs.</p>
+            
+            <h4>India: IDV-Based (100% Cap)</h4>
+            <pre><code>settlement = min(
+    idv,  # Insured Declared Value
+    remaining_coverage_limit
+) - deductible</code></pre>
+            
+            <p>No buffer. IRDAI regulations cap at exactly 100% of IDV.</p>
+            
+            <h3>LLM's Role: Validator, Not Calculator</h3>
+            
+            <p>By this point in the pipeline, you have structured numbers from prior agents. The LLM's job flips from reasoner to <strong>validator</strong>:</p>
+            
+            <div class="box">
+                <h4>What the LLM Checks</h4>
+                <ul>
+                    <li>Are the inputs from prior agents consistent?</li>
+                    <li>Does damage estimate vs claim amount make sense?</li>
+                    <li>Is max_payout realistic given policy limits?</li>
+                    <li>Should any inputs be overridden due to obvious errors?</li>
+                </ul>
+            </div>
+            
+            <h3>Tool: Verify Consistency</h3>
+            <pre><code>@tool("verify_settlement_consistency")
+def verify_settlement_consistency(damage_estimate: float,
+                                   policy_max_payout: float,
+                                   claim_amount: float) -> str:
+    ratio = damage_estimate / claim_amount if claim_amount > 0 else 0
+    flags = []
+    
+    if ratio > 1.5:
+        flags.append("damage_estimate_exceeds_claim_by_50pct")
+    if ratio < 0.2:
+        flags.append("damage_estimate_very_low_vs_claim")
+    if damage_estimate > policy_max_payout * 2:
+        flags.append("damage_far_exceeds_coverage")
+    
+    return json.dumps({
+        "damage_to_claim_ratio": round(ratio, 2),
+        "flags": flags,
+        "looks_consistent": len(flags) == 0
+    })</code></pre>
+            
+            <h3>The Override Mechanism</h3>
+            <p>If the LLM spots that a prior agent's output is clearly wrong, it can set <code>override_damage_estimate</code> before the Python formula runs:</p>
+            
+            <pre><code>{
+    "inputs_validated": false,
+    "confidence": 0.45,
+    "reasoning": "Damage estimate of $50,000 for minor scratch is clearly wrong...",
+    "flags": ["damage_estimate_unrealistic"],
+    "override_damage_estimate": 800.0  # LLM's corrected estimate
+}</code></pre>
+            
+            <p>This is a rare but important escape hatch for obvious errors.</p>
+            
+            <h3>Confidence Threshold: 0.65 (Higher Than Other Agents)</h3>
+            <p>Settlement is the last financial decision before payout. It demands more certainty. If <code>confidence &lt; 0.65</code>, route to HITL.</p>
+            
+            <div class="box box-success">
+                <h4>✅ Best Practice: Show Your Work</h4>
+                <p>The output should include a clear breakdown so the claimant (and auditors) can verify the math:</p>
+                <pre><code>{
+    "method": "damage_based_us",
+    "damage_estimate": 4200.0,
+    "damage_cap_115": 4830.0,
+    "deductible": 500.0,
+    "settlement_amount": 3700.0,
+    "currency": "USD"
+}</code></pre>
+            </div>
+        </section>
+
+        <section id="agent6">
+            <h2><span class="agent-tag agent-evaluator">Agent 6: Evaluator (LLM-as-Judge)</span></h2>
+            
+            <p><strong>Role:</strong> Quality gate. A separate LLM grades the entire pipeline's output on 5 dimensions before the claim is released.</p>
+            
+            <h3>Why This Agent Exists</h3>
+            <div class="box">
+                <p>Without systematic evaluation, you have no way to know if your pipeline is producing good outputs. Manual spot-checking doesn't scale.</p>
+                <p>The evaluator runs on every claim (or a sample) and gives you <strong>quantitative scores you can track over time</strong>. If the composite score drops from 0.85 to 0.72 over a week, you know something broke.</p>
+            </div>
+            
+            <h3>The 5 Scoring Dimensions</h3>
+            
+            <table>
+                <tr>
+                    <th>Dimension</th>
+                    <th>What It Measures</th>
+                    <th>Maps To</th>
+                </tr>
+                <tr>
+                    <td><strong>Accuracy</strong></td>
+                    <td>Are the numbers correct? Does settlement = damage - deductible?</td>
+                    <td>Auditability</td>
+                </tr>
+                <tr>
+                    <td><strong>Completeness</strong></td>
+                    <td>Were all relevant factors considered? Any missing steps?</td>
+                    <td>Thoroughness</td>
+                </tr>
+                <tr>
+                    <td><strong>Fairness</strong></td>
+                    <td>No demographic bias? Similar claims treated similarly?</td>
+                    <td>Anti-discrimination laws</td>
+                </tr>
+                <tr>
+                    <td><strong>Safety</strong></td>
+                    <td>No harmful recommendations? Protects claimant interests?</td>
+                    <td>Consumer protection</td>
+                </tr>
+                <tr>
+                    <td><strong>Transparency</strong></td>
+                    <td>Is reasoning clear? Can claimant understand the decision?</td>
+                    <td>Explainability mandates</td>
+                </tr>
+            </table>
+            
+            <p>Each dimension gets a score 0.0–1.0. <strong>Composite score = average of 5 dimensions.</strong></p>
+            
+            <h3>The Quality Gate</h3>
+            <div class="box box-warning">
+                <h4>Pass Threshold: 0.70</h4>
+                <p>If composite score ≥ 0.70 → Continue to Communication Agent</p>
+                <p>If composite score &lt; 0.70 → Pause for HITL review</p>
+            </div>
+            
+            <h3>Use a Different LLM</h3>
+            <p>Critical pattern: the evaluator uses a <strong>separate model</strong> than the pipeline agents:</p>
+            
+            <pre><code># Pipeline agents use this
+pipeline_llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash")
+
+# Evaluator uses this (different model, lower temperature)
+evaluator_llm = ChatGoogleGenerativeAI(
+    model="gemini-2.5-flash-lite",
+    temperature=0.3  # lower temp for consistency
+)</code></pre>
+            
+            <p><strong>Why?</strong> Avoids bias where a model grades its own outputs favorably. The evaluator should be independent.</p>
+            
+            <h3>Lower Temperature for Consistency</h3>
+            <p>Evaluator runs at <code>temperature=0.3</code> (vs 0.7–1.0 for reasoning agents). You want <strong>consistent scoring</strong> — two identical claims should get the same evaluation score.</p>
+            
+            <h3>The Evaluator Is Read-Only</h3>
+            <div class="box">
+                <p>The evaluator <strong>never modifies</strong> the settlement amount, fraud score, or any decision. It just says "this looks good" or "this needs human review."</p>
+                <p>Outputs from Agents 1-5 flow through unchanged. This separation of concerns makes the system auditable.</p>
+            </div>
+            
+            <h3>Batch Sampling for Ongoing Monitoring</h3>
+            <p>The doc mentions the evaluator runs on <strong>10% of auto-processed claims</strong> as a batch job. Over time you track:</p>
+            <ul>
+                <li>"Are our Transparency scores dropping?"</li>
+                <li>"Is Fairness degrading?"</li>
+                <li>"Did the Accuracy score change after we updated the depreciation logic?"</li>
+            </ul>
+            
+            <p>This is how you detect model drift <strong>before customers complain</strong>.</p>
+            
+            <h3>Output Structure</h3>
+            <pre><code>{
+    "accuracy": 0.90,
+    "completeness": 0.85,
+    "fairness": 0.92,
+    "safety": 0.95,
+    "transparency": 0.78,
+    "composite_score": 0.88,
+    "passed": true,
+    "critical_flags": [],
+    "reasoning": "All numbers check out. Reasoning is clear..."
+}</code></pre>
+        </section>
+
+        <section id="agent7">
+            <h2><span class="agent-tag agent-comm">Agent 7: Communication Agent</span></h2>
+            
+            <p><strong>Role:</strong> Final agent. Generates the message sent to the claimant. Every pipeline path ends here.</p>
+            
+            <h3>Message Requirements by Outcome</h3>
+            
+            <table>
+                <tr>
+                    <th>Outcome</th>
+                    <th>Message Must Include</th>
+                </tr>
+                <tr>
+                    <td><strong>Approved</strong></td>
+                    <td>Settlement amount, breakdown (damage - deductible = payout), payment timeline, next steps</td>
+                </tr>
+                <tr>
+                    <td><strong>Denied</strong></td>
+                    <td>Specific reason (never generic), policy clause cited, appeal rights, timeline</td>
+                </tr>
+                <tr>
+                    <td><strong>HITL Pending</strong></td>
+                    <td>Review in progress, expected timeline, reviewer contact info</td>
+                </tr>
+                <tr>
+                    <td><strong>Auto-Rejected (Fraud)</strong></td>
+                    <td>Specific red flags (not accusatory), investigation notice, appeal process</td>
+                </tr>
+            </table>
+            
+            <h3>The Golden Rule: Never Generic Denials</h3>
+            <div class="box box-danger">
+                <h4>❌ Bad Denial Message</h4>
+                <p>"Your claim has been denied."</p>
+            </div>
+            
+            <div class="box box-success">
+                <h4>✅ Good Denial Message</h4>
+                <p>"Your policy (POL-001) includes a flood damage exclusion under Section 4.2(c). The incident on June 15 was caused by rising floodwater from the nearby river, which falls under this exclusion. Water damage from internal sources (burst pipes, appliance leaks) would be covered, but external flooding is specifically excluded."</p>
+            </div>
+            
+            <p>The LLM extracts the actual reason from the pipeline trace and explains it clearly. This is both a UX and <strong>legal requirement</strong> in insurance.</p>
+            
+            <h3>Country-Specific Regulatory Footers</h3>
+            <p>Every message gets a regulatory footer appended (not optional):</p>
+            
+            <pre><code>REGULATORY_FOOTERS = {
+    "us": """
+---
+If you disagree with this decision, you have the right to appeal.
+Contact your State Insurance Commissioner:
+https://content.naic.org/state-insurance-departments
+
+For questions, call 1-800-CLAIMS-1 (M-F 9am-5pm ET)
+Reference claim ID: {claim_id}
+""",
+    "india": """
+---
+यदि आप इस निर्णय से असहमत हैं, तो आपको अपील करने का अधिकार है।
+Contact IRDAI Grievance Redressal:
+https://www.irdai.gov.in
+
+For questions, call 1800-425-4732 (M-F 10am-6pm IST)
+Reference claim ID: {claim_id}
+"""
+}</code></pre>
+            
+            <h3>Tone Adaptation</h3>
+            <p>The system prompt tells the LLM explicitly:</p>
+            <ul>
+                <li><strong>Approved:</strong> Positive, clear about next steps</li>
+                <li><strong>Denied:</strong> Empathetic but firm, always explain reason</li>
+                <li><strong>HITL:</strong> Reassuring, set clear expectations</li>
+                <li><strong>Fraud:</strong> Formal, serious, explain appeal rights</li>
+            </ul>
+            
+            <p>This prevents inappropriate tone (e.g., being cheerful about a denial).</p>
+            
+            <h3>Example: Approval Message</h3>
+            <div class="box">
+                <pre><code>Dear John Doe,
+
+Good news! Your auto claim (CLM-2024-001) has been approved.
+
+Claim breakdown:
+- Damage assessment:  $4,200.00
+- Depreciation (15%): -$630.00
+- Adjusted damage:     $3,570.00
+- Deductible:          -$500.00
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Settlement amount:     $3,070.00
+
+Payment will be processed within 3-5 business days via direct
+deposit. You'll receive confirmation once complete.
+
+Next steps:
+1. Schedule repairs with your preferred shop
+2. Forward final invoice to claims@insurance.com
+3. Keep your claim ID handy: CLM-2024-001
+
+---
+[Regulatory footer]</code></pre>
+            </div>
+            
+            <h3>Example: Fraud Rejection Message</h3>
+            <div class="box box-danger">
+                <pre><code>Dear John Doe,
+
+Your claim (CLM-2024-089) has been flagged and cannot be processed.
+
+Our fraud detection identified these concerns:
+- Claim matches a known staged accident pattern
+- Repair estimate is 280% above benchmark for this damage
+- This is your third claim in 6 months across two providers
+
+Investigation notice:
+Your claim has been referred to our Special Investigations Unit.
+You will be contacted within 10 business days.
+
+You have the right to provide additional documentation.
+Contact: fraud-review@insurance.com
+
+---
+[Regulatory footer]</code></pre>
+            </div>
+        </section>
+
+        <section id="orchestration">
+            <h2>LangGraph Orchestration</h2>
+            
+            <p>LangGraph is the <strong>glue</strong> that connects all 7 agents into a working pipeline. It turns a collection of functions into a <strong>state machine</strong> with durable checkpoints and conditional routing.</p>
+            
+            <h3>Core LangGraph Concepts</h3>
+            
+            <table>
+                <tr>
+                    <th>Concept</th>
+                    <th>What It Does</th>
+                </tr>
+                <tr>
+                    <td><strong>StateGraph</strong></td>
+                    <td>Defines nodes (agents) and edges (connections)</td>
+                </tr>
+                <tr>
+                    <td><strong>Nodes</strong></td>
+                    <td>Python functions: <code>(state) → updated_state</code></td>
+                </tr>
+                <tr>
+                    <td><strong>Edges</strong></td>
+                    <td>Connections between nodes, can be conditional</td>
+                </tr>
+                <tr>
+                    <td><strong>State (TypedDict)</strong></td>
+                    <td>Shared data structure flowing through pipeline</td>
+                </tr>
+                <tr>
+                    <td><strong>Checkpoints</strong></td>
+                    <td>Durable state snapshots (survives crashes)</td>
+                </tr>
+                <tr>
+                    <td><strong>interrupt()</strong></td>
+                    <td>Pauses execution for HITL, resume later</td>
+                </tr>
+            </table>
+            
+            <h3>The State Schema</h3>
+            <p>Every agent reads from and writes to this shared state:</p>
+            
+            <pre><code>class ClaimState(TypedDict):
+    # Input data
+    claim_id: str
+    claimant_name: str
+    policy_number: str
+    claim_type: str
+    incident_date: str
+    claim_amount: float
+    description: str
+    country: str
+    
+    # Intake agent
+    masked_data: dict
+    intake_passed: bool
+    intake_denial_reason: str | None
+    
+    # Fraud agent
+    fraud_score: float
+    
+    # Routing
+    pipeline_path: str  # "normal" | "hitl" | "auto_reject" | "invalid" | "fast"
+    
+    # All agent outputs
+    agent_outputs: dict  # {agent_name: output_dict}
+    confidence_scores: dict  # {agent_name: confidence_float}
+    
+    # HITL
+    hitl_ticket: dict
+    pipeline_status: str</code></pre>
+            
+            <h3>Building the Graph</h3>
+            <pre><code>workflow = StateGraph(ClaimState)
+
+# Add all nodes
+workflow.add_node("intake", intake_agent_node)
+workflow.add_node("fraud", fraud_detection_node)
+workflow.add_node("damage", damage_assessor_node)
+workflow.add_node("policy", policy_checker_node)
+workflow.add_node("settlement", settlement_calculator_node)
+workflow.add_node("evaluator", evaluator_node)
+workflow.add_node("communication", communication_agent_node)
+workflow.add_node("hitl", hitl_checkpoint_node)
+
+# Set entry point
+workflow.set_entry_point("intake")</code></pre>
+            
+            <h3>Conditional Edges (The Routing Logic)</h3>
+            <p>Every edge is a <strong>function</strong> that reads state and returns the next node name:</p>
+            
+            <pre><code>def route_after_fraud(state: ClaimState) -> str:
+    score = state.get("fraud_score", 0.0)
+    path = state.get("pipeline_path", "normal")
+    
+    if score >= 0.90:
+        return "communication"  # auto-reject
+    elif score >= 0.45:
+        return "hitl"           # pause for review
+    elif path == "fast":
+        return "settlement"     # skip damage + policy
+    else:
+        return "damage"         # normal path
+
+workflow.add_conditional_edges(
+    "fraud",
+    route_after_fraud,
+    {
+        "damage": "damage",
+        "settlement": "settlement",
+        "communication": "communication",
+        "hitl": "hitl"
+    }
+)</code></pre>
+            
+            <h3>The 5 Pipeline Paths (Emergent Behavior)</h3>
+            <p>There's no explicit "path A" or "path B" code. The paths emerge from routing logic:</p>
+            
+            <div class="box">
+                <h4>Path A: Normal</h4>
+                <p><code>intake → fraud → damage → policy → settlement → evaluator → communication</code></p>
+                <p>All 7 agents run. Fraud &lt; 0.45, all confidence gates pass.</p>
+            </div>
+            
+            <div class="box box-warning">
+                <h4>Path B: HITL</h4>
+                <p><code>any_agent → hitl → [PAUSE] → resume → next_agent → communication</code></p>
+                <p>Triggers when: fraud 0.45–0.90, confidence &lt; threshold, or eval &lt; 0.70.</p>
+            </div>
+            
+            <div class="box box-danger">
+                <h4>Path C: Auto-Reject</h4>
+                <p><code>intake → fraud (≥0.90) → communication</code></p>
+                <p>Confirmed fraud. Bypasses all other agents.</p>
+            </div>
+            
+            <div class="box box-danger">
+                <h4>Path D: Invalid</h4>
+                <p><code>intake [FAIL] → communication</code></p>
+                <p>Missing fields, lapsed policy, or date out of range.</p>
+            </div>
+            
+            <div class="box">
+                <h4>Path E: Fast Mode</h4>
+                <p><code>intake → fraud → settlement → evaluator → communication</code></p>
+                <p>Amount &lt; $500. Skips damage and policy checks.</p>
+            </div>
+            
+            <h3>Durable Checkpoints with SqliteSaver</h3>
+            <pre><code>from langgraph.checkpoint.sqlite import SqliteSaver
+
+checkpointer = SqliteSaver.from_conn_string("claims_checkpoints.db")
+
+graph = workflow.compile(
+    checkpointer=checkpointer,
+    interrupt_before=["hitl"]  # pause before HITL node
+)</code></pre>
+            
+            <p><strong>What this gives you:</strong></p>
+            <ul>
+                <li>If server crashes mid-claim, state is in SQLite — resume on restart</li>
+                <li>HITL pauses can last hours/days — state never lost</li>
+                <li><code>thread_id = claim_id</code> — each claim has its own checkpoint</li>
+            </ul>
+            
+            <h3>HITL Interrupt/Resume Flow</h3>
+            
+            <h4>Processing a Claim (First Time)</h4>
+            <pre><code>def process_claim(claim_data: dict) -> dict:
+    config = {"configurable": {"thread_id": claim_data["claim_id"]}}
+    result = graph.invoke(claim_data, config)
+    return result</code></pre>
+            
+            <h4>Resuming After HITL Review</h4>
+            <pre><code>from langgraph.types import Command
+
+def resume_hitl_claim(claim_id: str, reviewer_decision: dict) -> dict:
+    config = {"configurable": {"thread_id": claim_id}}
+    
+    # Command tells LangGraph to resume with new data
+    result = graph.invoke(
+        Command(resume=reviewer_decision),
+        config
+    )
+    return result</code></pre>
+            
+            <h3>Key Design Decisions</h3>
+            
+            <div class="box box-success">
+                <h4>✅ Why LangGraph Over LangChain AgentExecutor?</h4>
+                <p>LangChain's AgentExecutor is great for simple tool-calling loops but falls apart for complex workflows with:</p>
+                <ul>
+                    <li>Conditional routing (fraud score determines path)</li>
+                    <li>Parallel execution (future: run damage + policy concurrently)</li>
+                    <li>Durable state (checkpoints)</li>
+                    <li>Multiple HITL gates</li>
+                </ul>
+                <p>LangGraph gives you explicit control over the graph topology. You define exactly which node runs after which, under what conditions.</p>
+            </div>
+        </section>
+
+        <section id="memory">
+            <h2>Memory System (3-Tier Architecture)</h2>
+            
+            <p>Memory is what lets agents <strong>learn from past claims</strong> instead of treating every claim as the first one they've ever seen.</p>
+            
+            <h3>The 3 Tiers</h3>
+            
+            <table>
+                <tr>
+                    <th>Tier</th>
+                    <th>Storage</th>
+                    <th>What It Holds</th>
+                    <th>Lifetime</th>
+                </tr>
+                <tr>
+                    <td><strong>1. Short-Term</strong></td>
+                    <td>LangGraph State</td>
+                    <td>Current claim data</td>
+                    <td>One execution (+ checkpoint)</td>
+                </tr>
+                <tr>
+                    <td><strong>2. Long-Term</strong></td>
+                    <td>ChromaDB collection</td>
+                    <td>All completed claim outcomes</td>
+                    <td>Permanent (7-year audit)</td>
+                </tr>
+                <tr>
+                    <td><strong>3. Episodic</strong></td>
+                    <td>ChromaDB collection</td>
+                    <td>Human overrides, fraud cases</td>
+                    <td>Permanent (learning data)</td>
+                </tr>
+            </table>
+            
+            <h3>Tier 1: Short-Term Memory</h3>
+            <p>This is just the <code>ClaimState</code> TypedDict flowing through the pipeline. Every agent reads/writes to it. Exists only during processing (plus checkpoint persistence for HITL pauses).</p>
+            
+            <h3>Tier 2: Long-Term Memory (Historical Outcomes)</h3>
+            
+            <h4>What Gets Stored</h4>
+            <pre><code>{
+    "claim_id": "CLM-2023-045",
+    "claim_type": "auto",
+    "vehicle_type": "sedan",
+    "damage_type": "front_end_collision",
+    "incident_description": "Rear-ended at stoplight...",
+    "final_settlement": 3800,
+    "damage_severity": "medium",
+    "fraud_score": 0.12,
+    "decision": "approved",
+    "timestamp": "2023-06-15T14:23:00Z"
+}</code></pre>
+            
+            <h4>How Agents Use It</h4>
+            <ul>
+                <li><strong>Damage Assessor:</strong> "Similar Honda Civic collisions averaged $4,200"</li>
+                <li><strong>Settlement Calculator:</strong> "15% depreciation claims resulted in $3,500–$4,000 payouts"</li>
+                <li><strong>Evaluator:</strong> "This decision is consistent with 8 similar past approvals"</li>
+            </ul>
+            
+            <h3>Tier 3: Episodic Memory (Special Events)</h3>
+            
+            <h4>What Gets Stored</h4>
+            <ul>
+                <li><strong>Human overrides:</strong> Reviewer changed an AI decision</li>
+                <li><strong>Confirmed fraud:</strong> Investigation proved fraud</li>
+                <li><strong>Quality failures:</strong> Evaluator score very low</li>
+                <li><strong>Appeals won:</strong> Original decision was wrong</li>
+            </ul>
+            
+            <pre><code>{
+    "episode_type": "fraud_confirmed",
+    "claim_id": "CLM-2023-089",
+    "description": "Staged accident, phantom passenger scheme",
+    "fraud_indicators": [
+        "3_claims_in_6_months",
+        "repair_shop_flagged",
+        "witness_inconsistent"
+    ],
+    "outcome": "denied_after_investigation",
+    "lesson": "Multiple claims + flagged shop = high fraud risk"
+}</code></pre>
+            
+            <h4>How Agents Use It</h4>
+            <ul>
+                <li><strong>Fraud Crew:</strong> "Has this pattern appeared before? What was the outcome?"</li>
+                <li><strong>Policy Checker:</strong> "Was this exclusion overridden by a reviewer in the past?"</li>
+                <li><strong>All Agents:</strong> "Did past decisions like mine get corrected by humans?"</li>
+            </ul>
+            
+            <h3>Technical Implementation</h3>
+            
+            <h4>Embedding Model (Runs Locally)</h4>
+            <pre><code>from sentence_transformers import SentenceTransformer
+
+embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+# 80MB, runs on CPU in ~50ms, no API calls
+
+def embed_text(text: str) -> List[float]:
+    return embedding_model.encode(text).tolist()</code></pre>
+            
+            <h4>ChromaDB Setup</h4>
+            <pre><code>import chromadb
+
+client = chromadb.PersistentClient(path="./chromadb_data")
+
+long_term_collection = client.get_or_create_collection(
+    name="long_term_claims"
+)
+
+episodic_collection = client.get_or_create_collection(
+    name="episodic_memory"
+)</code></pre>
+            
+            <h4>Storing a Claim Outcome</h4>
+            <pre><code>def store_claim_outcome(claim_state: dict) -> None:
+    description = f"""
+    Claim type: {claim_state['claim_type']}
+    Incident: {claim_state['masked_data']['description']}
+    Severity: {damage_out.get('severity')}
+    Settlement: ${settlement_out.get('amount')}
+    """
+    
+    long_term_collection.add(
+        ids=[claim_state["claim_id"]],
+        embeddings=[embed_text(description)],
+        documents=[description],
+        metadatas=[{
+            "claim_type": claim_state["claim_type"],
+            "settlement_amount": settlement_out["amount"],
+            "fraud_score": claim_state["fraud_score"]
+        }]
+    )</code></pre>
+            
+            <h4>Searching Similar Claims (Tool)</h4>
+            <pre><code>@tool("search_similar_claims")
+def search_similar_claims(query: str, claim_type: str = None) -> str:
+    where_filter = {"claim_type": claim_type} if claim_type else None
+    
+    results = long_term_collection.query(
+        query_embeddings=[embed_text(query)],
+        n_results=5,
+        where=where_filter
+    )
+    
+    avg_settlement = sum(
+        r["metadata"]["settlement_amount"] 
+        for r in results
+    ) / len(results)
+    
+    return json.dumps({
+        "similar_claims_found": len(results),
+        "average_settlement": round(avg_settlement, 2),
+        "examples": [...]
+    })</code></pre>
+            
+            <h3>How Memory Improves Over Time</h3>
+            
+            <div class="box box-success">
+                <h4>The Compounding Effect</h4>
+                <p><strong>Day 1:</strong> Zero historical claims. Damage Assessor relies on LLM training data only.</p>
+                <p><strong>Day 100:</strong> 500 completed claims. Searches memory: "For 2020 Honda Civics with front-end damage, we settled 12 similar claims averaging $4,150."</p>
+                <p><strong>Day 1000:</strong> 5000+ claims. Memory so rich that estimates are highly accurate from pattern matching alone.</p>
+            </div>
+            
+            <h3>Why Semantic Search Matters</h3>
+            <p>Embeddings enable <strong>semantic similarity</strong>, not just keyword matching:</p>
+            
+            <div class="box">
+                <p><strong>Stored claim:</strong> "Front-end collision, Honda Civic, bumper damage"</p>
+                <p><strong>Search query:</strong> "Rear impact on sedan"</p>
+                <p><strong>Result:</strong> ChromaDB finds them similar (both involve collision + sedan) even though exact words don't match.</p>
+                <p>Keyword search would miss this connection. Vector search captures it.</p>
+            </div>
+            
+            <h3>The Feedback Loop</h3>
+            <p>When a reviewer overrides an AI decision, that gets stored in episodic memory. Next time a similar claim comes through:</p>
+            
+            <pre><code>Agent searches: "Settlement calculation for flood damage"
+Episodic memory returns: "Last time I suggested denial for flood, 
+reviewer approved it because the damage was from a burst pipe, 
+not external flooding."
+
+Agent adjusts confidence: 0.85 → 0.60 (triggers HITL)</code></pre>
+            
+            <p>Over time, the system learns what kinds of overrides happen and adjusts behavior.</p>
+        </section>
+
+        <section id="best-practices">
+            <h2>Production Best Practices</h2>
+            
+            <h3>1. Guardrails Are Not Optional</h3>
+            
+            <table>
+                <tr>
+                    <th>Guardrail</th>
+                    <th>Default</th>
+                    <th>Why It Matters</th>
+                </tr>
+                <tr>
+                    <td>Max agent calls</td>
+                    <td>25</td>
+                    <td>Prevents infinite loops</td>
+                </tr>
+                <tr>
+                    <td>Max tokens</td>
+                    <td>50,000</td>
+                    <td>Caps LLM usage per claim</td>
+                </tr>
+                <tr>
+                    <td>Max cost</td>
+                    <td>$0.50</td>
+                    <td>Hard dollar limit</td>
+                </tr>
+                <tr>
+                    <td>Max execution time</td>
+                    <td>300s</td>
+                    <td>Timeout for pipeline</td>
+                </tr>
+                <tr>
+                    <td>Min confidence</td>
+                    <td>0.60</td>
+                    <td>Forces HITL if uncertain</td>
+                </tr>
+            </table>
+            
+            <p>All caps are configurable via environment variables. When a cap is hit, route to HITL with clear reason: <code>"guardrail: token limit exceeded"</code></p>
+            
+            <h3>2. PII Masking Happens at the Edge</h3>
+            <div class="box box-danger">
+                <h4>Critical Security Rule</h4>
+                <p>The Intake Agent is the <strong>only</strong> agent that sees raw PII. Every downstream agent works with masked data. This creates a clear security boundary.</p>
+                <p>If an LLM logs or leaks data, it's already masked — no SSNs or Aadhaar numbers in the logs.</p>
+            </div>
+            
+            <h3>3. Confidence Thresholds Increase Over Pipeline</h3>
+            <p>Notice the thresholds increase as you get closer to the payout decision:</p>
+            
+            <table>
+                <tr>
+                    <th>Agent</th>
+                    <th>Threshold</th>
+                    <th>Reasoning</th>
+                </tr>
+                <tr>
+                    <td>Intake</td>
+                    <td>0.55</td>
+                    <td>Mostly rules, low uncertainty</td>
+                </tr>
+                <tr>
+                    <td>Fraud</td>
+                    <td>0.50</td>
+                    <td>Early in pipeline, can catch later</td>
+                </tr>
+                <tr>
+                    <td>Damage</td>
+                    <td>0.60</td>
+                    <td>Financial estimate, needs confidence</td>
+                </tr>
+                <tr>
+                    <td>Policy</td>
+                    <td>0.60</td>
+                    <td>Exclusions are serious</td>
+                </tr>
+                <tr>
+                    <td>Settlement</td>
+                    <td>0.65</td>
+                    <td>Last financial decision</td>
+                </tr>
+                <tr>
+                    <td>Evaluator</td>
+                    <td>0.70</td>
+                    <td>Final quality gate</td>
+                </tr>
+            </table>
+            
+            <h3>4. Audit Trails for Regulatory Compliance</h3>
+            <p>Insurance is heavily regulated. Every agent action gets logged with:</p>
+            <ul>
+                <li>Timestamp</li>
+                <li>Input/output summaries</li>
+                <li>SHA256 hash for integrity verification</li>
+                <li>7-year retention period</li>
+            </ul>
+            
+            <p>Auditors can trace any decision back through the exact chain of agent actions.</p>
+            
+            <h3>5. Structured Outputs Are King</h3>
+            <p>Every agent returns structured data (JSON), not prose. This makes the output:</p>
+            <ul>
+                <li><strong>Parseable:</strong> No regex on LLM prose</li>
+                <li><strong>Testable:</strong> Unit tests check schema</li>
+                <li><strong>Composable:</strong> Next agent reads prior output directly</li>
+            </ul>
+            
+            <pre><code>## Good (structured)
+{
+    "fraud_score": 0.23,
+    "decision": "low_risk",
+    "reasoning": "...",
+    "flags": []
+}
+
+## Bad (prose)
+"The fraud analysis indicates this claim appears legitimate 
+with a low risk score of approximately 0.23..."</code></pre>
+            
+            <h3>6. Multiple HITL Gates Beat One</h3>
+            <p>Don't just have one HITL gate at the end. Have multiple checkpoints throughout:</p>
+            <ul>
+                <li>Fraud score 0.45–0.90</li>
+                <li>Any agent confidence &lt; threshold</li>
+                <li>High-value claims (&gt; $10K / Rs 5L)</li>
+                <li>Evaluator score &lt; 0.70</li>
+            </ul>
+            
+            <p>This creates a <strong>safety net</strong> where uncertainty triggers oversight, not just end-of-pipeline checks.</p>
+            
+            <h3>7. Use Different LLMs for Different Roles</h3>
+            
+            <table>
+                <tr>
+                    <th>Use Case</th>
+                    <th>Model Choice</th>
+                    <th>Why</th>
+                </tr>
+                <tr>
+                    <td>Pipeline agents</td>
+                    <td>gemini-2.5-flash</td>
+                    <td>Fast, reasoning-capable</td>
+                </tr>
+                <tr>
+                    <td>Evaluator</td>
+                    <td>gemini-2.5-flash-lite</td>
+                    <td>Independent, lower temp (0.3)</td>
+                </tr>
+                <tr>
+                    <td>Embeddings</td>
+                    <td>all-MiniLM-L6-v2</td>
+                    <td>Local, free, good quality</td>
+                </tr>
+            </table>
+            
+            <p>The evaluator uses a <strong>different model</strong> to avoid bias (model grading its own outputs).</p>
+            
+            <h3>8. Country-Aware Config Files</h3>
+            <p>Don't hardcode country rules in Python. Use YAML files:</p>
+            
+            <pre><code>configs/
+  base.yaml           # Shared settings
+  countries/
+    us.yaml           # USD, SSN/DL masking, year depreciation
+    india.yaml        # INR, Aadhaar/PAN masking, IRDAI part-wise
+    [future].yaml     # Add new countries without code changes</code></pre>
+            
+            <p>Adding a new country = creating a new YAML file. No code changes needed.</p>
+            
+            <h3>9. Token & Cost Tracking Per Claim</h3>
+            <p>Use a LangChain callback handler to track tokens and cost:</p>
+            
+            <pre><code>from langchain.callbacks import get_openai_callback
+
+with get_openai_callback() as cb:
+    result = agent.invoke(state)
+    
+    print(f"Tokens: {cb.total_tokens}")
+    print(f"Cost: ${cb.total_cost}")</code></pre>
+            
+            <p>Store this in the claim record. If a claim type consistently costs 10x average, investigate.</p>
+            
+            <h3>10. Fast Mode for Low-Value Claims</h3>
+            <p>Real-world optimization: below a threshold ($500), full investigation costs more than the claim. The system auto-detects these and processes in seconds instead of minutes by skipping Damage + Policy agents.</p>
+        </section>
+
+        <section id="evaluation">
+            <h2>Evaluation & Monitoring</h2>
+            
+            <h3>Why LLM-as-Judge Works</h3>
+            <div class="box">
+                <p>You can't manually review every claim decision. You need <strong>automated quality evaluation</strong>.</p>
+                <p>LLM-as-Judge uses a separate LLM to grade the pipeline's output on objective dimensions. This gives you quantitative scores you can track over time.</p>
+            </div>
+            
+            <h3>The 5 Evaluation Dimensions</h3>
+            
+            <h4>1. Accuracy (0.0–1.0)</h4>
+            <ul>
+                <li>Are the numbers correct?</li>
+                <li>Does settlement = damage - deductible?</li>
+                <li>Was depreciation applied correctly?</li>
+            </ul>
+            
+            <h4>2. Completeness (0.0–1.0)</h4>
+            <ul>
+                <li>Were all relevant factors considered?</li>
+                <li>Was depreciation applied? Exclusions checked?</li>
+                <li>Any missing steps in the chain?</li>
+            </ul>
+            
+            <h4>3. Fairness (0.0–1.0)</h4>
+            <ul>
+                <li>No demographic bias in reasoning?</li>
+                <li>Similar claims getting similar treatment?</li>
+                <li>Claimant not penalized unfairly?</li>
+            </ul>
+            
+            <h4>4. Safety (0.0–1.0)</h4>
+            <ul>
+                <li>No harmful recommendations?</li>
+                <li>Decision protects claimant's interests?</li>
+                <li>No dangerous advice given?</li>
+            </ul>
+            
+            <h4>5. Transparency (0.0–1.0)</h4>
+            <ul>
+                <li>Is reasoning clear and traceable?</li>
+                <li>Could the claimant understand the decision?</li>
+                <li>Is logic documented at each step?</li>
+            </ul>
+            
+            <h3>Batch Sampling Strategy</h3>
+            <p>Run the evaluator on:</p>
+            <ul>
+                <li><strong>100%</strong> of high-value claims (&gt; $10K)</li>
+                <li><strong>100%</strong> of denials</li>
+                <li><strong>10%</strong> random sample of auto-approved claims</li>
+            </ul>
+            
+            <p>Track scores over time. If Transparency drops from 0.85 to 0.72, investigate.</p>
+            
+            <h3>Monitoring Metrics</h3>
+            
+            <table>
+                <tr>
+                    <th>Metric</th>
+                    <th>What to Track</th>
+                    <th>Alert Threshold</th>
+                </tr>
+                <tr>
+                    <td>Evaluator composite score</td>
+                    <td>Average per day/week</td>
+                    <td>Drop &gt; 0.10 from baseline</td>
+                </tr>
+                <tr>
+                    <td>HITL rate</td>
+                    <td>% of claims pausing</td>
+                    <td>Spike &gt; 2x baseline</td>
+                </tr>
+                <tr>
+                    <td>Fraud detection rate</td>
+                    <td>% with score &gt; 0.45</td>
+                    <td>Drop to near zero</td>
+                </tr>
+                <tr>
+                    <td>Average cost per claim</td>
+                    <td>LLM token cost</td>
+                    <td>Increase &gt; 50%</td>
+                </tr>
+                <tr>
+                    <td>Pipeline completion time</td>
+                    <td>Median time start to end</td>
+                    <td>Increase &gt; 2x</td>
+                </tr>
+                <tr>
+                    <td>Agent confidence scores</td>
+                    <td>Average by agent</td>
+                    <td>Drop &gt; 0.15</td>
+                </tr>
+            </table>
+            
+            <h3>A/B Testing Agent Prompts</h3>
+            <p>When you update an agent's prompt, run A/B test:</p>
+            <ol>
+                <li>Route 10% of claims to new prompt</li>
+                <li>Compare evaluator scores: old vs new</li>
+                <li>Compare HITL rates: old vs new</li>
+                <li>If new prompt improves scores → roll out to 100%</li>
+            </ol>
+            
+            <h3>Human Feedback Loop</h3>
+            <p>When a reviewer overrides an AI decision:</p>
+            <ol>
+                <li>Store the override in episodic memory</li>
+                <li>Flag the claim for re-evaluation</li>
+                <li>If many overrides on same agent → investigate prompt</li>
+                <li>Use overrides as training data for fine-tuning (future)</li>
+            </ol>
+        </section>
+
+        <section id="pitfalls">
+            <h2>Common Pitfalls to Avoid</h2>
+            
+            <h3>1. Letting LLMs Do Arithmetic</h3>
+            <div class="box box-danger">
+                <h4>❌ Don't Do This</h4>
+                <p>Asking the LLM to compute: <code>settlement = (damage - depreciation) - deductible</code></p>
+                <p><strong>Why:</strong> LLMs are unreliable at arithmetic. A $0.01 error in a $10K claim is unacceptable.</p>
+            </div>
+            
+            <div class="box box-success">
+                <h4>✅ Do This Instead</h4>
+                <p>LLM estimates severity and raw cost. Python applies depreciation formula and computes settlement.</p>
+            </div>
+            
+            <h3>2. Generic Error Messages</h3>
+            <div class="box box-danger">
+                <h4>❌ Don't Do This</h4>
+                <p>"Your claim was denied."</p>
+                <p><strong>Why:</strong> Legally problematic in insurance. Claimant has right to specific reason.</p>
+            </div>
+            
+            <div class="box box-success">
+                <h4>✅ Do This Instead</h4>
+                <p>"Your policy excludes flood damage under Section 4.2(c). The incident was caused by external flooding, which falls under this exclusion."</p>
+            </div>
+            
+            <h3>3. Single HITL Gate at the End</h3>
+            <div class="box box-danger">
+                <h4>❌ Don't Do This</h4>
+                <p>Only checking if settlement should be reviewed after all agents have run.</p>
+                <p><strong>Why:</strong> Waste of compute. If fraud is 0.75, you don't need to run Damage, Policy, Settlement.</p>
+            </div>
+            
+            <div class="box box-success">
+                <h4>✅ Do This Instead</h4>
+                <p>Multiple HITL gates: after Fraud (0.45–0.90), after any agent with low confidence, after Evaluator.</p>
+            </div>
+            
+            <h3>4. No Durable Checkpoints</h3>
+            <div class="box box-danger">
+                <h4>❌ Don't Do This</h4>
+                <p>Storing HITL pause state in memory.</p>
+                <p><strong>Why:</strong> Server restart = lost state. Reviewer comes back next day, claim is gone.</p>
+            </div>
+            
+            <div class="box box-success">
+                <h4>✅ Do This Instead</h4>
+                <p>Use LangGraph's SqliteSaver. State persists to disk, survives restarts.</p>
+            </div>
+            
+            <h3>5. Hardcoded Country Rules</h3>
+            <div class="box box-danger">
+                <h4>❌ Don't Do This</h4>
+                <pre><code>if country == "us":
+    depreciation_rate = 0.15
+elif country == "india":
+    depreciation_rate = 0.05</code></pre>
+                <p><strong>Why:</strong> Adding a new country = code changes. Not scalable.</p>
+            </div>
+            
+            <div class="box box-success">
+                <h4>✅ Do This Instead</h4>
+                <p>YAML config files per country. Adding new country = new YAML, zero code changes.</p>
+            </div>
+            
+            <h3>6. Ignoring Token Costs</h3>
+            <div class="box box-danger">
+                <h4>❌ Don't Do This</h4>
+                <p>Not tracking LLM usage per claim.</p>
+                <p><strong>Why:</strong> One misconfigured agent can rack up $100s in API costs before you notice.</p>
+            </div>
+            
+            <div class="box box-success">
+                <h4>✅ Do This Instead</h4>
+                <p>Track tokens + cost per claim. Set hard caps ($0.50 per claim). Alert if average cost spikes.</p>
+            </div>
+            
+            <h3>7. Same LLM for Pipeline and Evaluation</h3>
+            <div class="box box-danger">
+                <h4>❌ Don't Do This</h4>
+                <p>Using <code>gpt-4</code> for both pipeline agents and the evaluator.</p>
+                <p><strong>Why:</strong> Model grading its own outputs creates bias — tends to score itself higher.</p>
+            </div>
+            
+            <div class="box box-success">
+                <h4>✅ Do This Instead</h4>
+                <p>Use different model for evaluator (e.g., <code>gemini-2.5-flash-lite</code>). Independence matters.</p>
+            </div>
+            
+            <h3>8. No Memory = No Learning</h3>
+            <div class="box box-danger">
+                <h4>❌ Don't Do This</h4>
+                <p>Treating every claim as isolated, no historical context.</p>
+                <p><strong>Why:</strong> System never gets better. Day 1000 is no smarter than Day 1.</p>
+            </div>
+            
+            <div class="box box-success">
+                <h4>✅ Do This Instead</h4>
+                <p>Store outcomes in ChromaDB. Agents search memory to calibrate decisions. System improves over time.</p>
+            </div>
+            
+            <h3>9. Tight Coupling Between Agents</h3>
+            <div class="box box-danger">
+                <h4>❌ Don't Do This</h4>
+                <pre><code>def damage_agent(state):
+    fraud_score = fraud_agent(state)  # direct call
+    ...</code></pre>
+                <p><strong>Why:</strong> Agents become tangled. Can't swap out Fraud agent without breaking Damage agent.</p>
+            </div>
+            
+            <div class="box box-success">
+                <h4>✅ Do This Instead</h4>
+                <p>Agents read from shared state: <code>fraud_score = state["fraud_score"]</code>. No direct calls.</p>
+            </div>
+            
+            <h3>10. Vague Confidence Scores</h3>
+            <div class="box box-danger">
+                <h4>❌ Don't Do This</h4>
+                <p>Asking LLM: "How confident are you?" and letting it return prose like "fairly confident".</p>
+                <p><strong>Why:</strong> Can't compare scores across agents or set thresholds.</p>
+            </div>
+            
+            <div class="box box-success">
+                <h4>✅ Do This Instead</h4>
+                <p>Force structured output: <code>{"confidence": 0.85}</code> as a float 0.0–1.0. Make it parseable and comparable.</p>
+            </div>
+        </section>
+
+        <footer>
+            <p>Built with insights from the Smart Claims Processor case study</p>
+            <p>For production AI systems: Always validate, always log, always have a human in the loop when it matters.</p>
+            <p style="margin-top: 20px; font-size: 0.9rem;">
+                <strong>Key Takeaway:</strong> Production multi-agent systems succeed by dividing responsibility clearly 
+                (LLMs reason, code computes), chaining through shared state, building in multiple safety gates, 
+                and learning from history via semantic memory. Ship with confidence gates everywhere and durable checkpoints — 
+                your future self will thank you.
+            </p>
+        </footer>
+    </div>
+</body>
+</html>

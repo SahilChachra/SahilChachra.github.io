@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>vLLM KV Cache — Field Notes</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;1,9..144,300&family=Inter:wght@400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:          #ffffff;
+    --bg2:         #f5f4f0;
+    --bg3:         #eeecea;
+    --text:        #1a1a18;
+    --text2:       #5a5955;
+    --text3:       #9a9890;
+    --border:      rgba(0,0,0,0.10);
+    --border2:     rgba(0,0,0,0.18);
+    --green-bg:    #eaf3de;
+    --green-text:  #3b6d11;
+    --green-border:#639922;
+    --amber-bg:    #faeeda;
+    --amber-text:  #854f0b;
+    --amber-border:#ba7517;
+    --blue-bg:     #e6f1fb;
+    --blue-text:   #185fa5;
+    --blue-border: #378add;
+    --red-bg:      #fcebeb;
+    --red-text:    #a32d2d;
+    --red-border:  #e24b4a;
+    --info-bg:     #e6f1fb;
+    --info-text:   #185fa5;
+    --warn-bg:     #faeeda;
+    --warn-text:   #854f0b;
+    --success-bg:  #eaf3de;
+    --success-text:#3b6d11;
+    --accent:      #534ab7;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:          #1c1c1a;
+      --bg2:         #252522;
+      --bg3:         #2e2e2b;
+      --text:        #e8e6df;
+      --text2:       #a0a09a;
+      --text3:       #66665f;
+      --border:      rgba(255,255,255,0.10);
+      --border2:     rgba(255,255,255,0.18);
+      --green-bg:    #173404;
+      --green-text:  #c0dd97;
+      --green-border:#3b6d11;
+      --amber-bg:    #412402;
+      --amber-text:  #fac775;
+      --amber-border:#854f0b;
+      --blue-bg:     #042c53;
+      --blue-text:   #b5d4f4;
+      --blue-border: #185fa5;
+      --red-bg:      #501313;
+      --red-text:    #f7c1c1;
+      --red-border:  #a32d2d;
+      --info-bg:     #042c53;
+      --info-text:   #b5d4f4;
+      --warn-bg:     #412402;
+      --warn-text:   #fac775;
+      --success-bg:  #173404;
+      --success-text:#c0dd97;
+      --accent:      #9f9be8;
+    }
+  }
+
+  html { font-size: 16px; }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--bg3);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 2rem 1rem 4rem;
+  }
+
+  .page {
+    max-width: 800px;
+    margin: 0 auto;
+    background: var(--bg);
+    border-radius: 16px;
+    border: 0.5px solid var(--border);
+    padding: 2.5rem 2.5rem 3rem;
+  }
+
+  @media (max-width: 600px) {
+    .page { padding: 1.5rem 1.25rem 2rem; border-radius: 12px; }
+    .grid-2, .grid-3 { grid-template-columns: 1fr !important; }
+    .result-grid { grid-template-columns: 1fr !important; }
+  }
+
+  /* ── Header ── */
+  .doc-header { margin-bottom: 2.5rem; padding-bottom: 1.5rem; border-bottom: 0.5px solid var(--border); }
+  .doc-eyebrow { font-size: 11px; font-weight: 500; letter-spacing: 1.8px; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
+  .doc-title {
+    font-family: 'Fraunces', serif;
+    font-size: 32px;
+    font-weight: 300;
+    letter-spacing: -0.5px;
+    color: var(--text);
+    margin-bottom: 6px;
+    line-height: 1.2;
+  }
+  .doc-sub { font-size: 13.5px; color: var(--text2); }
+
+  /* ── Sections ── */
+  .section { margin-bottom: 2.75rem; }
+  .section-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 1.8px;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 0.5px solid var(--border);
+  }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--bg);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 10px;
+  }
+  .card-title { font-size: 14px; font-weight: 500; margin-bottom: 7px; color: var(--text); }
+  .card-body  { font-size: 13.5px; color: var(--text2); line-height: 1.7; }
+  .card-body strong { color: var(--text); font-weight: 500; }
+
+  /* ── Alert cards ── */
+  .alert {
+    border-radius: 0 10px 10px 0;
+    padding: 10px 14px;
+    margin-bottom: 10px;
+    font-size: 13.5px;
+    line-height: 1.65;
+  }
+  .alert strong { font-weight: 500; }
+  .alert-warn    { border-left: 2px solid var(--amber-border); background: var(--warn-bg);    color: var(--warn-text);    }
+  .alert-info    { border-left: 2px solid var(--blue-border);  background: var(--info-bg);    color: var(--info-text);    }
+  .alert-success { border-left: 2px solid var(--green-border); background: var(--success-bg); color: var(--success-text); }
+
+  /* ── Code ── */
+  code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    background: var(--bg2);
+    border: 0.5px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 5px;
+    color: var(--text);
+  }
+  .code-block {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    background: var(--bg2);
+    border: 0.5px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.1rem;
+    margin: 10px 0;
+    line-height: 1.75;
+    overflow-x: auto;
+    white-space: pre;
+    color: var(--text);
+  }
+
+  /* ── Badges ── */
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 999px;
+  }
+  .badge-green { background: var(--green-bg); color: var(--green-text); }
+  .badge-red   { background: var(--red-bg);   color: var(--red-text);   }
+  .badge-amber { background: var(--amber-bg); color: var(--amber-text); }
+  .badge-blue  { background: var(--blue-bg);  color: var(--blue-text);  }
+
+  /* ── Prompt flow ── */
+  .flow-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .flow-box {
+    font-size: 12.5px;
+    padding: 5px 11px;
+    border-radius: 8px;
+    border: 0.5px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .flow-box.fixed   { background: var(--green-bg);  border-color: var(--green-border); color: var(--green-text); }
+  .flow-box.change  { background: var(--amber-bg);  border-color: var(--amber-border); color: var(--amber-text); }
+  .flow-arrow       { font-size: 14px; color: var(--text3); }
+  .flow-legend      { font-size: 12px; color: var(--text3); margin-top: 4px; }
+
+  /* ── Formula ── */
+  .formula-box {
+    background: var(--bg2);
+    border: 0.5px solid var(--border2);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    margin: 12px 0;
+  }
+  .formula-main {
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    font-weight: 300;
+    color: var(--text);
+    line-height: 1.8;
+    margin-bottom: 14px;
+  }
+  .formula-vars { display: grid; grid-template-columns: auto 1fr; gap: 5px 16px; font-size: 12.5px; }
+  .vname { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--info-text); white-space: nowrap; }
+  .vdesc { color: var(--text2); }
+
+  /* ── Calculator ── */
+  .calc-section {
+    background: var(--bg);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    margin-top: 14px;
+  }
+  .calc-title { font-size: 14px; font-weight: 500; margin-bottom: 16px; color: var(--text); }
+  .calc-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .calc-row label { font-size: 12.5px; color: var(--text2); min-width: 155px; }
+  .calc-row select, .calc-row input[type=number] {
+    flex: 1;
+    font-size: 13px;
+    padding: 6px 9px;
+    border: 0.5px solid var(--border2);
+    border-radius: 8px;
+    background: var(--bg2);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    outline: none;
+  }
+  .calc-row select:focus, .calc-row input:focus { border-color: var(--accent); }
+  .calc-row input[type=range] { flex: 1; accent-color: var(--accent); }
+  .calc-row .val { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text2); min-width: 55px; text-align: right; }
+
+  .result-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 0.5px solid var(--border); }
+  .result-cell { background: var(--bg2); border-radius: 10px; padding: 10px 12px; text-align: center; }
+  .result-cell .rlabel { font-size: 11px; color: var(--text3); margin-bottom: 4px; }
+  .result-cell .rval   { font-size: 20px; font-weight: 500; color: var(--text); }
+  .result-cell .runit  { font-size: 11px; color: var(--text2); }
+  .result-cell.highlight { border: 0.5px solid var(--blue-border); background: var(--blue-bg); }
+  .result-cell.highlight .rlabel { color: var(--info-text); }
+  .result-cell.highlight .rval   { color: var(--info-text); }
+
+  /* ── Tables ── */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    text-align: left;
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--text3);
+    padding: 7px 12px;
+    background: var(--bg2);
+    border-bottom: 0.5px solid var(--border);
+  }
+  td { padding: 8px 12px; border-bottom: 0.5px solid var(--border); color: var(--text2); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td:first-child { color: var(--text); font-weight: 500; }
+  tr:hover td { background: var(--bg2); }
+
+  /* ── Gotcha list ── */
+  .gotcha-list { list-style: none; padding: 0; }
+  .gotcha-list li {
+    padding: 10px 0 10px 24px;
+    position: relative;
+    font-size: 13.5px;
+    color: var(--text2);
+    border-bottom: 0.5px solid var(--border);
+    line-height: 1.65;
+  }
+  .gotcha-list li:last-child { border-bottom: none; }
+  .gotcha-list li::before {
+    content: '!';
+    position: absolute;
+    left: 4px;
+    top: 12px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--amber-text);
+  }
+  .gotcha-list li strong { color: var(--text); font-weight: 500; }
+
+  hr { border: none; border-top: 0.5px solid var(--border); margin: 2rem 0; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="doc-header">
+    <div class="doc-eyebrow">vLLM · Inference Engineering</div>
+    <div class="doc-title">KV Cache — Field Notes</div>
+    <div class="doc-sub">Prefix caching · Multi-tenant architecture · VRAM sizing · Production gotchas</div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       01 — CORE CONCEPT
+  ══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-label">01 — Core concept</div>
+
+    <div class="card">
+      <div class="card-title">What is Automatic Prefix Caching (APC)?</div>
+      <div class="card-body">
+        vLLM's KV cache stores computed Key-Value pairs from attention layers so they don't need to be recomputed for tokens already seen.
+        <strong>APC</strong> extends this: it hashes token sequences (in 16-token blocks via PagedAttention) and reuses KV entries across entirely different requests — as long as they share a common prefix.<br><br>
+        You don't "add" KV cache manually. You <strong>enable prefix caching</strong> and structure your prompts so stable parts always come first.
+      </div>
+    </div>
+
+    <div class="alert alert-info">
+      <strong>Key insight:</strong> vLLM hashes the raw token sequence. Two requests sharing the same first N tokens = cache hit on those N tokens. The cache is <strong>global</strong> — shared across all users hitting the same server instance.
+    </div>
+
+    <div class="card-title" style="font-size:13px;font-weight:500;margin:14px 0 8px;color:var(--text);">Prompt ordering rule — stable content must come first</div>
+    <div class="flow-row">
+      <div class="flow-box fixed">System prompt</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box fixed">Few-shot examples</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box fixed">Fixed query component</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box change">User query (changes)</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box change">Dynamic data</div>
+    </div>
+    <div class="flow-legend">
+      <span class="badge badge-green">green</span> → cached after first request &nbsp;|&nbsp;
+      <span class="badge badge-amber">amber</span> → computed fresh every time
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       02 — FORMULA
+  ══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-label">02 — KV Cache VRAM formula</div>
+
+    <div class="formula-box">
+      <div class="formula-main">
+        KV cache (bytes) = 2 &times; L &times; H<sub>kv</sub> &times; D<sub>head</sub> &times; T &times; dtype_bytes
+      </div>
+      <div class="formula-vars">
+        <span class="vname">2</span><span class="vdesc">Key + Value — both must be stored</span>
+        <span class="vname">L</span><span class="vdesc">Number of transformer layers (e.g. 32 for 8B, 80 for 70B)</span>
+        <span class="vname">H<sub>kv</sub></span><span class="vdesc">Number of KV heads — use GQA heads if the model uses GQA, NOT query heads!</span>
+        <span class="vname">D<sub>head</sub></span><span class="vdesc">Head dimension = hidden_size / num_attention_heads (commonly 128)</span>
+        <span class="vname">T</span><span class="vdesc">Token count — your system prompt length in tokens</span>
+        <span class="vname">dtype_bytes</span><span class="vdesc">2 for FP16/BF16 · 1 for FP8 · 4 for FP32</span>
+      </div>
+    </div>
+
+    <div class="alert alert-warn">
+      <strong>Your original formula was almost right.</strong> The correct form is <code>2 × L × H_kv × D_head × T × dtype_bytes</code>. The "2 bytes" was the dtype for FP16 — not wrong, just one part. The critical distinction is using <strong>KV heads specifically</strong> (e.g. 8 for Llama 3.1) rather than total attention heads (64). GQA makes the cache 8× smaller than a naive calculation — always check <code>num_key_value_heads</code> in the model config.
+    </div>
+
+    <div class="alert alert-success">
+      <strong>Full pool formula (N system prompts):</strong><br>
+      Total = 2 &times; L &times; H<sub>kv</sub> &times; D<sub>head</sub> &times; T<sub>avg</sub> &times; dtype_bytes &times; N_prompts<br><br>
+      This tells you the VRAM needed to hold all N system prompt prefixes simultaneously — i.e. zero-eviction scenario.
+    </div>
+
+    <!-- INTERACTIVE CALCULATOR -->
+    <div class="calc-section">
+      <div class="calc-title">Interactive VRAM calculator</div>
+
+      <div class="calc-row">
+        <label>Model preset</label>
+        <select id="preset" onchange="applyPreset()">
+          <option value="custom">Custom</option>
+          <option value="llama3-8b" selected>Llama 3.1 8B</option>
+          <option value="llama3-70b">Llama 3.1 70B</option>
+          <option value="qwen3-32b">Qwen3 32B</option>
+          <option value="mistral-7b">Mistral 7B</option>
+        </select>
+      </div>
+      <div class="calc-row">
+        <label>Layers (L)</label>
+        <input type="range" id="layers" min="16" max="96" value="32" oninput="calc()">
+        <span class="val" id="layers-val">32</span>
+      </div>
+      <div class="calc-row">
+        <label>KV heads (H<sub>kv</sub>)</label>
+        <input type="range" id="kvheads" min="1" max="64" value="8" oninput="calc()">
+        <span class="val" id="kvheads-val">8</span>
+      </div>
+      <div class="calc-row">
+        <label>Head dim (D<sub>head</sub>)</label>
+        <input type="range" id="headdim" min="64" max="256" step="64" value="128" oninput="calc()">
+        <span class="val" id="headdim-val">128</span>
+      </div>
+      <div class="calc-row">
+        <label>Tokens per prompt (T)</label>
+        <input type="range" id="tokens" min="64" max="4096" step="64" value="512" oninput="calc()">
+        <span class="val" id="tokens-val">512</span>
+      </div>
+      <div class="calc-row">
+        <label>Number of system prompts</label>
+        <input type="range" id="nprompts" min="1" max="200" value="50" oninput="calc()">
+        <span class="val" id="nprompts-val">50</span>
+      </div>
+      <div class="calc-row">
+        <label>Dtype</label>
+        <select id="dtype" onchange="calc()">
+          <option value="2" selected>FP16 / BF16 (2 bytes)</option>
+          <option value="1">FP8 (1 byte)</option>
+          <option value="4">FP32 (4 bytes)</option>
+        </select>
+      </div>
+
+      <div class="result-grid">
+        <div class="result-cell">
+          <div class="rlabel">Per token</div>
+          <div class="rval" id="r-pertoken">—</div>
+          <div class="runit">KB</div>
+        </div>
+        <div class="result-cell">
+          <div class="rlabel">Per system prompt</div>
+          <div class="rval" id="r-perprompt">—</div>
+          <div class="runit">MB</div>
+        </div>
+        <div class="result-cell highlight">
+          <div class="rlabel">All prompts (pool)</div>
+          <div class="rval" id="r-total">—</div>
+          <div class="runit">MB total</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       03 — SCENARIOS
+  ══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-label">03 — Your two scenarios</div>
+
+    <div class="card">
+      <div class="card-title">Scenario A — Fixed system prompt + changing text</div>
+      <div class="card-body">
+        Ideal for prefix caching. After the first request warms the cache, every subsequent request skips computing the system prompt tokens entirely — only the user query portion requires fresh compute.<br><br>
+        Enable with: <code>enable_prefix_caching=True</code> on your LLM instance, or <code>--enable-prefix-caching</code> on the server.
+      </div>
+      <div class="code-block">llm = LLM(
+    model="meta-llama/Llama-3.1-8B-Instruct",
+    enable_prefix_caching=True,
+    gpu_memory_utilization=0.90,
+)
+
+# System prompt must be byte-for-byte identical every call
+SYSTEM = "You are a manufacturing AI..."
+
+def infer(user_query: str):
+    prompt = f"&lt;|system|&gt;\n{SYSTEM}\n&lt;|user|&gt;\n{user_query}\n&lt;|assistant|&gt;\n"
+    return llm.generate([prompt], SamplingParams(max_tokens=512))</div>
+    </div>
+
+    <div class="card" style="margin-top:10px;">
+      <div class="card-title">Scenario B — Fixed system prompt + fixed visual query + changing images</div>
+      <div class="card-body">
+        Partially cacheable. The <strong>text prefix</strong> (system prompt + fixed query string) is cached normally. The <strong>image pixel embeddings</strong> are not prefix-cached because they're position-dependent visual tokens recomputed per image.
+      </div>
+      <div class="table-wrap" style="margin-top:10px;">
+        <table>
+          <tr><th>Component</th><th>Cached?</th><th>Reason</th></tr>
+          <tr><td>System prompt tokens</td><td><span class="badge badge-green">Yes</span></td><td>Pure text prefix — hashed and reused</td></tr>
+          <tr><td>Fixed query string ("What's happening…")</td><td><span class="badge badge-green">Yes</span></td><td>Part of stable text prefix</td></tr>
+          <tr><td>Image visual embeddings</td><td><span class="badge badge-red">No</span></td><td>Computed fresh per image, position-dependent</td></tr>
+          <tr><td>Fixed reference image (if always at position 0)</td><td><span class="badge badge-amber">Partial</span></td><td>Model-arch dependent — some vLLM versions cache fixed-position image tokens</td></tr>
+        </table>
+      </div>
+      <div class="alert alert-info" style="margin-top:10px;">
+        <strong>Tip:</strong> If you have a fixed reference image (e.g. a CAD drawing or defect template), always pass it at position 0 in the image list. Some vision models + vLLM versions will cache its visual tokens on repeated use.
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       04 — MULTI-TENANT
+  ══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-label">04 — Multi-tenant architecture (1000 req / 50 system prompts)</div>
+
+    <div class="card">
+      <div class="card-title">How the global cache behaves with multiple users</div>
+      <div class="card-body">
+        vLLM's prefix cache is <strong>server-global and user-agnostic</strong>. It caches based purely on token hash matches. With 1000 requests and a pool of 50 system prompts, once all 50 are warmed (after the first ~50 unique requests across the pool), every subsequent request gets a cache hit on its system prompt prefix.<br><br>
+        Your middleware layer handles user identity, API key validation, rate limiting, and usage tracking. vLLM never needs to know about users.
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:10px;">
+      <div class="card-title">Middleware architecture</div>
+      <div class="code-block">User request → [Your Middleware]
+  1. Validate API key  →  look up user metadata
+  2. Map user  →  system_prompt_id (from pool of 50)
+  3. Force-inject system prompt  →  strip any user-provided system role
+  4. Track: tokens used, latency, cache hit rate, cost
+  5. Rate limit per key
+  →  [vLLM server — prefix cache is global, unaware of users]</div>
+    </div>
+
+    <div class="card" style="margin-top:10px;">
+      <div class="card-title">Middleware implementation (FastAPI)</div>
+      <div class="code-block">from fastapi import FastAPI, Header, HTTPException
+from openai import AsyncOpenAI
+import time
+
+app = FastAPI()
+vllm_client = AsyncOpenAI(base_url="http://localhost:8000/v1", api_key="unused")
+
+SYSTEM_PROMPT_POOL = {
+    "tier_free":    "You are a helpful assistant...",
+    "tier_pro":     "You are an expert analyst...",
+    "tenant_acme":  "You are ACME Corp's internal assistant...",
+}
+
+API_KEY_REGISTRY = {
+    "sk-user-abc": {"tenant": "tenant_acme", "rate_limit": 100},
+    "sk-user-xyz": {"tenant": "tier_pro",    "rate_limit": 500},
+}
+
+USAGE_LOG = {}
+
+@app.post("/v1/chat/completions")
+async def proxy(request: dict, authorization: str = Header(...)):
+    api_key = authorization.replace("Bearer ", "")
+    if api_key not in API_KEY_REGISTRY:
+        raise HTTPException(status_code=401)
+
+    user_meta = API_KEY_REGISTRY[api_key]
+    system_prompt = SYSTEM_PROMPT_POOL[user_meta["tenant"]]
+
+    # Force system prompt — user cannot override it
+    messages = [
+        {"role": "system", "content": system_prompt},
+        *[m for m in request["messages"] if m["role"] != "system"],
+    ]
+
+    t0 = time.monotonic()
+    response = await vllm_client.chat.completions.create(
+        model=request.get("model", "meta-llama/Llama-3.1-8B-Instruct"),
+        messages=messages,
+        max_tokens=request.get("max_tokens", 512),
+    )
+    latency = time.monotonic() - t0
+
+    # Track usage per API key
+    USAGE_LOG.setdefault(api_key, []).append({
+        "prompt_tokens":     response.usage.prompt_tokens,
+        "completion_tokens": response.usage.completion_tokens,
+        "latency_ms":        round(latency * 1000),
+        "system_prompt_id":  user_meta["tenant"],
+    })
+
+    return response</div>
+    </div>
+
+    <div class="card" style="margin-top:10px;">
+      <div class="card-title">Cache warmup on startup</div>
+      <div class="card-body">With only 50 prompts, pre-warm all of them at server boot so the first real user never pays the cache-miss cost.</div>
+      <div class="code-block">async def warm_prefix_cache():
+    for tenant_id, prompt in SYSTEM_PROMPT_POOL.items():
+        await client.chat.completions.create(
+            model="meta-llama/Llama-3.1-8B-Instruct",
+            messages=[
+                {"role": "system",  "content": prompt},
+                {"role": "user",    "content": "hello"},
+            ],
+            max_tokens=1,    # don't waste output tokens
+        )
+        print(f"Warmed cache for: {tenant_id}")</div>
+    </div>
+
+    <div class="card" style="margin-top:10px;">
+      <div class="card-title">Eviction: will your pool fit in VRAM?</div>
+      <div class="card-body">
+        vLLM uses <strong>LRU eviction</strong>. If your 50 system prompts fit entirely in the allocated KV cache VRAM, you get near-100% hit rate with zero thrashing. Use the calculator above to verify. For most 8B–13B models with 512-token prompts, the entire pool of 50 fits in &lt;500 MB — well within budget on any modern GPU.
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       05 — MODEL PARAM REFERENCE
+  ══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-label">05 — Model parameter reference</div>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Model</th><th>Layers</th><th>KV heads</th><th>Head dim</th><th>Attn type</th><th>~Per-token cache (FP16)</th></tr>
+        <tr><td>Llama 3.1 8B</td><td>32</td><td>8</td><td>128</td><td>GQA</td><td>~0.5 KB</td></tr>
+        <tr><td>Llama 3.1 70B</td><td>80</td><td>8</td><td>128</td><td>GQA</td><td>~2.5 MB</td></tr>
+        <tr><td>Qwen3 32B</td><td>64</td><td>8</td><td>128</td><td>GQA</td><td>~1.0 MB</td></tr>
+        <tr><td>Mistral 7B</td><td>32</td><td>8</td><td>128</td><td>GQA</td><td>~0.5 KB</td></tr>
+        <tr><td>GPT-style MHA model</td><td>32</td><td>32</td><td>128</td><td>MHA</td><td>~4× more than GQA equivalent</td></tr>
+      </table>
+    </div>
+    <div class="alert alert-info" style="margin-top:10px;">
+      <strong>GQA (Grouped Query Attention)</strong> is why modern models are cache-efficient. Llama 3.1 70B has 64 query heads but only 8 KV heads — the KV cache is 8× smaller than a full MHA model of the same size. Always check <code>num_key_value_heads</code> in the model card / config.json.
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       06 — PRODUCTION GOTCHAS
+  ══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-label">06 — Points to watch in production</div>
+    <ul class="gotcha-list">
+      <li>
+        <strong>System prompt must be byte-for-byte identical.</strong> The cache key is a hash of the raw token sequence. A single trailing space, a date injection (<code>f"Today is {datetime.now().date()}"</code>), or a different encoding breaks the hash — full cache miss every time. Treat prompts from your pool as immutable constants and version them with IDs.
+      </li>
+      <li>
+        <strong>Chat template consistency.</strong> Special tokens added by the chat template (BOS, EOS, role markers) are part of the hashed sequence. If different clients use different templates for the same model, they'll never share cache hits even with identical content string.
+      </li>
+      <li>
+        <strong>FP8 KV cache halves VRAM, minimal quality loss.</strong> Use <code>kv_cache_dtype="fp8"</code> to double your effective cache capacity. Requires CUDA 11.8+ and Hopper/Ada GPUs for native hardware support. On older GPUs it falls back to software emulation.
+      </li>
+      <li>
+        <strong>Chunked prefill + prefix caching work together.</strong> Long system prompts get prefilled in chunks but their KV blocks are still cached for future reuse. Enable both: <code>--enable-prefix-caching --enable-chunked-prefill</code>.
+      </li>
+      <li>
+        <strong>Monitor cache hit rate via Prometheus.</strong> Expose <code>vllm:gpu_prefix_cache_hit_rate</code>. If it drops below ~80% on a warm server, you likely have prompt stability issues — dynamic content being injected into what should be fixed prompts.
+      </li>
+      <li>
+        <strong>LRU eviction can thrash with too many unique long prefixes.</strong> A pool of 50 is safe. If you scale to 500+ unique system prompts with long token lengths, calculate your VRAM budget carefully — hot prompts will evict cold ones repeatedly under load.
+      </li>
+      <li>
+        <strong>Multimodal: text prefix is cached, image tokens are not.</strong> Don't assume vision requests benefit from prefix caching on the image side. Only the stable text prefix (system prompt + fixed query string) gets the speedup.
+      </li>
+      <li>
+        <strong>Tensor parallelism splits KV cache across GPUs.</strong> With <code>--tensor-parallel-size 4</code>, each GPU holds 1/4 of the KV cache. Your VRAM calculation per GPU = total_KV / TP_size. Logical cache hit rate stays the same.
+      </li>
+      <li>
+        <strong>LMCache for cross-instance sharing (advanced).</strong> vLLM's built-in prefix cache lives in a single server's VRAM. Multiple vLLM instances behind a load balancer each have independent caches. LMCache adds a shared CPU/disk-backed layer so hits transfer across instances — useful for fleet deployments.
+      </li>
+      <li>
+        <strong>Never inject per-user IDs or timestamps into the system prompt.</strong> Even if harmless-seeming, any dynamic injection makes every request a cache miss. Track user identity entirely in your middleware layer — never in the prompt itself.
+      </li>
+    </ul>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       07 — QUICK REFERENCE
+  ══════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-label">07 — Quick reference flags</div>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Config flag</th><th>What it does</th><th>When to use</th></tr>
+        <tr><td><code>--enable-prefix-caching</code></td><td>Activates APC globally on the server</td><td>Always — no downside unless you have zero prefix reuse</td></tr>
+        <tr><td><code>--enable-chunked-prefill</code></td><td>Prefills long prompts in chunks, improves TTFT</td><td>Long context or high concurrency workloads</td></tr>
+        <tr><td><code>kv_cache_dtype="fp8"</code></td><td>Halves KV VRAM usage</td><td>Hopper/Ada GPUs, tight VRAM budgets</td></tr>
+        <tr><td><code>gpu_memory_utilization=0.90</code></td><td>Reserves 90% VRAM for model + KV cache</td><td>Default; lower if OOM during warmup</td></tr>
+        <tr><td><code>--tensor-parallel-size N</code></td><td>Shards model + KV cache across N GPUs</td><td>Models that don't fit on a single GPU</td></tr>
+        <tr><td><code>max_model_len</code></td><td>Caps max context length (reduces KV pool size)</td><td>When you don't need full context but want more cache space for concurrency</td></tr>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const presets = {
+    'llama3-8b':  { layers: 32, kvheads: 8,  headdim: 128 },
+    'llama3-70b': { layers: 80, kvheads: 8,  headdim: 128 },
+    'qwen3-32b':  { layers: 64, kvheads: 8,  headdim: 128 },
+    'mistral-7b': { layers: 32, kvheads: 8,  headdim: 128 },
+  };
+
+  function applyPreset() {
+    const p = presets[document.getElementById('preset').value];
+    if (!p) return;
+    setSlider('layers',  p.layers);
+    setSlider('kvheads', p.kvheads);
+    setSlider('headdim', p.headdim);
+    calc();
+  }
+
+  function setSlider(id, val) {
+    const el = document.getElementById(id);
+    el.value = val;
+    document.getElementById(id + '-val').textContent = val;
+  }
+
+  function calc() {
+    const L     = +document.getElementById('layers').value;
+    const Hkv   = +document.getElementById('kvheads').value;
+    const Dh    = +document.getElementById('headdim').value;
+    const T     = +document.getElementById('tokens').value;
+    const N     = +document.getElementById('nprompts').value;
+    const dtype = +document.getElementById('dtype').value;
+
+    document.getElementById('layers-val').textContent   = L;
+    document.getElementById('kvheads-val').textContent  = Hkv;
+    document.getElementById('headdim-val').textContent  = Dh;
+    document.getElementById('tokens-val').textContent   = T;
+    document.getElementById('nprompts-val').textContent = N;
+
+    const perToken  = 2 * L * Hkv * Dh * dtype;
+    const perPrompt = perToken * T;
+    const totalPool = perPrompt * N;
+
+    document.getElementById('r-pertoken').textContent  = (perToken / 1024).toFixed(1);
+    document.getElementById('r-perprompt').textContent = (perPrompt / (1024 * 1024)).toFixed(2);
+    document.getElementById('r-total').textContent     = (totalPool / (1024 * 1024)).toFixed(0);
+  }
+
+  calc();
+</script>
+</body>
+</html>

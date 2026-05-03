@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>What Isn't Scaling in Local LLMs</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0c0c0f;
+    --surface: #13131a;
+    --surface2: #1a1a26;
+    --border: #2a2a3d;
+    --accent: #7c6dfa;
+    --accent2: #fa6d8a;
+    --accent3: #6dfacc;
+    --text: #e8e8f0;
+    --muted: #7a7a9a;
+    --warn: #fabc6d;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    line-height: 1.8;
+    min-height: 100vh;
+  }
+
+  /* Noise overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.4;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 60px 32px 120px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  .masthead {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 40px;
+    margin-bottom: 60px;
+  }
+
+  .tag {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .tag::before {
+    content: '';
+    display: inline-block;
+    width: 24px;
+    height: 1px;
+    background: var(--accent);
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(32px, 5vw, 52px);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin-bottom: 20px;
+  }
+
+  h1 span {
+    color: var(--accent);
+  }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 13px;
+    max-width: 560px;
+    line-height: 1.7;
+  }
+
+  /* Section headers */
+  .section-label {
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 14px;
+    letter-spacing: -0.01em;
+  }
+
+  h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: var(--text);
+  }
+
+  p {
+    color: #b8b8d0;
+    margin-bottom: 14px;
+  }
+
+  /* Community findings cards */
+  .findings-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+    margin-bottom: 60px;
+    background: var(--border);
+    border: 1px solid var(--border);
+  }
+
+  @media (max-width: 640px) {
+    .findings-grid { grid-template-columns: 1fr; }
+  }
+
+  .finding-card {
+    background: var(--surface);
+    padding: 28px 24px;
+    position: relative;
+    transition: background 0.2s;
+  }
+
+  .finding-card:hover {
+    background: var(--surface2);
+  }
+
+  .finding-icon {
+    font-size: 20px;
+    margin-bottom: 12px;
+  }
+
+  .finding-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 8px;
+    letter-spacing: 0.02em;
+  }
+
+  .finding-body {
+    font-size: 12.5px;
+    color: var(--muted);
+    line-height: 1.7;
+    margin: 0;
+  }
+
+  .finding-author {
+    display: inline-block;
+    margin-top: 12px;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+  }
+
+  /* Quote blocks */
+  .quote-block {
+    border-left: 2px solid var(--accent);
+    padding: 16px 20px;
+    background: var(--surface);
+    margin: 24px 0;
+    font-size: 13px;
+    color: #9898b8;
+    font-style: italic;
+  }
+
+  .quote-block cite {
+    display: block;
+    margin-top: 8px;
+    font-style: normal;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+  }
+
+  /* Analysis section */
+  .analysis-section {
+    margin-bottom: 60px;
+  }
+
+  .analysis-section .section-label span {
+    color: var(--accent2);
+  }
+
+  /* MoE comparison table */
+  .comparison-section {
+    margin-bottom: 60px;
+  }
+
+  .model-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    background: var(--border);
+    margin-bottom: 32px;
+  }
+
+  @media (max-width: 700px) {
+    .model-cards { grid-template-columns: 1fr; }
+  }
+
+  .model-card {
+    background: var(--surface);
+    padding: 28px 22px;
+  }
+
+  .model-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .model-badge {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 4px 8px;
+    border-radius: 2px;
+    font-weight: 500;
+  }
+
+  .badge-moe { background: rgba(124,109,250,0.15); color: var(--accent); border: 1px solid rgba(124,109,250,0.3); }
+  .badge-small { background: rgba(250,188,109,0.12); color: var(--warn); border: 1px solid rgba(250,188,109,0.3); }
+  .badge-large { background: rgba(109,250,204,0.12); color: var(--accent3); border: 1px solid rgba(109,250,204,0.3); }
+
+  .model-card-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .use-case-list {
+    list-style: none;
+    margin: 0;
+  }
+
+  .use-case-list li {
+    font-size: 12px;
+    color: var(--muted);
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(42,42,61,0.5);
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    line-height: 1.5;
+  }
+
+  .use-case-list li:last-child { border-bottom: none; }
+
+  .use-case-list li::before {
+    content: '→';
+    color: var(--accent);
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .use-case-list.warn li::before { color: var(--warn); }
+  .use-case-list.mint li::before { color: var(--accent3); }
+
+  /* Sparsity section */
+  .sparsity-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 36px 32px;
+    margin-bottom: 60px;
+  }
+
+  .sparsity-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: var(--accent3);
+  }
+
+  .formula-block {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 18px 20px;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--accent);
+    margin: 20px 0;
+    letter-spacing: 0.04em;
+  }
+
+  .formula-block .comment {
+    color: var(--muted);
+    font-size: 11px;
+  }
+
+  /* My takes */
+  .takes-section {
+    margin-bottom: 60px;
+  }
+
+  .take-item {
+    display: grid;
+    grid-template-columns: 32px 1fr;
+    gap: 20px;
+    margin-bottom: 36px;
+    align-items: start;
+  }
+
+  .take-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--border);
+    line-height: 1;
+    padding-top: 2px;
+  }
+
+  .take-content h3 {
+    color: var(--text);
+    font-size: 15px;
+    margin-bottom: 8px;
+  }
+
+  .take-content p {
+    font-size: 13px;
+    line-height: 1.8;
+    margin: 0;
+  }
+
+  /* Inline highlight */
+  .hl {
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  .hl-accent { color: var(--accent); }
+  .hl-warn { color: var(--warn); }
+  .hl-mint { color: var(--accent3); }
+
+  /* Footer */
+  .footer {
+    border-top: 1px solid var(--border);
+    padding-top: 28px;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  /* Divider */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 48px 0;
+  }
+
+  /* Inline code */
+  code {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 2px 6px;
+    font-size: 12px;
+    color: var(--accent3);
+    border-radius: 2px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Masthead -->
+  <div class="masthead">
+    <div class="tag">r/LocalLLaMA · Community Analysis</div>
+    <h1>What Isn't <span>Scaling</span><br>in Local LLMs</h1>
+    <p class="subtitle">
+      A breakdown of the r/LocalLLaMA thread on which aspects of local inference refuse to compress — 
+      followed by a deeper analysis of MoE vs. dense model tradeoffs and how sparsity shapes output quality.
+    </p>
+  </div>
+
+  <!-- Community Findings -->
+  <div class="section-label">Community findings</div>
+
+  <div class="findings-grid">
+    <div class="finding-card">
+      <div class="finding-icon">🧠</div>
+      <div class="finding-title">Multi-step Reasoning Depth</div>
+      <p class="finding-body">
+        "Intelligence" compresses fine — knowing facts scales to 7B. But chained logical reasoning 
+        with intermediate state doesn't. Small models confidently hallucinate by step 3 on hard 
+        debugging chains that a 70B walks through cleanly.
+      </p>
+      <span class="finding-author">u/sysflux</span>
+    </div>
+
+    <div class="finding-card">
+      <div class="finding-icon">📄</div>
+      <div class="finding-title">Effective Context Window</div>
+      <p class="finding-body">
+        128k token context is a marketing number. The actual reliable retrieval-and-reasoning window 
+        in small models has barely moved. The gap between context length spec and actual usable 
+        context is growing, not shrinking.
+      </p>
+      <span class="finding-author">u/sysflux</span>
+    </div>
+
+    <div class="finding-card">
+      <div class="finding-icon">🌍</div>
+      <div class="finding-title">Physical World Coherence</div>
+      <p class="finding-body">
+        Small models don't have robust implicit world models. Classic test: "if you haven't removed 
+        your shoes, you can't take off just your socks." Only higher-parameter models reliably handle 
+        these implicit physical constraints — likely tied to knowledge density, not reasoning per se.
+      </p>
+      <span class="finding-author">u/ArsNeph</span>
+    </div>
+
+    <div class="finding-card">
+      <div class="finding-icon">📦</div>
+      <div class="finding-title">Factual Knowledge Density</div>
+      <p class="finding-body">
+        Intelligence and knowledge are decoupling. Small models are more "intelligent" but hallucinate 
+        facts constantly. The ~700B–1T range is where LLMs become genuinely reliable on common 
+        knowledge without RAG augmentation.
+      </p>
+      <span class="finding-author">u/TechnoByte_</span>
+    </div>
+
+    <div class="finding-card">
+      <div class="finding-icon">🗂️</div>
+      <div class="finding-title">Structured Output Fidelity</div>
+      <p class="finding-body">
+        A 7B can write a convincing essay but fails at consistently producing valid nested JSON schemas. 
+        The "intelligence" compresses — the precision required to maintain strict structural contracts 
+        across a full output doesn't.
+      </p>
+      <span class="finding-author">u/GroundbreakingMall54</span>
+    </div>
+
+    <div class="finding-card">
+      <div class="finding-icon">💾</div>
+      <div class="finding-title">MoE Memory Overhead</div>
+      <p class="finding-body">
+        The MoE pivot trades VRAM (the limiting resource for local runners) for training compute savings. 
+        For maximizing inference quality per GB of memory, dense models remain optimal — the community 
+        is rediscovering this with Qwen3-27B dense.
+      </p>
+      <span class="finding-author">u/ttkciar</span>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- MoE Deep Dive from thread -->
+  <div class="section-label">Thread deep-dive · MoE & sparsity</div>
+
+  <div class="analysis-section">
+    <h2>The MoE Sparsity Problem</h2>
+    <p>
+      The most technically rich thread in this discussion was between <span class="hl">u/ttkciar</span> and <span class="hl">u/ROS_SDN</span>, 
+      who identified a real tension in how current MoE models are being deployed locally.
+    </p>
+
+    <div class="quote-block">
+      "I feel the issue is that most local MoEs are being pushed too sparse. 8% sparsity at 1T is still 80B active, which is likely a strong model itself. But bring that to Qwen3.5-35B and that's 3B active — I just feel 3B is such a small number to trust."
+      <cite>— u/ROS_SDN</cite>
+    </div>
+
+    <p>
+      The community's napkin heuristic for comparing MoE to dense is <code>sqrt(Total × Active)</code>. For Qwen3.5-35B-A3B: 
+      <code>sqrt(35B × 3B) ≈ 10B</code> effective intelligence. For a 27B dense: <code>27B</code>. 
+      That's a meaningful gap, and u/ttkciar correctly notes that this heuristic is incomplete — 
+      it misses the <span class="hl-accent">expert-picking quality</span> term entirely.
+    </p>
+
+    <p>
+      The key insight: MoE gating logic has historically been good at routing to experts that hold 
+      <em>memorized factual knowledge</em> but poor at routing to experts encoding <em>generalized heuristics</em> 
+      (instruction following, reasoning chains). This gap has narrowed in recent generations — 
+      GLM-4.5-Air is cited as evidence that heuristic routing has improved meaningfully.
+    </p>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- My Analysis -->
+  <div class="section-label"><span style="color:var(--accent2)">My analysis</span> · Beyond the thread</div>
+
+  <div class="takes-section">
+
+    <div class="take-item">
+      <div class="take-num">01</div>
+      <div class="take-content">
+        <h3>Intelligence vs. Knowledge is the real schism</h3>
+        <p>
+          The thread correctly identifies this but doesn't fully separate the two. <span class="hl">Intelligence</span> — the ability 
+          to follow instructions, reason step-by-step, structure outputs — is compressing very well with distillation. 
+          <span class="hl">Knowledge</span> — the stored, retrievable factual substrate — is not compressing at the same rate 
+          because it scales with parameter count in a fundamentally different way. A distilled 7B inherits reasoning <em>patterns</em> 
+          from its teacher but cannot inherit its <em>parameter-embedded knowledge</em>. This is why RAG 
+          remains non-negotiable for local deployments doing anything knowledge-intensive.
+        </p>
+      </div>
+    </div>
+
+    <div class="take-item">
+      <div class="take-num">02</div>
+      <div class="take-content">
+        <h3>Context utilization is architecturally under-addressed</h3>
+        <p>
+          The gap between <span class="hl-warn">marketed context length</span> and <span class="hl-accent">actual reliable attention range</span> is 
+          one of the most understated issues in local LLMs. RoPE scaling and ALiBi give models 
+          long windows but don't fix the attention pattern degradation that causes "lost in the middle" failures. 
+          The problem isn't primarily model size — it's that attention heads trained on short sequences 
+          don't generalize to full-document retrieval tasks. This is an architectural problem that 
+          smaller, denser, or sparser models all suffer from in similar proportions.
+        </p>
+      </div>
+    </div>
+
+    <div class="take-item">
+      <div class="take-num">03</div>
+      <div class="take-content">
+        <h3>Quantization hurts MoE more than dense, proportionally</h3>
+        <p>
+          When you quantize a dense 27B to Q4, you degrade <span class="hl">27B parameters</span>. When you quantize 
+          a 35B-A3B MoE to Q4, you degrade <span class="hl-warn">35B parameters</span> but only <span class="hl">3B of them are active per token</span>. 
+          The active weights are doing all the real work, and they're being quantized from an 
+          already small pool — the rounding noise has a proportionally larger effect on output quality. 
+          The u/ROS_SDN concern about "not trusting quantized small active weights" is spot on and 
+          under-discussed in quantization guides. Q8 on a sparse MoE is not the same quality 
+          trade-off as Q8 on a dense model.
+        </p>
+      </div>
+    </div>
+
+    <div class="take-item">
+      <div class="take-num">04</div>
+      <div class="take-content">
+        <h3>Structured output failures are a failure of consistency, not intelligence</h3>
+        <p>
+          The JSON fidelity problem is interesting because it's not that small models don't 
+          <em>understand</em> JSON schema — they do. The failure is in <span class="hl-accent">maintaining constraints 
+          across long token sequences</span>. This is a working-memory analog: the model knows the 
+          schema rules but "forgets" them by token 200. This is solvable with constrained decoding 
+          (llama.cpp grammar mode, Outlines, structured outputs) — which means it's more of an 
+          ecosystem/tooling gap than a fundamental model limitation.
+        </p>
+      </div>
+    </div>
+
+    <div class="take-item">
+      <div class="take-num">05</div>
+      <div class="take-content">
+        <h3>The Densing Law and MoE are on a collision course</h3>
+        <p>
+          If capability per parameter doubles every ~3.5 months, the question becomes: 
+          <em>which model type captures that gain most efficiently for local runners?</em> 
+          MoE wins on training economics and absolute speed. Dense wins on VRAM efficiency 
+          and quality-per-GB at quantized inference. As RAM constraints tighten (RAMageddon, 
+          as u/ttkciar calls it), the community will push back toward dense models for 
+          quality-sensitive work — we're already seeing this with the <span class="hl-mint">Qwen3-27B dense</span> 
+          resurgence. The ideal future isn't one model type winning — it's 
+          <span class="hl-accent">tunable sparsity at inference time</span>, which nobody has shipped reliably yet.
+        </p>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Model Selection Guide -->
+  <div class="comparison-section">
+    <div class="section-label">Model selection · When to pick what</div>
+
+    <div class="model-cards">
+
+      <div class="model-card">
+        <div class="model-card-header">
+          <span class="model-badge badge-moe">MoE</span>
+          <div class="model-card-title">Mixture of Experts</div>
+        </div>
+        <ul class="use-case-list">
+          <li>Interactive chat requiring fast token throughput</li>
+          <li>Latency-sensitive agentic loops with many short calls</li>
+          <li>RAM-constrained setups running large effective parameter counts</li>
+          <li>Tasks where speed matters more than peak accuracy</li>
+          <li>Broad general assistant use: drafting, summarization, light coding</li>
+        </ul>
+        <p style="margin-top:16px; font-size:11px; color:var(--muted);">
+          ⚠ Avoid for: precision-heavy structured output, hard multi-step reasoning, or heavy quantization scenarios
+        </p>
+      </div>
+
+      <div class="model-card">
+        <div class="model-card-header">
+          <span class="model-badge badge-small">Dense · Small</span>
+          <div class="model-card-title">7B–14B Dense</div>
+        </div>
+        <ul class="use-case-list warn">
+          <li>Edge / embedded deployment where VRAM is under 8GB</li>
+          <li>Simple instruction following and template filling</li>
+          <li>High-throughput batch classification pipelines</li>
+          <li>Quick semantic search re-ranking</li>
+          <li>Always pair with RAG — do not rely on internal knowledge</li>
+        </ul>
+        <p style="margin-top:16px; font-size:11px; color:var(--muted);">
+          ⚠ Avoid for: open-ended reasoning, long context retrieval, creative writing requiring world coherence
+        </p>
+      </div>
+
+      <div class="model-card">
+        <div class="model-card-header">
+          <span class="model-badge badge-large">Dense · Large</span>
+          <div class="model-card-title">27B–70B Dense</div>
+        </div>
+        <ul class="use-case-list mint">
+          <li>Complex multi-step reasoning and debugging chains</li>
+          <li>Strict JSON / structured output without constrained decoding</li>
+          <li>Long document analysis where context fidelity matters</li>
+          <li>Creative writing requiring physical/logical world coherence</li>
+          <li>Quality-first, latency-tolerant batch inference</li>
+        </ul>
+        <p style="margin-top:16px; font-size:11px; color:var(--muted);">
+          ⚠ Trade-off: higher VRAM cost, slower tokens/sec — but highest quality-per-GB at Q4/Q8
+        </p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Sparsity Explainer -->
+  <div class="sparsity-section">
+    <div class="sparsity-title">How Sparsity Shapes Output & Knowledge</div>
+    <p>
+      Sparsity in MoE means that for any given token, only a small fraction of the model's total parameters 
+      are activated — selected by a <em>gating network</em> that routes each token to its most relevant experts.
+    </p>
+
+    <div class="formula-block">
+      Effective "intelligence" ≈ sqrt(Total_params × Active_params)<br>
+      <span class="comment">// Qwen3.5-35B-A3B: sqrt(35B × 3B) ≈ 10.2B effective</span><br>
+      <span class="comment">// Qwen3-27B dense:  sqrt(27B × 27B) = 27B effective</span><br>
+      <span class="comment">// Missing term: gating quality (0.0 → 1.0)</span>
+    </div>
+
+    <h3 style="margin-top:24px; color:var(--accent3);">What sparsity costs</h3>
+    <p>
+      When only 3B of 35B parameters activate per token, the model is essentially running a dynamic 
+      3B dense model per forward pass — but one chosen by the gating logic. If the gate misroutes 
+      even one or two experts, you lose coverage of a specific skill domain entirely for that token. 
+      This is why sparse models can seem surprisingly competent most of the time but fail 
+      catastrophically on edge cases: the relevant expert simply wasn't activated.
+    </p>
+
+    <h3 style="margin-top:20px; color:var(--accent3);">Knowledge is distributed, not localized</h3>
+    <p>
+      Factual knowledge in LLMs isn't cleanly separated into "one expert per domain." 
+      It's distributed across many experts. Sparse models with low active counts risk 
+      <span class="hl">partial knowledge retrieval</span> — they activate experts that know 
+      <em>adjacent</em> to the correct answer but not the specific experts encoding the exact fact. 
+      This is why small sparse models hallucinate more than their effective parameter count would predict: 
+      the gating is routing to near-neighbors, not the right experts.
+    </p>
+
+    <h3 style="margin-top:20px; color:var(--accent3);">Where sparsity works perfectly</h3>
+    <p>
+      High sparsity works best when the task domain is <span class="hl-accent">narrow and well-represented</span> 
+      in training — code completion, instruction following, summarization. The gating network has 
+      learned clean routing for common task types. It breaks down on long-tail knowledge, implicit 
+      physical reasoning, and cross-domain synthesis — exactly the tasks that already struggle at small scale.
+    </p>
+
+    <h3 style="margin-top:20px; color:var(--accent3);">The quantization compounding problem</h3>
+    <p>
+      Quantizing a sparse MoE to Q4 means the already-small active weight pool is being represented 
+      with 4-bit precision. Rounding errors in 3B active weights affect 100% of the active computation. 
+      The same Q4 applied to a 27B dense model affects a pool 9× larger, so errors average out 
+      more gracefully. This is why Q4 MoE feels noticeably worse than Q4 dense at comparable 
+      active parameter counts — the math is unforgiving at small active sizes.
+    </p>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <span>Based on r/LocalLLaMA discussion thread</span>
+    <span>Claude Analysis · March 2026</span>
+  </div>
+
+</div>
+</body>
+</html>

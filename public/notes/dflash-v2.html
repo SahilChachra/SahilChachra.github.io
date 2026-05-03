@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DFlash — Deep Dive Notes</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400;1,600&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#08090c;--surface:#0f1117;--surface2:#161921;--surface3:#1d2130;--border:#1f2335;--border2:#2a2f45;--accent:#7b68ee;--accent2:#f0c060;--accent3:#50e3a4;--accent4:#ff6b6b;--accent5:#60b8f0;--text:#dde1f0;--muted:#6b7090;--muted2:#9095b0;--code-bg:#080a0f;}
+*{margin:0;padding:0;box-sizing:border-box;}html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;line-height:1.75;font-size:16px;}
+.sidebar{position:fixed;left:0;top:0;width:218px;height:100vh;background:var(--surface);border-right:1px solid var(--border);padding:28px 18px;overflow-y:auto;z-index:100;}
+.sidebar-logo{font-family:'Lora',serif;font-size:17px;font-weight:700;color:var(--text);margin-bottom:4px;}
+.sidebar-sub{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:24px;}
+.nav-group{margin-bottom:18px;}
+.nav-group-title{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;padding-left:10px;}
+.nav-link{display:block;font-size:13px;color:var(--muted2);text-decoration:none;padding:5px 10px;border-radius:5px;margin-bottom:1px;transition:all .15s;line-height:1.4;}
+.nav-link:hover{background:var(--surface2);color:var(--text);}
+.main{margin-left:218px;max-width:920px;padding:0 52px 120px;}
+.hero{padding:76px 0 60px;border-bottom:1px solid var(--border);}
+.tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.18em;color:var(--accent);background:rgba(123,104,238,.1);border:1px solid rgba(123,104,238,.22);padding:4px 12px;border-radius:4px;margin-bottom:22px;text-transform:uppercase;}
+h1{font-family:'Lora',serif;font-size:clamp(38px,6vw,66px);line-height:1.05;letter-spacing:-1.5px;margin-bottom:16px;}
+h1 em{font-style:italic;color:var(--accent);}
+.hero-sub{font-size:17px;color:var(--muted2);max-width:520px;line-height:1.65;}
+.section{padding-top:68px;}
+.section-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:.2em;text-transform:uppercase;margin-bottom:10px;}
+h2{font-family:'Lora',serif;font-size:clamp(24px,4vw,38px);line-height:1.15;margin-bottom:26px;letter-spacing:-.5px;}
+h3{font-family:'Plus Jakarta Sans',sans-serif;font-size:17px;font-weight:700;color:var(--accent2);margin:38px 0 11px;}
+h4{font-size:13.5px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.08em;margin:22px 0 9px;}
+p{margin-bottom:15px;color:#b8bcd4;}
+strong{color:var(--text);font-weight:600;}em{color:var(--accent2);font-style:italic;}
+ul,ol{color:#b8bcd4;padding-left:24px;margin-bottom:16px;}li{margin-bottom:7px;}
+hr.divider{border:none;border-top:1px solid var(--border);margin:60px 0 0;}
+code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--surface3);border:1px solid var(--border2);padding:1px 6px;border-radius:4px;color:var(--accent3);}
+.callout{border-left:3px solid var(--accent);background:rgba(123,104,238,.06);padding:17px 20px;border-radius:0 8px 8px 0;margin:20px 0;}
+.callout.yellow{border-color:var(--accent2);background:rgba(240,192,96,.06);}
+.callout.green{border-color:var(--accent3);background:rgba(80,227,164,.06);}
+.callout.red{border-color:var(--accent4);background:rgba(255,107,107,.06);}
+.callout.blue{border-color:var(--accent5);background:rgba(96,184,240,.06);}
+.callout-title{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.15em;text-transform:uppercase;margin-bottom:8px;color:var(--accent);}
+.callout.yellow .callout-title{color:var(--accent2);}.callout.green .callout-title{color:var(--accent3);}.callout.red .callout-title{color:var(--accent4);}.callout.blue .callout-title{color:var(--accent5);}
+.callout p{margin:0;font-size:14.5px;}
+.diagram{background:var(--code-bg);border:1px solid var(--border);border-radius:12px;padding:26px;margin:22px 0;overflow-x:auto;}
+.diagram-title{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.15em;text-transform:uppercase;margin-bottom:20px;}
+.arch-box{border:1px solid var(--border2);border-radius:8px;background:var(--surface2);padding:12px 16px;text-align:center;}
+.arch-box .box-label{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;margin-bottom:4px;}
+.arch-box .box-name{font-size:13px;font-weight:600;color:var(--text);}
+.arch-box .box-dim{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--muted);margin-top:3px;}
+.arch-box.purple{background:rgba(123,104,238,.12);border-color:rgba(123,104,238,.3);}.arch-box.purple .box-name{color:var(--accent);}
+.arch-box.yellow{background:rgba(240,192,96,.1);border-color:rgba(240,192,96,.28);}.arch-box.yellow .box-name{color:var(--accent2);}
+.arch-box.green{background:rgba(80,227,164,.08);border-color:rgba(80,227,164,.25);}.arch-box.green .box-name{color:var(--accent3);}
+.arch-box.red{background:rgba(255,107,107,.08);border-color:rgba(255,107,107,.25);}.arch-box.red .box-name{color:var(--accent4);}
+.arch-box.blue{background:rgba(96,184,240,.08);border-color:rgba(96,184,240,.25);}.arch-box.blue .box-name{color:var(--accent5);}
+.arch-col{display:flex;flex-direction:column;gap:7px;align-items:center;}
+.arch-row{display:flex;gap:11px;align-items:center;flex-wrap:wrap;}
+.arrow-v{text-align:center;color:var(--muted);font-size:17px;line-height:1;}
+.arrow-h{color:var(--muted);font-size:17px;flex-shrink:0;}
+.token-row{display:flex;gap:5px;flex-wrap:wrap;margin:11px 0;align-items:center;}
+.token{display:inline-flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:600;padding:6px 10px;border-radius:6px;border:1px solid;}
+.token.known{background:rgba(80,227,164,.08);border-color:rgba(80,227,164,.3);color:var(--accent3);}
+.token.draft{background:rgba(240,192,96,.1);border-color:rgba(240,192,96,.35);color:var(--accent2);}
+.token.mask{background:rgba(123,104,238,.1);border-color:rgba(123,104,238,.3);color:var(--accent);}
+.token.accepted{background:rgba(80,227,164,.15);border-color:rgba(80,227,164,.45);color:var(--accent3);}
+.token.rejected{background:rgba(255,107,107,.1);border-color:rgba(255,107,107,.35);color:var(--accent4);text-decoration:line-through;}
+.token.blue{background:rgba(96,184,240,.08);border-color:rgba(96,184,240,.28);color:var(--accent5);}
+.token-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;}
+.code-block{background:var(--code-bg);border:1px solid var(--border);border-radius:10px;margin:16px 0;overflow:hidden;}
+.code-header{background:var(--surface2);padding:9px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);}
+.code-header span{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;}
+.dots{display:flex;gap:5px;}.dot{width:9px;height:9px;border-radius:50%;}.dot:nth-child(1){background:#ff6b6b;}.dot:nth-child(2){background:var(--accent2);}.dot:nth-child(3){background:var(--accent3);}
+pre{padding:17px 21px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.75;color:#9aa5bf;}
+.k{color:#c678dd;}.kw{color:var(--accent);}.s{color:#98c379;}.c{color:#4a5068;font-style:italic;}.n{color:var(--accent2);}.f{color:#61afef;}.v{color:var(--accent3);}.m{color:#e5c07b;}.t{color:var(--accent4);}
+.compare-grid{display:grid;gap:1px;background:var(--border);border-radius:10px;overflow:hidden;margin:18px 0;}
+.cg3{grid-template-columns:1.4fr 1fr 1fr;}.cg4{grid-template-columns:1.3fr 1fr 1fr 1fr;}
+.compare-cell{background:var(--surface);padding:14px 17px;font-size:14px;}
+.compare-cell.header{background:var(--surface2);font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);}
+.cc-title{font-weight:600;color:var(--text);margin-bottom:3px;font-size:13.5px;}.cc-val{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#b8bcd4;}
+.cc-val.good{color:var(--accent3);}.cc-val.bad{color:var(--accent4);}.cc-val.mid{color:var(--accent2);}.cc-val.info{color:var(--accent5);}
+.badge{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:10px;padding:3px 7px;border-radius:4px;font-weight:600;letter-spacing:.04em;}
+.badge.yes{background:rgba(80,227,164,.12);color:var(--accent3);border:1px solid rgba(80,227,164,.28);}.badge.part{background:rgba(240,192,96,.1);color:var(--accent2);border:1px solid rgba(240,192,96,.28);}.badge.no{background:rgba(255,107,107,.08);color:var(--accent4);border:1px solid rgba(255,107,107,.22);}
+.step-list{list-style:none;margin:16px 0;}.step-list li{display:flex;gap:13px;padding:13px 0;border-bottom:1px solid rgba(31,35,53,.8);list-style:none;}.step-list li:last-child{border-bottom:none;}
+.step-num{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--accent);background:rgba(123,104,238,.1);border:1px solid rgba(123,104,238,.22);width:29px;height:29px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:3px;}
+.step-content strong{display:block;color:var(--text);margin-bottom:3px;font-size:14.5px;}.step-content span{color:var(--muted2);font-size:13.5px;}
+.speed-bar-wrap{margin:9px 0;}.speed-bar-label{display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted2);margin-bottom:5px;}.speed-bar{height:7px;border-radius:4px;background:var(--surface2);overflow:hidden;}.speed-bar-fill{height:100%;border-radius:4px;}
+.model-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px;}.model-table th{font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);padding:10px 13px;text-align:left;border-bottom:1px solid var(--border);}.model-table td{padding:11px 13px;border-bottom:1px solid rgba(31,35,53,.5);color:#b8bcd4;vertical-align:middle;}.model-table tr:hover td{background:rgba(123,104,238,.03);}
+.gpu-meters{display:flex;gap:14px;flex-wrap:wrap;margin:18px 0;}
+.gpu-card{flex:1;min-width:175px;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:16px;}
+.gpu-card .gpu-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:13px;}
+.gpu-seg{margin-bottom:7px;}.gpu-seg-label{display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted2);margin-bottom:4px;}.gpu-bar{height:6px;border-radius:3px;background:var(--surface);overflow:hidden;}.gpu-fill{height:100%;border-radius:3px;}
+.fill-purple{background:linear-gradient(90deg,var(--accent),#9d8ef5);}.fill-yellow{background:linear-gradient(90deg,var(--accent2),#f8d88a);}.fill-green{background:linear-gradient(90deg,var(--accent3),#8af5cd);}.fill-blue{background:linear-gradient(90deg,var(--accent5),#90d0f5);}
+.verdict{background:linear-gradient(135deg,rgba(123,104,238,.08) 0%,rgba(80,227,164,.05) 100%);border:1px solid rgba(123,104,238,.22);border-radius:12px;padding:26px;margin:36px 0;}
+.verdict h3{margin-top:0;color:var(--accent3);}
+@media(max-width:900px){.sidebar{display:none;}.main{margin-left:0;padding:0 20px 80px;}}
+</style>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="sidebar-logo">DFlash</div>
+  <div class="sidebar-sub">Deep Dive · May 2026</div>
+  <div class="nav-group"><div class="nav-group-title">Foundations</div>
+    <a href="#basics" class="nav-link">Why LLMs are slow</a>
+    <a href="#speculative" class="nav-link">How draft models work</a>
+  </div>
+  <div class="nav-group"><div class="nav-group-title">EAGLE-3</div>
+    <a href="#eagle-arch" class="nav-link">Architecture deep dive</a>
+    <a href="#eagle-flow" class="nav-link">Hidden states explained</a>
+    <a href="#eagle-limit" class="nav-link">Its bottleneck</a>
+  </div>
+  <div class="nav-group"><div class="nav-group-title">Diffusion</div>
+    <a href="#diffusion-images" class="nav-link">Image diffusion basics</a>
+    <a href="#diffusion-text" class="nav-link">Text diffusion (dLLMs)</a>
+    <a href="#diffusion-access" class="nav-link">Accessing LLM internals</a>
+  </div>
+  <div class="nav-group"><div class="nav-group-title">DFlash</div>
+    <a href="#dflash-idea" class="nav-link">The core idea</a>
+    <a href="#dflash-arch" class="nav-link">Full architecture</a>
+    <a href="#dflash-code" class="nav-link">Technical walkthrough + code</a>
+    <a href="#same-model" class="nav-link">Same model as drafter</a>
+    <a href="#gpu-usage" class="nav-link">GPU memory breakdown</a>
+  </div>
+  <div class="nav-group"><div class="nav-group-title">Practical</div>
+    <a href="#howgood" class="nav-link">Benchmarks</a>
+    <a href="#supported" class="nav-link">Supported models</a>
+    <a href="#running" class="nav-link">How to run it</a>
+    <a href="#when" class="nav-link">When to use it</a>
+  </div>
+</nav>
+<div class="main">
+<div class="hero">
+  <div class="tag">Deep Dive Notes · May 2026</div>
+  <h1>Understanding<br><em>DFlash</em></h1>
+  <p class="hero-sub">Complete technical notes — EAGLE-3 architecture, how diffusion accesses a model's internals, DFlash code walkthrough, GPU usage, and copy-paste commands to run it yourself.</p>
+</div>
+
+<!-- ═══ S1: WHY SLOW ═══ -->
+<div class="section" id="basics">
+<div class="section-label">Foundation · 01</div>
+<h2>Why is LLM inference slow?</h2>
+<p>Language models generate text by producing <strong>one token at a time</strong>, where every new token depends on all previous tokens. This is called <em>autoregressive generation</em>. A token is roughly one word or word fragment — "Paris" = 1 token, "unbelievable" = 3 tokens.</p>
+<p>The core problem: <strong>each token needs a full forward pass through the entire model</strong>. For a 27B parameter model, that means 27 billion multiplications, every single token. And you can't skip ahead — token 7 depends on tokens 1–6 already existing.</p>
+<div class="callout blue">
+<div class="callout-title">🧠 What is a forward pass?</div>
+<p>A forward pass is when data travels through the entire neural network from input to output. Each transformer layer does matrix multiplications on all the token representations. For a 32-layer model, that's 32 rounds of heavy math, outputting one token at the end. You then feed that token back in and do it again for the next token.</p>
+</div>
+<div class="diagram">
+<div class="diagram-title">The Sequential Bottleneck</div>
+<div style="margin-bottom:16px;"><div class="token-label">Your prompt — processed in ONE fast parallel pass (like reading the whole sentence at once)</div>
+<div class="token-row"><div class="token known">The</div><div class="token known">capital</div><div class="token known">of</div><div class="token known">France</div><div class="token known">is</div></div></div>
+<div><div class="token-label">Response — one full model forward pass per token, sequential, can't parallelize</div>
+<div class="arch-row" style="flex-wrap:nowrap;overflow-x:auto;gap:4px;">
+<div class="arch-box purple" style="min-width:75px;"><div class="box-label">pass 1</div><div class="box-name">Paris</div></div>
+<div class="arrow-h">→</div>
+<div class="arch-box purple" style="min-width:75px;"><div class="box-label">pass 2</div><div class="box-name">.</div></div>
+<div class="arrow-h">→</div>
+<div class="arch-box purple" style="min-width:75px;"><div class="box-label">pass 3</div><div class="box-name">It</div></div>
+<div class="arrow-h">→</div>
+<div class="arch-box purple" style="min-width:75px;"><div class="box-label">pass 4</div><div class="box-name">is</div></div>
+<div class="arrow-h">→</div>
+<div class="arch-box purple" style="min-width:75px;"><div class="box-label">pass 5</div><div class="box-name">known</div></div>
+<div class="arrow-h">→ ...</div>
+</div>
+<p style="margin-top:11px;font-size:13px;color:var(--muted);">GPUs are built for doing millions of operations in parallel. But here, each pass waits for the previous one. You're using maybe 5% of your GPU's capability.</p>
+</div>
+</div>
+</div>
+<hr class="divider">
+
+<!-- ═══ S2: DRAFT MODELS ═══ -->
+<div class="section" id="speculative">
+<div class="section-label">Foundation · 02</div>
+<h2>How Draft Models Work</h2>
+<p>The insight: use a <strong>cheap fast model to guess ahead</strong>, then let the big model <strong>verify all guesses simultaneously</strong> in one parallel pass.</p>
+<ul class="step-list">
+<li><div class="step-num">1</div><div class="step-content"><strong>Draft model guesses K tokens fast</strong><span>A tiny model (much smaller than the main model) predicts the next 5–16 tokens. It's cheaper because it has far fewer layers. It's wrong sometimes, but wrong drafts get caught.</span></div></li>
+<li><div class="step-num">2</div><div class="step-content"><strong>Big model verifies all K drafts in one pass</strong><span>The transformer can read all K draft tokens simultaneously — just like it reads your prompt in one pass. This single verification step is the cost of ~1 normal token generation.</span></div></li>
+<li><div class="step-num">3</div><div class="step-content"><strong>Accept correct tokens, fix first wrong one</strong><span>Any draft token the big model agrees with is accepted. At the first disagreement, the big model's correction is used and drafting restarts.</span></div></li>
+<li><div class="step-num">4</div><div class="step-content"><strong>Output is mathematically lossless</strong><span>You only accept what the big model would have produced anyway. The output distribution is identical to running the big model alone. Speed, no quality cost.</span></div></li>
+</ul>
+<div class="diagram">
+<div class="diagram-title">Draft-Verify Cycle Example</div>
+<div style="margin-bottom:13px;"><div class="token-label">Draft model guesses 6 tokens:</div>
+<div class="token-row"><div class="token known">Paris</div><div class="token known">is</div><div class="token draft">a</div><div class="token draft">beautiful</div><div class="token draft">historic</div><div class="token draft">city</div><div class="token draft">in</div><div class="token draft">Europe</div></div></div>
+<div style="margin-bottom:13px;"><div class="token-label">Big model verifies all 6 in ONE pass — accepts/rejects:</div>
+<div class="token-row"><div class="token known">Paris</div><div class="token known">is</div><div class="token accepted">a</div><div class="token accepted">beautiful</div><div class="token accepted">historic</div><div class="token rejected">city</div><div class="token rejected">in</div><div class="token rejected">Europe</div></div></div>
+<div><div class="token-label">Result: 3 accepted + big model's correction "capital":</div>
+<div class="token-row"><div class="token known">Paris</div><div class="token known">is</div><div class="token accepted">a</div><div class="token accepted">beautiful</div><div class="token accepted">historic</div><div class="token blue">capital</div></div>
+<p style="margin-top:9px;font-size:13px;color:var(--accent3);">4 new tokens for ~cost of 1 big model pass. Net speedup.</p>
+</div>
+</div>
+</div>
+<hr class="divider">
+
+<!-- ═══ S3: EAGLE-3 ═══ -->
+<div class="section" id="eagle-arch">
+<div class="section-label">EAGLE-3 · 03</div>
+<h2>EAGLE-3: Architecture Deep Dive</h2>
+<p>EAGLE-3 is the previous state-of-the-art for speculative decoding. Instead of a completely separate small model, it attaches a tiny "draft head" directly to the big model and feeds it the big model's internal representations. Let's understand every component.</p>
+
+<h3 id="eagle-flow">What is a Hidden State?</h3>
+<p>This is the most important concept in this whole document. You must understand it to understand EAGLE-3 and DFlash.</p>
+<p>A transformer model has many layers stacked on top of each other — think of them as processing stages. After each layer, every token position has a <strong>hidden state</strong>: a large vector of numbers. For an 8B model this is 4096 numbers. For a 27B model it might be 7168 numbers.</p>
+<div class="callout blue">
+<div class="callout-title">🧠 Hidden States — the model's "thoughts" at each layer</div>
+<p>A hidden state is NOT just the token identity. It's a rich numerical encoding of <em>meaning in context</em>. The hidden state of the word "bank" in "I deposited money at the bank" looks completely different from "bank" in "I sat by the river bank" — even though it's the same word. The model has already resolved the ambiguity. Critically: later hidden states implicitly encode information about what token logically comes next. This is what draft models exploit.</p>
+</div>
+<div class="diagram">
+<div class="diagram-title">Hidden States Inside a Transformer — What They Are</div>
+<div class="arch-row" style="align-items:flex-start;gap:18px;">
+<div style="flex:0 0 180px;">
+<div class="arch-col">
+<div class="arch-box" style="width:170px;"><div class="box-label">Input</div><div class="box-name">Token IDs</div><div class="box-dim">[seq_len]</div></div>
+<div class="arrow-v">↓ embedding</div>
+<div class="arch-box blue" style="width:170px;"><div class="box-label">Layer 0 (embedding)</div><div class="box-name">h₀</div><div class="box-dim">[seq_len, 4096]</div></div>
+<div class="arrow-v">↓</div>
+<div class="arch-box blue" style="width:170px;"><div class="box-label">Layer 8 (early)</div><div class="box-name">h₈ — syntax</div><div class="box-dim">"is this a noun?"</div></div>
+<div class="arrow-v">↓</div>
+<div class="arch-box blue" style="width:170px;"><div class="box-label">Layer 16 (middle)</div><div class="box-name">h₁₆ — semantics</div><div class="box-dim">"what does it mean?"</div></div>
+<div class="arrow-v">↓</div>
+<div class="arch-box blue" style="width:170px;"><div class="box-label">Layer 32 (final)</div><div class="box-name">h₃₂ — prediction</div><div class="box-dim">"what comes next?"</div></div>
+<div class="arrow-v">↓ LM Head</div>
+<div class="arch-box purple" style="width:170px;"><div class="box-label">Output</div><div class="box-name">Token logits</div><div class="box-dim">[vocab_size ≈ 100k]</div></div>
+</div>
+</div>
+<div style="flex:1;padding-top:6px;">
+<p style="font-size:14px;color:var(--muted2);">Each hidden state <code>hₙ</code> is a vector of floats, one per layer, one per token position. A sequence of 512 tokens in a 32-layer 8B model generates 32 × 512 hidden state vectors — each 4096 floats wide.</p>
+<p style="font-size:14px;color:var(--muted2);">Early layers learn local patterns — grammar, part-of-speech. Middle layers learn semantics — what words mean in context. Late layers are "prediction-ready" — they encode what the next token should be.</p>
+<p style="font-size:14px;color:var(--muted2);">EAGLE-3 extracts <strong>3 specific hidden states</strong> (early, mid, late) and fuses them. DFlash extracts hidden states <strong>from many layers uniformly</strong> and injects them even more deeply into the drafter.</p>
+</div>
+</div>
+</div>
+
+<h3>EAGLE-3 Three Components</h3>
+<p>EAGLE-3 is built from three chained pieces. Here is the full architecture:</p>
+<div class="diagram">
+<div class="diagram-title">EAGLE-3 Complete Architecture</div>
+<div class="arch-row" style="align-items:flex-start;gap:16px;flex-wrap:wrap;">
+<div style="min-width:155px;">
+<div class="arch-col">
+<div class="arch-box" style="width:155px;"><div class="box-label">Target Model (e.g. Llama-3.1-8B)</div><div class="box-name">32 Transformer Layers</div><div class="box-dim">full forward pass</div></div>
+<div class="arrow-v">↓ extract 3 layers</div>
+<div class="arch-box blue" style="width:155px;"><div class="box-label">h_low + h_mid + h_high</div><div class="box-name">3 hidden states</div><div class="box-dim">3 × 4096 = 12,288 dims</div></div>
+</div>
+</div>
+<div class="arrow-h" style="margin-top:70px;">→</div>
+<div style="min-width:148px;">
+<div class="arch-col">
+<div class="arch-box yellow" style="width:148px;"><div class="box-label">Component 1: Encoder (FC Layer)</div><div class="box-name">Feature Fusion</div><div class="box-dim">12,288 → 4096</div></div>
+<div style="margin-top:9px;font-size:12px;color:var(--muted2);text-align:center;">Concatenates + compresses<br>3 hidden states into one<br>4096-dim fused vector</div>
+</div>
+</div>
+<div class="arrow-h" style="margin-top:30px;">→</div>
+<div style="min-width:148px;">
+<div class="arch-col">
+<div class="arch-box purple" style="width:148px;"><div class="box-label">Component 2: Decoder</div><div class="box-name">1 Transformer Layer</div><div class="box-dim">autoregressive loop</div></div>
+<div class="arrow-v">↓ K times (1 per draft token)</div>
+<div class="arch-box green" style="width:148px;"><div class="box-label">Component 3: Output</div><div class="box-name">Draft Token Tree</div><div class="box-dim">5–7 tokens, branching</div></div>
+</div>
+</div>
+</div>
+</div>
+
+<h4>Component 1: The Feature Fusion (FC Layer)</h4>
+<p>EAGLE-1 only used the final layer's hidden state. EAGLE-3 improves this with <strong>tri-layer fusion</strong>. It samples hidden states from three points in the target model:</p>
+<div class="callout">
+<div class="callout-title">📐 Concrete example — Llama-3.1-8B (hidden dim = 4096, 32 layers)</div>
+<p><strong>h_low</strong> (layer 8): encodes syntax and local token context → 4096 floats<br>
+<strong>h_mid</strong> (layer 16): encodes semantic meaning in context → 4096 floats<br>
+<strong>h_high</strong> (layer 32, final): encodes next-token prediction signals → 4096 floats<br><br>
+Concatenate: [h_low || h_mid || h_high] = 12,288 floats<br>
+FC layer compresses: 12,288 → 4096 floats<br>
+The FC layer is <em>learned</em> — it learns which signals from which layers matter most for predicting future tokens.</p>
+</div>
+<p>Why three layers? Because different things matter. Early layers know grammar. Middle layers know meaning. Late layers know what's likely next. Together they give the drafter a holistic picture of what the big model is "thinking."</p>
+
+<h4>Component 2: The Draft Decoder (1 transformer layer)</h4>
+<p>The decoder is a single standard transformer decoder layer — it's tiny, about 277 MB. It receives two things:</p>
+<ul>
+<li>The 4096-dim fused feature from Component 1</li>
+<li>The embedding of the last generated draft token (as input to the next step)</li>
+</ul>
+<p>It autoregressively produces one draft token, then feeds that back in to produce the next. For 7 draft tokens, this loop runs 7 times.</p>
+
+<h4>The Draft Tree (not just a sequence)</h4>
+<p>EAGLE-3 doesn't output just a single chain of tokens. At each step it considers the top-N most probable tokens and creates branching paths. The target model verifies the entire tree in one pass and accepts the longest matching path.</p>
+<div class="diagram">
+<div class="diagram-title">EAGLE-3 Draft Tree (simplified) — Multiple Paths Explored</div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted2);line-height:2.3;">
+<div style="margin-left:80px;">[After "Paris is a..."]</div>
+<div style="margin-left:40px;">┌────────────────┴────────────────┐</div>
+<div style="color:var(--accent2);margin-left:0;">[beautiful...]&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:var(--accent3);">[historic...]</span></div>
+<div>┌──────┴──────┐&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;┌──────┴──────┐</div>
+<div><span style="color:var(--accent2);">[city]</span>&nbsp;&nbsp;<span style="color:var(--accent2);">[capital]</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:var(--accent3);">[city]</span>&nbsp;&nbsp;<span style="color:var(--accent3);">[capital]</span></div>
+</div>
+<p style="margin-top:14px;font-size:13px;color:var(--muted);">The big model verifies all 4 leaf paths simultaneously. If it agrees with "historic capital" the model accepts 2 tokens. This tree structure gives EAGLE-3 better acceptance rates than a simple linear draft.</p>
+</div>
+
+<div id="eagle-limit"></div>
+<h3>EAGLE-3's Hard Ceiling</h3>
+<p>Despite being clever, EAGLE-3 has a fundamental limitation baked into its design: <strong>the decoder generates one token at a time</strong>. Seven draft tokens = seven sequential decoder runs. The latency stacks up.</p>
+<p>To compensate, EAGLE-3 keeps its decoder at exactly <strong>one transformer layer</strong>. Adding a second layer would double the per-step compute, making the sequential cost too high. So EAGLE-3 is permanently stuck with a very shallow, limited draft model.</p>
+<div class="callout red">
+<div class="callout-title">⚠️ EAGLE-3's Architectural Bottleneck</div>
+<p>Drafting is still sequential (N steps for N tokens) → can't parallelize<br>
+Decoder forced to 1 layer → low model capacity → lower acceptance rate<br>
+Maximum practical speedup: ~3–4× (hard ceiling, hard to push beyond)</p>
+</div>
+
+<div class="code-block">
+<div class="code-header"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><span>python · eagle-3 draft loop (showing the bottleneck)</span></div>
+<pre><span class="c"># EAGLE-3: generates K draft tokens in K sequential steps
+# Each step depends on the previous — cannot be parallelized</span>
+draft_tokens = []
+current_input = fused_features  <span class="c"># 4096-dim vector from target model</span>
+
+<span class="k">for</span> step <span class="k">in</span> <span class="f">range</span>(K):   <span class="c"># K = 7 → 7 sequential decoder runs</span>
+    logits = <span class="f">eagle_decoder_layer</span>(current_input)  <span class="c"># 1 transformer layer</span>
+    next_token = <span class="f">sample</span>(logits)
+    draft_tokens.<span class="f">append</span>(next_token)
+    current_input = <span class="f">embed</span>(next_token)  <span class="c"># feed back for next step</span>
+    <span class="c"># ↑ each iteration WAITS for the previous one — pure sequential</span>
+
+<span class="c"># Result: 7 tokens from 7 sequential passes through 1 decoder layer
+# DFlash will replace this entire loop with ONE parallel pass</span></pre>
+</div>
+<div class="code-block">
+<div class="code-header"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><span>vllm · run eagle-3 (for comparison)</span></div>
+<pre><span class="f">vllm</span> serve <span class="m">meta-llama/Llama-3.3-70B-Instruct</span> \
+  <span class="kw">--speculative-config</span> <span class="s">'{"model": "yuhuili/EAGLE3-LLaMA3.3-Instruct-70B",
+    "num_speculative_tokens": 3,
+    "method": "eagle3",
+    "draft_tensor_parallel_size": 1}'</span>
+<span class="c"># Draft head is tiny (~277 MB), co-deployed on same GPU as target
+# num_speculative_tokens: start at 3-5 for most tasks</span></pre>
+</div>
+</div>
+<hr class="divider">
+
+<!-- ═══ S4: DIFFUSION ═══ -->
+<div class="section" id="diffusion-images">
+<div class="section-label">Diffusion · 04</div>
+<h2>Diffusion Models: From Images to Text</h2>
+
+<h3>Part 1 — Image Diffusion (the original idea)</h3>
+<p>Diffusion models were invented for images first. Here's how they work conceptually:</p>
+<p>Imagine you take a clear photo of a cat and add random noise to it — like TV static. Each step you add more noise until the image is completely unrecognizable. Now train a neural network to do the reverse: given a noisy image, predict how to make it slightly cleaner. This network learns the "denoising direction."</p>
+<p>At inference time (generating a new image): start with pure noise, apply the denoising network 20–50 times, and a clear image emerges. The crucial property: <strong>the network processes all pixels simultaneously at each step</strong> — not one pixel at a time. This is massively parallel.</p>
+
+<div id="diffusion-text"></div>
+<h3>Part 2 — Text Diffusion (dLLMs)</h3>
+<p>For text, you can't add Gaussian noise to pixels — you have discrete tokens. Instead, text diffusion uses <strong>masking</strong>: randomly mask tokens (replace with [?]) and train the network to predict what should fill each masked position.</p>
+<p>The key property carries over: the model fills ALL masked positions at once in one forward pass. This is called <strong>masked language modeling</strong> at generation time.</p>
+<div class="diagram">
+<div class="diagram-title">Text Diffusion — Iterative Denoising (all positions updated in parallel each step)</div>
+<div style="margin-bottom:16px;"><div class="token-label">Step 0: all tokens masked</div>
+<div class="token-row"><div class="token mask">[?]</div><div class="token mask">[?]</div><div class="token mask">[?]</div><div class="token mask">[?]</div><div class="token mask">[?]</div><div class="token mask">[?]</div></div></div>
+<div style="margin-bottom:16px;"><div class="token-label">Step 1: model fills highest-confidence positions (all positions evaluated simultaneously)</div>
+<div class="token-row"><div class="token accepted">Paris</div><div class="token mask">[?]</div><div class="token accepted">a</div><div class="token mask">[?]</div><div class="token accepted">city</div><div class="token mask">[?]</div></div></div>
+<div><div class="token-label">Step 2: fills remaining — final output</div>
+<div class="token-row"><div class="token accepted">Paris</div><div class="token accepted">is</div><div class="token accepted">a</div><div class="token accepted">beautiful</div><div class="token accepted">city</div><div class="token accepted">.</div></div></div>
+</div>
+<div class="callout red">
+<div class="callout-title">⚠️ Why pure text diffusion models aren't used as main models</div>
+<p>Autoregressive models (GPT, Llama, Qwen) condition each token on all previous tokens in strict order. This produces very precise, coherent token probability distributions. Text diffusion models generate tokens in parallel but sacrifice that strict sequential conditioning — their outputs are less precise, and they can't exactly match an autoregressive model's distribution. Fast, but lower quality. DFlash sidesteps this by only using diffusion for drafting, not final output.</p>
+</div>
+
+<div id="diffusion-access"></div>
+<h3>Part 3 — How the Drafter Accesses LLM Internals</h3>
+<p>This is the most technical part. How exactly does a diffusion draft model "look inside" the big model?</p>
+<p>There are two mechanisms: <strong>feature extraction</strong> (pulling hidden states out) and <strong>KV injection</strong> (pushing them into every draft layer). Together they make the drafter's predictions much better than if it ran alone.</p>
+
+<h4>Mechanism 1 — Feature Extraction</h4>
+<p>During every big model forward pass, you can request the hidden states from every layer. This is just a flag you pass to the model. Once you have them, you sample uniformly across all layers (not just 3 like EAGLE-3), project them with a small linear layer, and fuse them into one conditioning vector:</p>
+<div class="code-block">
+<div class="code-header"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><span>python · extracting hidden states from a HuggingFace model</span></div>
+<pre><span class="k">import</span> torch
+
+<span class="c"># Forward pass with output_hidden_states=True</span>
+<span class="c"># This returns the hidden state tensor at every layer — no extra compute!</span>
+outputs = <span class="f">big_model</span>(
+    input_ids=token_ids,                <span class="c"># [batch, seq_len]</span>
+    output_hidden_states=<span class="v">True</span>          <span class="c"># the magic flag</span>
+)
+
+<span class="c"># outputs.hidden_states is a tuple of tensors, one per layer:
+# hidden_states[0]  → shape [batch, seq_len, 4096]  (embedding layer)
+# hidden_states[8]  → shape [batch, seq_len, 4096]  (layer 8 = early)
+# hidden_states[16] → shape [batch, seq_len, 4096]  (layer 16 = mid)
+# hidden_states[32] → shape [batch, seq_len, 4096]  (layer 32 = final)</span>
+
+num_layers = <span class="f">len</span>(outputs.hidden_states)            <span class="c"># e.g. 33 (0 to 32)</span>
+
+<span class="c"># Sample uniformly across layers (DFlash samples more than EAGLE-3)</span>
+step = num_layers <span class="k">//</span> <span class="n">6</span>
+sampled = [outputs.hidden_states[i][<span class="n">0</span>, <span class="n">-1</span>, :]   <span class="c"># last token position</span>
+           <span class="k">for</span> i <span class="k">in</span> <span class="f">range</span>(<span class="n">0</span>, num_layers, step)]   <span class="c"># sample every 5th layer</span>
+<span class="c"># sampled: list of 6 tensors, each [4096]</span>
+
+stacked = <span class="f">torch.stack</span>(sampled, dim=<span class="n">0</span>)             <span class="c"># [6, 4096]</span>
+fused = <span class="f">feature_projector</span>(stacked)                <span class="c"># learned FC → [4096]</span>
+<span class="c"># fused is the distilled "essence" of what the big model knows about context</span></pre>
+</div>
+
+<h4>Mechanism 2 — KV Cache Injection</h4>
+<p>In a standard transformer layer, attention is computed like this: Query vectors from the current token ask "what am I looking for?" and Key/Value vectors from all other tokens answer "here's what I have, and here's what I carry." The attention scores determine how much each token's Value contributes to the output.</p>
+<p>DFlash injects the big model's fused features directly into the Key and Value projections of <em>every draft layer</em>. This means the drafter "attends to" the big model's knowledge at every layer of its computation — not just at the input as in EAGLE-3.</p>
+<div class="code-block">
+<div class="code-header"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><span>python · standard attention vs. DFlash KV injection</span></div>
+<pre><span class="c">########################################
+# Standard transformer attention
+########################################</span>
+d = <span class="n">64</span>  <span class="c"># head dimension</span>
+Q = <span class="f">linear_q</span>(hidden)       <span class="c"># [seq, d] — "what am I looking for?"</span>
+K = <span class="f">linear_k</span>(hidden)       <span class="c"># [seq, d] — "what do I have as keys?"</span>
+V = <span class="f">linear_v</span>(hidden)       <span class="c"># [seq, d] — "what info do I carry?"</span>
+
+scores = <span class="f">softmax</span>(Q @ K.T / d**<span class="n">0.5</span>)  <span class="c"># [seq, seq] attention weights</span>
+output = scores @ V                   <span class="c"># [seq, d] attended output</span>
+
+<span class="c">########################################
+# DFlash attention with KV injection
+########################################</span>
+<span class="c"># The big model's fused features are projected to K and V space</span>
+K_from_big = <span class="f">linear_k_inject</span>(fused_features)   <span class="c"># [1, d]</span>
+V_from_big = <span class="f">linear_v_inject</span>(fused_features)   <span class="c"># [1, d]</span>
+
+<span class="c"># Concatenate draft model's own KV with injected KV from big model</span>
+K_combined = <span class="f">torch.cat</span>([<span class="f">linear_k</span>(hidden), K_from_big], dim=<span class="n">0</span>)  <span class="c"># [seq+1, d]</span>
+V_combined = <span class="f">torch.cat</span>([<span class="f">linear_v</span>(hidden), V_from_big], dim=<span class="n">0</span>)  <span class="c"># [seq+1, d]</span>
+
+<span class="c"># Now every draft token attends to BOTH draft context AND big model knowledge</span>
+scores = <span class="f">softmax</span>(Q @ K_combined.T / d**<span class="n">0.5</span>)  <span class="c"># [seq, seq+1]</span>
+output = scores @ V_combined                    <span class="c"># [seq, d]</span>
+<span class="c"># This is done at EVERY draft layer — not just the first</span></pre>
+</div>
+
+<h4>Why non-causal attention enables parallel generation</h4>
+<p>Normally, attention is <strong>causal</strong>: token 5 can only see tokens 1–5, not 6 onward. This enforces left-to-right ordering, which is essential for autoregressive generation.</p>
+<p>DFlash's draft model uses <strong>non-causal (bidirectional) attention</strong> among draft positions. All 16 [?] mask tokens see each other. This is what lets all 16 draft tokens be generated simultaneously — they inform each other's predictions during the single forward pass.</p>
+<div class="code-block">
+<div class="code-header"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><span>python · causal mask vs. bidirectional mask</span></div>
+<pre><span class="c"># CAUSAL mask — standard autoregressive (EAGLE-3's decoder uses this)
+# 1 = can attend, 0 = blocked</span>
+causal = torch.tensor([
+    [<span class="n">1</span>, <span class="t">0</span>, <span class="t">0</span>, <span class="t">0</span>],  <span class="c"># pos 0: sees only itself</span>
+    [<span class="n">1</span>, <span class="n">1</span>, <span class="t">0</span>, <span class="t">0</span>],  <span class="c"># pos 1: sees 0,1</span>
+    [<span class="n">1</span>, <span class="n">1</span>, <span class="n">1</span>, <span class="t">0</span>],  <span class="c"># pos 2: sees 0,1,2</span>
+    [<span class="n">1</span>, <span class="n">1</span>, <span class="n">1</span>, <span class="n">1</span>],  <span class="c"># pos 3: sees all</span>
+])
+<span class="c"># Each position must be generated one at a time — SEQUENTIAL</span>
+
+<span class="c"># BIDIRECTIONAL (non-causal) mask — DFlash draft model uses this</span>
+bidirectional = torch.tensor([
+    [<span class="n">1</span>, <span class="n">1</span>, <span class="n">1</span>, <span class="n">1</span>],  <span class="c"># draft[?] 0 sees all draft positions</span>
+    [<span class="n">1</span>, <span class="n">1</span>, <span class="n">1</span>, <span class="n">1</span>],  <span class="c"># draft[?] 1 sees all draft positions</span>
+    [<span class="n">1</span>, <span class="n">1</span>, <span class="n">1</span>, <span class="n">1</span>],  <span class="c"># draft[?] 2 sees all draft positions</span>
+    [<span class="n">1</span>, <span class="n">1</span>, <span class="n">1</span>, <span class="n">1</span>],  <span class="c"># draft[?] 3 sees all draft positions</span>
+])
+<span class="c"># All positions computed at once — ONE FORWARD PASS for 16 tokens</span></pre>
+</div>
+</div>
+<hr class="divider">
+
+<!-- ═══ S5: DFLASH ═══ -->
+<div class="section" id="dflash-idea">
+<div class="section-label">DFlash · 05</div>
+<h2>DFlash: Full Technical Architecture</h2>
+<p>DFlash combines three insights: (1) use diffusion for parallel draft generation, (2) condition the diffusion drafter deeply on the big model's multi-layer hidden states, (3) inject those features into every draft layer's KV cache so the drafter is continuously informed at every computation step.</p>
+
+<div id="dflash-arch"></div>
+<h3>The Complete Pipeline</h3>
+<div class="diagram">
+<div class="diagram-title">DFlash — One Full Inference Cycle</div>
+<div style="display:flex;flex-direction:column;gap:10px;">
+<div class="arch-row" style="gap:10px;">
+<div class="arch-box" style="flex:1;min-width:140px;"><div class="box-label">Step 1</div><div class="box-name">Big model forward pass</div><div class="box-dim">normal generation step, output_hidden_states=True</div></div>
+<div class="arrow-h">→</div>
+<div class="arch-box blue" style="flex:1;min-width:140px;"><div class="box-label">Step 2</div><div class="box-name">Extract hidden states from N layers uniformly</div><div class="box-dim">h₁, h₅, h₁₀, h₁₅, h₂₀, h₂₇</div></div>
+<div class="arrow-h">→</div>
+<div class="arch-box yellow" style="flex:1;min-width:140px;"><div class="box-label">Step 3</div><div class="box-name">Feature fusion projection</div><div class="box-dim">N×d_model → d_model</div></div>
+</div>
+<div class="arch-row" style="gap:10px;">
+<div class="arch-box purple" style="flex:1.5;min-width:180px;"><div class="box-label">Step 4</div><div class="box-name">Draft model: inject fused features into all K/V layers, generate 16 [?] tokens simultaneously (non-causal attention, one forward pass)</div></div>
+<div class="arrow-h">→</div>
+<div class="arch-box green" style="flex:1;min-width:140px;"><div class="box-label">Step 5</div><div class="box-name">Big model verifies 16 drafts in one pass</div><div class="box-dim">accept / reject per position</div></div>
+<div class="arrow-h">→</div>
+<div class="arch-box" style="flex:0.7;min-width:100px;"><div class="box-label">Step 6</div><div class="box-name">Repeat</div></div>
+</div>
+</div>
+</div>
+
+<div id="dflash-code"></div>
+<h3>Full Code Walkthrough (Annotated Pseudocode)</h3>
+<div class="code-block">
+<div class="code-header"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><span>python · complete DFlash inference cycle with explanations</span></div>
+<pre><span class="c">##########################################################
+# STEP 1: Run big model forward pass
+# Identical to normal generation — just add output_hidden_states=True
+##########################################################</span>
+big_outputs = <span class="f">big_model</span>(
+    input_ids=current_tokens,           <span class="c"># [1, seq_len]</span>
+    use_cache=<span class="v">True</span>,                   <span class="c"># reuse KV cache from previous tokens</span>
+    output_hidden_states=<span class="v">True</span>          <span class="c"># ← DFlash needs these</span>
+)
+<span class="c"># big_outputs.hidden_states: tuple of (num_layers+1) tensors
+# each tensor shape: [1, seq_len, hidden_size]</span>
+last_token_logits = big_outputs.logits[<span class="n">0</span>, <span class="n">-1</span>]   <span class="c"># [vocab_size]</span>
+
+<span class="c">##########################################################
+# STEP 2: Extract hidden states from multiple layers
+##########################################################</span>
+all_hidden = big_outputs.hidden_states            <span class="c"># tuple of num_layers tensors</span>
+num_layers = <span class="f">len</span>(all_hidden)                     <span class="c"># e.g. 33 for 32-layer model</span>
+
+<span class="c"># Sample uniformly across all layers (more coverage than EAGLE-3's 3 layers)</span>
+extract_layers = <span class="f">list</span>(<span class="f">range</span>(<span class="n">1</span>, num_layers, num_layers <span class="k">//</span> <span class="n">6</span>))  <span class="c"># e.g. [1,6,11,17,22,27]</span>
+sampled = <span class="f">torch.stack</span>(
+    [all_hidden[i][<span class="n">0</span>, <span class="n">-1</span>, :] <span class="k">for</span> i <span class="k">in</span> extract_layers], dim=<span class="n">0</span>
+)   <span class="c"># [num_extracted, hidden_size]  e.g. [6, 4096]</span>
+
+<span class="c">##########################################################
+# STEP 3: Fuse into one conditioning vector
+##########################################################</span>
+<span class="c"># feature_projector is a small learned linear layer: [num_extracted, d] → [d]</span>
+<span class="c"># It learns which layer's signals matter most for predicting future tokens</span>
+fused_ctx = <span class="f">feature_projector</span>(sampled.flatten())   <span class="c"># [hidden_size]</span>
+
+<span class="c">##########################################################
+# STEP 4: Draft model generates K tokens in ONE parallel pass
+##########################################################</span>
+K = <span class="n">16</span>   <span class="c"># number of tokens to draft simultaneously</span>
+
+<span class="c"># Initialize K mask token embeddings — these are what get "denoised"</span>
+<span class="c"># Think of them as K [MASK] tokens, all unknown</span>
+mask_embeds = <span class="f">mask_embedding</span>.<span class="f">expand</span>(K, <span class="n">-1</span>)        <span class="c"># [K, hidden_size]</span>
+
+<span class="c"># The draft model's forward pass:
+# - Input: K mask token embeddings
+# - KV injection: fused_ctx goes into Key and Value of EVERY draft layer
+# - Attention mask: non-causal (all K positions attend to all K positions)
+# - Output: logits for all K positions simultaneously</span>
+draft_logits = <span class="f">draft_model.forward</span>(
+    input_embeds=mask_embeds,           <span class="c"># [K, hidden_size]</span>
+    kv_injection_context=fused_ctx,     <span class="c"># injected into every layer's KV</span>
+    attention_mask=<span class="s">"bidirectional"</span>     <span class="c"># non-causal: all see all</span>
+)                                       <span class="c"># output: [K, vocab_size]</span>
+
+<span class="c"># Sample draft tokens from logits — ALL K at once, no loop needed</span>
+draft_tokens = <span class="f">torch.argmax</span>(draft_logits, dim=<span class="n">-1</span>)   <span class="c"># [K]</span>
+<span class="c"># ↑ This is the entire architectural difference from EAGLE-3.
+# EAGLE-3 needs a for-loop with K iterations. DFlash produces all K in one call.</span>
+
+<span class="c">##########################################################
+# STEP 5: Big model verifies all K drafts in one pass
+##########################################################</span>
+<span class="c"># Concatenate existing context with K draft tokens</span>
+verify_ids = <span class="f">torch.cat</span>([current_tokens, draft_tokens.<span class="f">unsqueeze</span>(<span class="n">0</span>)], dim=<span class="n">1</span>)
+verify_out = <span class="f">big_model</span>(verify_ids)                  <span class="c"># one forward pass</span>
+verify_logits = verify_out.logits[<span class="n">0</span>]                <span class="c"># [seq_len+K, vocab_size]</span>
+
+<span class="c">##########################################################
+# STEP 6: Accept/reject loop
+##########################################################</span>
+accepted = []
+seq_len = current_tokens.shape[<span class="n">1</span>]
+
+<span class="k">for</span> i <span class="k">in</span> <span class="f">range</span>(K):
+    <span class="c"># What would the big model have produced at position seq_len+i?</span>
+    big_model_token = <span class="f">torch.argmax</span>(verify_logits[seq_len + i - <span class="n">1</span>])
+    <span class="k">if</span> big_model_token == draft_tokens[i]:
+        accepted.<span class="f">append</span>(draft_tokens[i])
+    <span class="k">else</span>:
+        accepted.<span class="f">append</span>(big_model_token)  <span class="c"># use big model's correction</span>
+        <span class="k">break</span>                              <span class="c"># stop here — can't trust later drafts</span>
+
+<span class="c"># Typical result: 8–12 tokens accepted
+# Net throughput: 8–12 tokens for cost of ~2 big model passes
+# vs baseline: 8–12 tokens for cost of 8–12 big model passes
+# Speedup: 4–6×</span>
+current_tokens = <span class="f">torch.cat</span>([current_tokens, <span class="f">torch.tensor</span>(accepted).<span class="f">unsqueeze</span>(<span class="n">0</span>)], dim=<span class="n">1</span>)</pre>
+</div>
+
+<div class="callout green">
+<div class="callout-title">✅ The key difference from EAGLE-3 in one line</div>
+<p>EAGLE-3: <code>for step in range(K): draft_token = decoder(prev_token)</code> — a loop with K sequential iterations.<br><br>DFlash: <code>draft_tokens = draft_model(mask_embeds)</code> — one call produces all K tokens. No loop. That's it.</p>
+</div>
+</div>
+<hr class="divider">
+
+<!-- ═══ S6: SAME MODEL AS DRAFTER + GPU ═══ -->
+<div class="section" id="same-model">
+<div class="section-label">DFlash · 06</div>
+<h2>Using the Same Model as Its Own Drafter</h2>
+<p>The DFlash draft model for Qwen3.6-35B-A3B is called <code>z-lab/Qwen3.6-35B-A3B-DFlash</code>. It uses the same Qwen3-style architecture as the target — same hidden dimensions, same tokenizer, same vocabulary. But it is <em>not</em> a full copy. Here is exactly what it is.</p>
+
+<h3>What is shared vs. uniquely trained</h3>
+<div class="diagram">
+<div class="diagram-title">Target Model vs DFlash Drafter — Component Breakdown</div>
+<div class="arch-row" style="align-items:flex-start;gap:20px;flex-wrap:wrap;">
+<div style="min-width:190px;">
+<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:10px;">TARGET: Qwen3.6-35B-A3B</div>
+<div class="arch-col" style="gap:4px;">
+<div class="arch-box blue" style="width:190px;"><div class="box-name">Embedding Layer</div><div class="box-dim">~1.5 GB · vocabulary → vectors</div></div>
+<div class="arch-box" style="width:190px;"><div class="box-name">62 Transformer Layers</div><div class="box-dim">~62 GB · the "brain"</div></div>
+<div class="arch-box blue" style="width:190px;"><div class="box-name">LM Head (unembedding)</div><div class="box-dim">~1.5 GB · vectors → token probs</div></div>
+<div style="margin-top:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent2);">Total: ~35B params / ~70 GB</div>
+</div>
+</div>
+<div style="padding-top:40px;color:var(--muted);font-size:22px;">vs</div>
+<div style="min-width:190px;">
+<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:10px;">DRAFTER: Qwen3.6-35B-A3B-DFlash</div>
+<div class="arch-col" style="gap:4px;">
+<div class="arch-box blue" style="width:190px;"><div class="box-name">Embedding Layer</div><div class="box-dim">↑ SHARED — pointer, 0 extra RAM</div></div>
+<div class="arch-box yellow" style="width:190px;"><div class="box-name">Feature Projector</div><div class="box-dim">~0.2 GB · newly trained</div></div>
+<div class="arch-box purple" style="width:190px;"><div class="box-name">3–5 Draft Transformer Layers</div><div class="box-dim">~2.5 GB · newly trained, same architecture</div></div>
+<div class="arch-box blue" style="width:190px;"><div class="box-name">LM Head (unembedding)</div><div class="box-dim">↑ SHARED — pointer, 0 extra RAM</div></div>
+<div style="margin-top:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent3);">Total extra: ~4 GB</div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="callout blue">
+<div class="callout-title">💡 Why sharing embeddings and LM Head saves significant memory</div>
+<p>The embedding layer (token ID → 4096-dim vector) and LM Head (4096-dim vector → 100k-dim vocab probabilities) are each ~1.5 GB for a large model. When the draft model reuses them as <em>pointers to the same memory</em>, not copies, you save ~3 GB and also guarantee the draft model speaks the same "language" as the target — same token representations, same vocabulary logits.</p>
+</div>
+
+<h3>Why the same architecture type is used</h3>
+<p>The draft model uses Qwen3-style transformer layers because:</p>
+<ul>
+<li><strong>Hidden dimensions match</strong>: the target model outputs 4096-dim hidden states; the draft model's layers also expect 4096-dim inputs. No shape adapters needed.</li>
+<li><strong>Weight initialization</strong>: the draft model's layers can be initialized from the target model's early layers before fine-tuning. This gives a much better starting point than random initialization, making training faster and the final model more accurate.</li>
+<li><strong>Tokenizer is shared</strong>: same vocabulary, same byte-pair encoding. Draft tokens are directly comparable to target tokens with no conversion step.</li>
+</ul>
+
+<div id="gpu-usage"></div>
+<h3>GPU Memory Breakdown</h3>
+<p>Let's look at what actually occupies GPU memory when running DFlash with Qwen3.5-27B on a single A100 80GB.</p>
+<div class="gpu-meters">
+<div class="gpu-card">
+<div class="gpu-title">❌ Without DFlash</div>
+<div class="gpu-seg"><div class="gpu-seg-label"><span>Target model weights (BF16)</span><span>~56 GB</span></div><div class="gpu-bar"><div class="gpu-fill fill-purple" style="width:85%;"></div></div></div>
+<div class="gpu-seg"><div class="gpu-seg-label"><span>KV cache (8k context)</span><span>~8 GB</span></div><div class="gpu-bar"><div class="gpu-fill fill-blue" style="width:12%;"></div></div></div>
+<div class="gpu-seg"><div class="gpu-seg-label"><span>Draft model</span><span>0 GB</span></div><div class="gpu-bar"><div class="gpu-fill fill-yellow" style="width:0%;"></div></div></div>
+<div class="gpu-seg"><div class="gpu-seg-label"><span>Activations / overhead</span><span>~4 GB</span></div><div class="gpu-bar"><div class="gpu-fill fill-green" style="width:6%;"></div></div></div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent4);margin-top:10px;">Throughput: ~20 tok/s (single user)</div>
+</div>
+<div class="gpu-card">
+<div class="gpu-title">✅ With DFlash</div>
+<div class="gpu-seg"><div class="gpu-seg-label"><span>Target model weights (BF16)</span><span>~56 GB</span></div><div class="gpu-bar"><div class="gpu-fill fill-purple" style="width:85%;"></div></div></div>
+<div class="gpu-seg"><div class="gpu-seg-label"><span>KV cache (target + draft)</span><span>~11 GB</span></div><div class="gpu-bar"><div class="gpu-fill fill-blue" style="width:17%;"></div></div></div>
+<div class="gpu-seg"><div class="gpu-seg-label"><span>Draft model extra params</span><span>~4 GB</span></div><div class="gpu-bar"><div class="gpu-fill fill-yellow" style="width:6%;"></div></div></div>
+<div class="gpu-seg"><div class="gpu-seg-label"><span>Activations / overhead</span><span>~4 GB</span></div><div class="gpu-bar"><div class="gpu-fill fill-green" style="width:6%;"></div></div></div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent3);margin-top:10px;">Throughput: ~80–100 tok/s (single user)</div>
+</div>
+</div>
+
+<h3>Compute cost breakdown per cycle</h3>
+<div class="diagram">
+<div class="diagram-title">Time budget — generating 12 tokens (DFlash vs baseline)</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
+<div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:10px;">BASELINE — 12 tokens, no DFlash</div>
+<div class="gpu-seg"><div class="gpu-seg-label"><span>12 × big model passes</span><span>12.0 units</span></div><div class="gpu-bar"><div class="gpu-fill fill-purple" style="width:100%;"></div></div></div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted2);margin-top:7px;">Total: 12.0 units of compute</div>
+</div>
+<div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:10px;">DFLASH — 16 drafted, 12 accepted</div>
+<div class="gpu-seg" style="margin-bottom:5px;"><div class="gpu-seg-label"><span>1× big model (step N)</span><span>1.0 unit</span></div><div class="gpu-bar"><div class="gpu-fill fill-purple" style="width:25%;"></div></div></div>
+<div class="gpu-seg" style="margin-bottom:5px;"><div class="gpu-seg-label"><span>Feature extract + fuse</span><span>0.05 unit</span></div><div class="gpu-bar"><div class="gpu-fill fill-yellow" style="width:1%;"></div></div></div>
+<div class="gpu-seg" style="margin-bottom:5px;"><div class="gpu-seg-label"><span>Draft model (16 tokens, 1 pass)</span><span>0.2 units</span></div><div class="gpu-bar"><div class="gpu-fill fill-blue" style="width:5%;"></div></div></div>
+<div class="gpu-seg"><div class="gpu-seg-label"><span>1× big model verify (16 tokens)</span><span>1.1 units</span></div><div class="gpu-bar"><div class="gpu-fill fill-purple" style="width:28%;"></div></div></div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent3);margin-top:7px;">Total: ~2.35 units → 12 tokens → 5.1× faster</div>
+</div>
+</div>
+</div>
+
+<h3>What happens to the KV cache when drafts are rejected</h3>
+<p>When the big model rejects a draft token, the KV cache entries for that position are simply discarded — they're never committed to the main context. The KV cache only grows when tokens are accepted. This is what makes speculative decoding "lossless": the final KV state is bit-for-bit identical to if you'd generated those tokens normally.</p>
+
+<h3>The Qwen3.6 DeltaNet (GDN) Complication</h3>
+<p>Qwen3.6 mixes <strong>Gated Delta Networks</strong> (a linear recurrent attention mechanism) with standard full attention. GDN layers maintain a running recurrent state — like a hidden memory that updates as each token is processed. This breaks standard speculative decoding.</p>
+
+<div class="code-block">
+<div class="code-header"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><span>python · the GDN rollback problem and solution</span></div>
+<pre><span class="c"># Standard transformer KV cache — rolling back is trivial:</span>
+kv_cache[position] = (K_vector, V_vector)   <span class="c"># stored separately per position</span>
+<span class="c"># If rejected: just don't include that position in future attention. Easy.</span>
+
+<span class="c">########################################
+# GDN / DeltaNet — stateful, hard to roll back:
+########################################</span>
+<span class="c"># GDN maintains a recurrent state S that updates multiplicatively:</span>
+S_new = S_old * gate + delta_value   <span class="c"># S encodes compressed history</span>
+<span class="c"># After processing a draft token: S_old is gone, replaced by S_new
+# If we reject that token, we can't undo S_new → S_old automatically
+# (matrix multiplication is not trivially reversible)</span>
+
+<span class="c">########################################
+# SGLang's solution: extra_buffer strategy
+########################################</span>
+<span class="c"># Before starting the speculative draft phase:</span>
+S_checkpoint = <span class="f">copy</span>(S)                <span class="c"># save current recurrent state</span>
+
+<span class="c"># Run draft model, run verification...</span>
+num_accepted = <span class="f">verify_and_count</span>(draft_tokens)
+
+<span class="c"># If any tokens rejected:</span>
+<span class="k">if</span> num_accepted < K:
+    S = S_checkpoint                    <span class="c"># restore clean state</span>
+    S = <span class="f">advance_state</span>(S, accepted_tokens)  <span class="c"># replay only accepted tokens</span>
+<span class="c"># Result: S is exactly what it would have been without speculation</span>
+
+<span class="c"># This is why you need --mamba-scheduler-strategy extra_buffer in SGLang
+# for Qwen3.6 models with DFlash</span></pre>
+</div>
+</div>
+<hr class="divider">
+
+<!-- ═══ S7: BENCHMARKS ═══ -->
+<div class="section" id="howgood">
+<div class="section-label">Results · 07</div>
+<h2>Benchmarks</h2>
+<div class="speed-bar-wrap"><div class="speed-bar-label"><span>Autoregressive baseline</span><span>1×</span></div><div class="speed-bar"><div class="speed-bar-fill" style="width:16%;background:var(--muted);"></div></div></div>
+<div class="speed-bar-wrap" style="margin-top:9px;"><div class="speed-bar-label"><span>EAGLE-3 (state-of-art before DFlash)</span><span>3–4×</span></div><div class="speed-bar"><div class="speed-bar-fill" style="width:55%;background:var(--accent2);"></div></div></div>
+<div class="speed-bar-wrap" style="margin-top:9px;"><div class="speed-bar-label"><span>DFlash on code / math / structured text</span><span>up to 6.2×</span></div><div class="speed-bar"><div class="speed-bar-fill" style="width:100%;background:linear-gradient(90deg,var(--accent),var(--accent3));"></div></div></div>
+<div class="speed-bar-wrap" style="margin-top:9px;"><div class="speed-bar-label"><span>DFlash with thinking/reasoning mode</span><span>≈4.5×</span></div><div class="speed-bar"><div class="speed-bar-fill" style="width:73%;background:linear-gradient(90deg,var(--accent5),var(--accent3));"></div></div></div>
+
+<div class="compare-grid cg3" style="margin-top:22px;">
+<div class="compare-cell header"></div><div class="compare-cell header">EAGLE-3</div><div class="compare-cell header">DFlash</div>
+<div class="compare-cell"><div class="cc-title">Draft method</div></div><div class="compare-cell"><div class="cc-val mid">Sequential (K steps)</div></div><div class="compare-cell"><div class="cc-val good">Parallel (1 pass)</div></div>
+<div class="compare-cell"><div class="cc-title">Draft model depth</div></div><div class="compare-cell"><div class="cc-val bad">1 layer (forced)</div></div><div class="compare-cell"><div class="cc-val good">3–5 layers</div></div>
+<div class="compare-cell"><div class="cc-title">Tokens drafted per cycle</div></div><div class="compare-cell"><div class="cc-val mid">5–7</div></div><div class="compare-cell"><div class="cc-val good">15–16</div></div>
+<div class="compare-cell"><div class="cc-title">Max speedup over baseline</div></div><div class="compare-cell"><div class="cc-val mid">3–4×</div></div><div class="compare-cell"><div class="cc-val good">6.2×</div></div>
+<div class="compare-cell"><div class="cc-title">vs EAGLE-3</div></div><div class="compare-cell"><div class="cc-val">—</div></div><div class="compare-cell"><div class="cc-val good">2.5× faster</div></div>
+<div class="compare-cell"><div class="cc-title">Extra VRAM needed</div></div><div class="compare-cell"><div class="cc-val good">~280 MB</div></div><div class="compare-cell"><div class="cc-val mid">~4 GB</div></div>
+<div class="compare-cell"><div class="cc-title">Output quality</div></div><div class="compare-cell"><div class="cc-val good">Lossless</div></div><div class="compare-cell"><div class="cc-val good">Lossless</div></div>
+</div>
+</div>
+<hr class="divider">
+
+<!-- ═══ S8: SUPPORTED MODELS ═══ -->
+<div class="section" id="supported">
+<div class="section-label">Practical · 08</div>
+<h2>Supported Models</h2>
+<p>All DFlash draft models are published by z-lab at <code>https://huggingface.co/z-lab</code></p>
+<table class="model-table">
+<thead><tr><th>Target Model</th><th>Draft Model</th><th>vLLM</th><th>SGLang</th><th>MLX</th></tr></thead>
+<tbody>
+<tr><td>Qwen/Qwen3-8B</td><td><code>z-lab/Qwen3-8B-DFlash-b16</code></td><td><span class="badge yes">✓</span></td><td><span class="badge yes">✓</span></td><td><span class="badge yes">✓</span></td></tr>
+<tr><td>Qwen/Qwen3.5-27B</td><td><code>z-lab/Qwen3.5-27B-DFlash</code></td><td><span class="badge yes">✓</span></td><td><span class="badge yes">✓</span></td><td><span class="badge yes">✓</span></td></tr>
+<tr><td>Qwen/Qwen3.5-35B-A3B</td><td><code>z-lab/Qwen3.5-35B-A3B-DFlash</code></td><td><span class="badge yes">✓</span></td><td><span class="badge yes">✓</span></td><td><span class="badge part">Exp</span></td></tr>
+<tr><td>Qwen/Qwen3.6-35B-A3B</td><td><code>z-lab/Qwen3.6-35B-A3B-DFlash</code></td><td><span class="badge part">Patched</span></td><td><span class="badge part">PR branch</span></td><td><span class="badge no">✗</span></td></tr>
+<tr><td>Qwen/Qwen3-Coder-30B-A3B</td><td><code>z-lab/Qwen3-Coder-30B-A3B-DFlash</code></td><td><span class="badge yes">✓</span></td><td><span class="badge yes">✓</span></td><td><span class="badge no">✗</span></td></tr>
+<tr><td>meta-llama/Llama-3.1 family</td><td><code>z-lab/Llama-3.1-*-DFlash</code></td><td><span class="badge yes">✓</span></td><td><span class="badge yes">✓</span></td><td><span class="badge no">✗</span></td></tr>
+<tr><td>Kimi-K2.5 (coming soon)</td><td>Preview on z-lab HF</td><td><span class="badge part">Soon</span></td><td><span class="badge part">Soon</span></td><td><span class="badge no">✗</span></td></tr>
+</tbody>
+</table>
+</div>
+<hr class="divider">
+
+<!-- ═══ S9: HOW TO RUN ═══ -->
+<div class="section" id="running">
+<div class="section-label">Practical · 09</div>
+<h2>How to Run DFlash</h2>
+
+<h3>Option A — vLLM stable (Qwen3.5-27B, easiest)</h3>
+<div class="code-block">
+<div class="code-header"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><span>shell · install + launch</span></div>
+<pre><span class="c"># Install</span>
+pip install <span class="v">-U vllm --torch-backend=auto</span>
+
+<span class="c"># Launch OpenAI-compatible server on localhost:8000</span>
+<span class="f">vllm</span> serve <span class="m">Qwen/Qwen3.5-27B</span> \
+  <span class="kw">--speculative-config</span> <span class="s">'{"method": "dflash",
+    "model": "z-lab/Qwen3.5-27B-DFlash",
+    "num_speculative_tokens": 15}'</span> \
+  <span class="kw">--attention-backend</span> flash_attn \
+  <span class="kw">--max-num-batched-tokens</span> <span class="n">32768</span> \
+  <span class="kw">--speculative-disable-by-batch-size</span> <span class="n">32</span>   <span class="c"># auto-disable at high concurrency</span></pre>
+</div>
+
+<h3>Option B — SGLang (Qwen3.5-35B-A3B, best for agents)</h3>
+<div class="code-block">
+<div class="code-header"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><span>shell · sglang launch</span></div>
+<pre><span class="k">export</span> <span class="v">SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN</span>=<span class="n">1</span>
+
+python -m <span class="f">sglang.launch_server</span> \
+  <span class="kw">--model-path</span> <span class="m">Qwen/Qwen3.5-35B-A3B</span> \
+  <span class="kw">--speculative-algorithm</span> DFLASH \
+  <span class="kw">--speculative-draft-model-path</span> <span class="m">z-lab/Qwen3.5-35B-A3B-DFlash</span> \
+  <span class="kw">--speculative-num-draft-tokens</span> <span class="n">16</span> \
+  <span class="kw">--tp-size</span> <span class="n">1</span> \
+  <span class="kw">--attention-backend</span> trtllm_mha \
+  <span class="kw">--speculative-draft-attention-backend</span> fa4 \
+  <span class="kw">--mem-fraction-static</span> <span class="n">0.75</span> \
+  <span class="kw">--mamba-scheduler-strategy</span> extra_buffer \  <span class="c"># GDN state rollback</span>
+  <span class="kw">--trust-remote-code</span></pre>
+</div>
+
+<h3>Option C — Qwen3.6 (patched vLLM)</h3>
+<div class="code-block">
+<div class="code-header"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><span>shell · qwen3.6 + dflash</span></div>
+<pre><span class="c"># Install patched build until main vLLM release includes it</span>
+pip install vllm
+pip install <span class="v">-U --torch-backend=auto</span> \
+  <span class="s">"vllm @ git+https://github.com/vllm-project/vllm.git@refs/pull/40898/head"</span>
+
+<span class="f">vllm</span> serve <span class="m">Qwen/Qwen3.6-35B-A3B</span> \
+  <span class="kw">--speculative-config</span> <span class="s">'{"method": "dflash",
+    "model": "z-lab/Qwen3.6-35B-A3B-DFlash",
+    "num_speculative_tokens": 15}'</span> \
+  <span class="kw">--attention-backend</span> flash_attn \
+  <span class="kw">--max-num-batched-tokens</span> <span class="n">32768</span></pre>
+</div>
+
+<h3>Option D — HuggingFace Transformers (quick experiments only)</h3>
+<div class="code-block">
+<div class="code-header"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><span>python · transformers backend</span></div>
+<pre><span class="k">from</span> transformers <span class="k">import</span> AutoModel, AutoModelForCausalLM
+
+<span class="c"># Load draft model (shares embedding + LM head with target automatically)</span>
+draft = AutoModel.from_pretrained(
+    <span class="s">"z-lab/Qwen3-8B-DFlash-b16"</span>,
+    trust_remote_code=<span class="v">True</span>, dtype=<span class="s">"auto"</span>, device_map=<span class="s">"cuda:0"</span>
+).eval()
+
+<span class="c"># Load target model</span>
+target = AutoModelForCausalLM.from_pretrained(
+    <span class="s">"Qwen/Qwen3-8B"</span>, dtype=<span class="s">"auto"</span>, device_map=<span class="s">"cuda:0"</span>
+).eval()</pre>
+</div>
+
+<h3>Calling the server (after vLLM or SGLang launch)</h3>
+<div class="code-block">
+<div class="code-header"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><span>python · openai-compatible client</span></div>
+<pre><span class="k">from</span> openai <span class="k">import</span> OpenAI
+
+client = OpenAI(base_url=<span class="s">"http://localhost:8000/v1"</span>, api_key=<span class="s">"dummy"</span>)
+
+<span class="c"># Completely normal OpenAI API call — DFlash is transparent</span>
+response = client.chat.completions.create(
+    model=<span class="s">"Qwen/Qwen3.5-27B"</span>,
+    messages=[{<span class="s">"role"</span>: <span class="s">"user"</span>, <span class="s">"content"</span>: <span class="s">"Write a binary search in Python"</span>}],
+    stream=<span class="v">True</span>
+)
+
+<span class="k">for</span> chunk <span class="k">in</span> response:
+    <span class="f">print</span>(chunk.choices[<span class="n">0</span>].delta.content or <span class="s">""</span>, end=<span class="s">""</span>, flush=<span class="v">True</span>)
+<span class="c"># Output is 100% identical to non-DFlash. Just arrives faster.</span></pre>
+</div>
+</div>
+<hr class="divider">
+
+<!-- ═══ S10: WHEN TO USE ═══ -->
+<div class="section" id="when">
+<div class="section-label">Practical · 10</div>
+<h2>When to Use DFlash</h2>
+<div class="compare-grid cg4">
+<div class="compare-cell header"></div>
+<div class="compare-cell header" style="color:var(--accent3);">✅ DFlash</div>
+<div class="compare-cell header" style="color:var(--accent2);">⚡ EAGLE-3</div>
+<div class="compare-cell header" style="color:var(--muted2);">— Standard</div>
+<div class="compare-cell"><div class="cc-title">Concurrent users</div></div>
+<div class="compare-cell"><div class="cc-val good">1–32</div></div>
+<div class="compare-cell"><div class="cc-val mid">1–50</div></div>
+<div class="compare-cell"><div class="cc-val">Any</div></div>
+<div class="compare-cell"><div class="cc-title">Output length</div></div>
+<div class="compare-cell"><div class="cc-val good">Long (code, essays)</div></div>
+<div class="compare-cell"><div class="cc-val mid">Medium-long</div></div>
+<div class="compare-cell"><div class="cc-val">Any</div></div>
+<div class="compare-cell"><div class="cc-title">Content type</div></div>
+<div class="compare-cell"><div class="cc-val good">Code, math, structured</div></div>
+<div class="compare-cell"><div class="cc-val mid">Most types</div></div>
+<div class="compare-cell"><div class="cc-val">Any</div></div>
+<div class="compare-cell"><div class="cc-title">Extra VRAM</div></div>
+<div class="compare-cell"><div class="cc-val mid">~4 GB more</div></div>
+<div class="compare-cell"><div class="cc-val good">~280 MB more</div></div>
+<div class="compare-cell"><div class="cc-val good">0</div></div>
+</div>
+<div class="callout yellow">
+<div class="callout-title">💡 Decision rule from the community</div>
+<p>if batch_size &gt; 32 or output_tokens &lt; 50 → standard decoding<br>
+elif DFlash checkpoint exists and acceptance_rate &gt; 0.7 → DFlash<br>
+else → EAGLE-3</p>
+</div>
+
+<div class="verdict">
+<h3>Everything in One Place</h3>
+<p><strong>LLMs are slow</strong> because generation is one token per full model pass — sequential, can't skip ahead.</p>
+<p><strong>Draft models solve this</strong> by guessing ahead and verifying all guesses in one parallel big-model pass.</p>
+<p><strong>EAGLE-3</strong> attaches a tiny 1-layer decoder to the big model, fusing hidden states from 3 layers (early/mid/late) via a learned FC layer. It drafts autoregressively — one token per step, forced to stay at 1 layer. Ceiling: ~4×.</p>
+<p><strong>Diffusion</strong> means generating all token positions simultaneously (one forward pass) instead of sequentially. Fast, but lower quality when used alone as the main model.</p>
+<p><strong>DFlash</strong> uses a 3–5 layer diffusion draft model conditioned on the big model's hidden states from many layers. Features are injected into every draft layer's Key-Value cache. Non-causal (bidirectional) attention lets all 16 draft tokens be generated simultaneously in one pass. Big model still verifies everything — output quality is identical. Speedup: up to 6.2×, 2.5× faster than EAGLE-3.</p>
+<p><strong>The draft model</strong> shares embedding and LM Head weights with the target (zero extra RAM for those). Its 3–5 new transformer layers use the same architecture as the target so hidden dimensions match and initialization is clean. Total extra VRAM: ~4 GB.</p>
+<p style="margin-bottom:0;"><strong>Run it</strong> with vLLM (stable, Qwen3.5 and older) or SGLang (recommended for MoE and agents). For Qwen3.6 you need a patched vLLM for now. All draft models are at <code>https://huggingface.co/z-lab</code>.</p>
+</div>
+</div>
+
+</div><!-- /main -->
+</body>
+</html>

@@ -1,0 +1,2109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLM/VLM Quantization & Inference Engineering Handbook</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Syne:wght@400;500;600;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-base: #0a0b0e;
+    --bg-surface: #0f1117;
+    --bg-elevated: #161922;
+    --bg-card: #1c2030;
+    --bg-hover: #222840;
+    --border: #2a2f42;
+    --border-bright: #3a4060;
+    --accent-primary: #4f8ef7;
+    --accent-secondary: #7c5cfc;
+    --accent-green: #2dd4a7;
+    --accent-orange: #f97316;
+    --accent-red: #f43f5e;
+    --accent-yellow: #fbbf24;
+    --text-primary: #e8eaf0;
+    --text-secondary: #8b93b0;
+    --text-muted: #525a78;
+    --text-code: #a8d8a8;
+    --code-bg: #0d1117;
+    --tag-bg: #1e2640;
+    --radius: 8px;
+    --radius-lg: 12px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    line-height: 1.75;
+    min-height: 100vh;
+  }
+
+  /* Noise texture overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.4;
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    position: fixed;
+    left: 0; top: 0; bottom: 0;
+    width: 260px;
+    background: var(--bg-surface);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    z-index: 100;
+    padding: 0 0 32px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .sidebar-header {
+    padding: 24px 20px 16px;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: var(--bg-surface);
+    z-index: 10;
+  }
+
+  .sidebar-logo {
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent-primary);
+    margin-bottom: 4px;
+  }
+
+  .sidebar-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.3;
+  }
+
+  .nav-section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 16px 20px 6px;
+  }
+
+  .nav-item {
+    display: block;
+    padding: 6px 20px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 12.5px;
+    font-weight: 400;
+    transition: all 0.15s ease;
+    border-left: 2px solid transparent;
+    line-height: 1.4;
+  }
+
+  .nav-item:hover {
+    color: var(--text-primary);
+    background: var(--bg-elevated);
+    border-left-color: var(--accent-primary);
+  }
+
+  .nav-item .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-right: 6px;
+  }
+
+  /* MAIN CONTENT */
+  .main {
+    margin-left: 260px;
+    padding: 0;
+    min-height: 100vh;
+  }
+
+  /* HERO */
+  .hero {
+    background: linear-gradient(135deg, #0f1117 0%, #0a0f1e 50%, #0f0a1e 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 64px 64px 48px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -80px; right: -80px;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(79,142,247,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero::after {
+    content: '';
+    position: absolute;
+    bottom: -100px; left: 100px;
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(124,92,252,0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(79,142,247,0.1);
+    border: 1px solid rgba(79,142,247,0.2);
+    border-radius: 100px;
+    padding: 4px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--accent-primary);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+
+  .hero-badge::before { content: '●'; font-size: 7px; }
+
+  .hero h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 42px;
+    font-weight: 800;
+    line-height: 1.1;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+    letter-spacing: -0.02em;
+  }
+
+  .hero h1 span {
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-sub {
+    color: var(--text-secondary);
+    font-size: 15px;
+    max-width: 620px;
+    line-height: 1.7;
+    margin-bottom: 32px;
+  }
+
+  .hero-meta {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .meta-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .meta-chip .dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--accent-green);
+  }
+
+  /* CONTENT SECTIONS */
+  .content {
+    padding: 0 64px 80px;
+  }
+
+  .section {
+    margin-top: 64px;
+    scroll-margin-top: 24px;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 28px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent-primary);
+    background: rgba(79,142,247,0.08);
+    border: 1px solid rgba(79,142,247,0.15);
+    border-radius: 6px;
+    padding: 4px 8px;
+    white-space: nowrap;
+    margin-top: 4px;
+  }
+
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+  }
+
+  .section-title small {
+    display: block;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  /* SUBSECTIONS */
+  .subsection {
+    margin-bottom: 32px;
+  }
+
+  .subsection-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .subsection-title::before {
+    content: '';
+    width: 3px; height: 16px;
+    background: linear-gradient(to bottom, var(--accent-primary), var(--accent-secondary));
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  /* CARDS */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px 24px;
+    margin-bottom: 16px;
+    transition: border-color 0.15s;
+  }
+
+  .card:hover { border-color: var(--border-bright); }
+
+  .card-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .card-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  /* QUANT TYPE CARDS */
+  .quant-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 22px;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .quant-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .quant-card.fp32::before { background: linear-gradient(90deg, #f43f5e, #f97316); }
+  .quant-card.fp16::before { background: linear-gradient(90deg, #f97316, #fbbf24); }
+  .quant-card.bf16::before { background: linear-gradient(90deg, #fbbf24, #4f8ef7); }
+  .quant-card.int8::before { background: linear-gradient(90deg, #4f8ef7, #7c5cfc); }
+  .quant-card.int4::before { background: linear-gradient(90deg, #7c5cfc, #2dd4a7); }
+  .quant-card.fp8::before { background: linear-gradient(90deg, #2dd4a7, #4f8ef7); }
+  .quant-card.gptq::before { background: linear-gradient(90deg, #4f8ef7, #7c5cfc); }
+  .quant-card.awq::before { background: linear-gradient(90deg, #7c5cfc, #f43f5e); }
+  .quant-card.gguf::before { background: linear-gradient(90deg, #f97316, #fbbf24); }
+  .quant-card.bnb::before { background: linear-gradient(90deg, #2dd4a7, #7c5cfc); }
+
+  .quant-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+
+  .quant-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .quant-bits {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.05);
+    color: var(--text-secondary);
+  }
+
+  .quant-desc { color: var(--text-secondary); font-size: 13px; margin-bottom: 14px; }
+
+  .prop-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .prop-item {
+    background: rgba(255,255,255,0.025);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .prop-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+  }
+
+  .prop-value { color: var(--text-primary); font-weight: 500; }
+
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 12px;
+  }
+
+  .tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--tag-bg);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+  }
+
+  .tag.green { background: rgba(45,212,167,0.1); border-color: rgba(45,212,167,0.2); color: var(--accent-green); }
+  .tag.blue { background: rgba(79,142,247,0.1); border-color: rgba(79,142,247,0.2); color: var(--accent-primary); }
+  .tag.orange { background: rgba(249,115,22,0.1); border-color: rgba(249,115,22,0.2); color: var(--accent-orange); }
+  .tag.red { background: rgba(244,63,94,0.1); border-color: rgba(244,63,94,0.2); color: var(--accent-red); }
+  .tag.purple { background: rgba(124,92,252,0.1); border-color: rgba(124,92,252,0.2); color: var(--accent-secondary); }
+
+  /* PROS/CONS */
+  .pros-cons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  .pros, .cons {
+    border-radius: 6px;
+    padding: 10px 12px;
+  }
+
+  .pros { background: rgba(45,212,167,0.05); border: 1px solid rgba(45,212,167,0.12); }
+  .cons { background: rgba(244,63,94,0.05); border: 1px solid rgba(244,63,94,0.12); }
+
+  .pros-cons-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .pros .pros-cons-title { color: var(--accent-green); }
+  .cons .pros-cons-title { color: var(--accent-red); }
+
+  .pros ul, .cons ul {
+    list-style: none;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .pros ul li::before { content: '+ '; color: var(--accent-green); font-weight: 700; }
+  .cons ul li::before { content: '− '; color: var(--accent-red); font-weight: 700; }
+  .pros ul li, .cons ul li { padding: 1px 0; }
+
+  /* TABLES */
+  .table-wrap {
+    overflow-x: auto;
+    margin: 20px 0;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  thead tr {
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--border-bright);
+  }
+
+  th {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    padding: 12px 16px;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 10px 16px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    vertical-align: middle;
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+  td strong { color: var(--text-primary); font-weight: 500; }
+
+  .compat-yes { color: var(--accent-green); font-size: 14px; }
+  .compat-warn { color: var(--accent-yellow); font-size: 14px; }
+  .compat-no { color: var(--accent-red); font-size: 14px; }
+
+  /* CODE */
+  .code-block {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin: 16px 0;
+  }
+
+  .code-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .code-lang {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent-primary);
+  }
+
+  .code-dots { display: flex; gap: 5px; }
+  .code-dot {
+    width: 9px; height: 9px; border-radius: 50%;
+  }
+  .code-dot:nth-child(1) { background: #ff5f56; }
+  .code-dot:nth-child(2) { background: #ffbd2e; }
+  .code-dot:nth-child(3) { background: #27c93f; }
+
+  pre {
+    padding: 18px 20px;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: var(--text-code);
+  }
+
+  .kw { color: #c792ea; }
+  .fn { color: #82aaff; }
+  .str { color: #c3e88d; }
+  .cm { color: var(--text-muted); font-style: italic; }
+  .num { color: #f78c6c; }
+  .var { color: #eeffff; }
+
+  /* RULE BLOCKS */
+  .rule-block {
+    background: rgba(79,142,247,0.04);
+    border-left: 3px solid var(--accent-primary);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 12px 16px;
+    margin: 10px 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  .rule-block strong { color: var(--accent-primary); font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+
+  .warn-block {
+    background: rgba(251,191,36,0.04);
+    border-left: 3px solid var(--accent-yellow);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 12px 16px;
+    margin: 10px 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  .warn-block strong { color: var(--accent-yellow); }
+
+  .danger-block {
+    background: rgba(244,63,94,0.04);
+    border-left: 3px solid var(--accent-red);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 12px 16px;
+    margin: 10px 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  /* DECISION TREE */
+  .decision-tree {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    margin: 20px 0;
+  }
+
+  .decision-node {
+    padding: 8px 14px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-bright);
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-primary);
+    display: inline-block;
+    margin: 4px;
+  }
+
+  .decision-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 8px 0;
+    flex-wrap: wrap;
+  }
+
+  .decision-arrow {
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+  }
+
+  .decision-result {
+    padding: 6px 12px;
+    border-radius: 5px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .result-blue { background: rgba(79,142,247,0.12); border: 1px solid rgba(79,142,247,0.25); color: var(--accent-primary); }
+  .result-green { background: rgba(45,212,167,0.12); border: 1px solid rgba(45,212,167,0.25); color: var(--accent-green); }
+  .result-orange { background: rgba(249,115,22,0.12); border: 1px solid rgba(249,115,22,0.25); color: var(--accent-orange); }
+  .result-purple { background: rgba(124,92,252,0.12); border: 1px solid rgba(124,92,252,0.25); color: var(--accent-secondary); }
+
+  /* PIPELINE STEPS */
+  .pipeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin: 20px 0;
+  }
+
+  .pipeline-step {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    position: relative;
+    padding-bottom: 20px;
+  }
+
+  .pipeline-step::before {
+    content: '';
+    position: absolute;
+    left: 19px; top: 38px;
+    width: 2px; bottom: 0;
+    background: linear-gradient(to bottom, var(--border-bright), transparent);
+  }
+
+  .pipeline-step:last-child::before { display: none; }
+
+  .step-num {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    background: var(--bg-elevated);
+    border: 2px solid var(--border-bright);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent-primary);
+    flex-shrink: 0;
+    z-index: 1;
+  }
+
+  .step-content { flex: 1; padding-top: 6px; }
+  .step-title { font-weight: 600; color: var(--text-primary); margin-bottom: 4px; font-size: 13px; }
+  .step-desc { color: var(--text-secondary); font-size: 12.5px; }
+
+  /* ENGINE CARDS */
+  .engine-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 22px;
+    margin-bottom: 20px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 20px;
+  }
+
+  .engine-icon {
+    width: 44px; height: 44px;
+    border-radius: 10px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-bright);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  .engine-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+  }
+
+  .engine-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
+
+  /* SCENARIO CARDS */
+  .scenario {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 22px 24px;
+    margin-bottom: 20px;
+  }
+
+  .scenario-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .scenario-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+
+  /* TIPS */
+  .tip-item {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 12px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 8px;
+  }
+
+  .tip-icon {
+    font-size: 16px;
+    line-height: 1.5;
+    flex-shrink: 0;
+  }
+
+  .tip-text { font-size: 13px; color: var(--text-secondary); }
+  .tip-text strong { color: var(--text-primary); }
+
+  /* METRIC BARS */
+  .metric-bar { margin: 8px 0; }
+  .metric-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .bar-track {
+    height: 5px;
+    background: var(--bg-elevated);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+  }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-bright); }
+
+  /* DIVIDER */
+  .divider { height: 1px; background: var(--border); margin: 28px 0; }
+
+  p { color: var(--text-secondary); margin-bottom: 12px; font-size: 13.5px; }
+  ul, ol { padding-left: 20px; color: var(--text-secondary); font-size: 13.5px; }
+  li { margin-bottom: 4px; }
+  li strong { color: var(--text-primary); }
+
+  code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 5px;
+    color: var(--accent-primary);
+  }
+
+  h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 18px 0 8px;
+  }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  @media (max-width: 1100px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; }
+    .hero, .content { padding-left: 32px; padding-right: 32px; }
+    .card-grid-3, .two-col, .three-col { grid-template-columns: 1fr 1fr; }
+  }
+
+  @media (max-width: 700px) {
+    .hero { padding: 40px 20px 32px; }
+    .content { padding: 0 20px 60px; }
+    .card-grid, .card-grid-3, .two-col, .three-col, .pros-cons, .prop-grid { grid-template-columns: 1fr; }
+    .hero h1 { font-size: 28px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">Engineering Handbook</div>
+    <div class="sidebar-title">LLM/VLM Quantization & Inference</div>
+  </div>
+  <div class="nav-section-label">Contents</div>
+  <a href="#s1" class="nav-item"><span class="num">01</span> Foundations</a>
+  <a href="#s2" class="nav-item"><span class="num">02</span> Types of Quantization</a>
+  <a href="#s3" class="nav-item"><span class="num">03</span> Decision Framework</a>
+  <a href="#s4" class="nav-item"><span class="num">04</span> Hardware Matrix</a>
+  <a href="#s5" class="nav-item"><span class="num">05</span> Implementation</a>
+  <a href="#s6" class="nav-item"><span class="num">06</span> Inference Engines</a>
+  <a href="#s7" class="nav-item"><span class="num">07</span> Engine × Quant Matrix</a>
+  <a href="#s8" class="nav-item"><span class="num">08</span> LLM vs VLM Differences</a>
+  <a href="#s9" class="nav-item"><span class="num">09</span> Deployment Pipelines</a>
+  <a href="#s10" class="nav-item"><span class="num">10</span> Performance Optimization</a>
+  <a href="#s11" class="nav-item"><span class="num">11</span> Debugging & Failures</a>
+  <a href="#s12" class="nav-item"><span class="num">12</span> Real-World Scenarios</a>
+  <a href="#s13" class="nav-item"><span class="num">13</span> Practical Tips</a>
+  <a href="#s14" class="nav-item"><span class="num">14</span> Code Snippets</a>
+  <a href="#s15" class="nav-item"><span class="num">15</span> Comparison Summary</a>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-badge">Internal Engineering Reference · v2.1</div>
+    <h1>LLM / VLM <span>Quantization</span><br>& Inference Handbook</h1>
+    <p class="hero-sub">Production-grade reference for selecting quantization methods, inference engines, and deployment strategies. Focused on trade-offs and real engineering decisions — not textbook theory.</p>
+    <div class="hero-meta">
+      <div class="meta-chip"><span class="dot"></span> 15 Sections</div>
+      <div class="meta-chip"><span class="dot"></span> 10 Quantization Methods</div>
+      <div class="meta-chip"><span class="dot"></span> 7 Inference Engines</div>
+      <div class="meta-chip"><span class="dot"></span> Production Deployment Patterns</div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- SECTION 1 -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div class="section" id="s1">
+      <div class="section-header">
+        <div class="section-num">§ 01</div>
+        <div>
+          <div class="section-title"><small>Core Concepts</small>Foundations of Quantization</div>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <div class="subsection-title">What is Quantization?</div>
+        <p>Quantization is the process of reducing the numerical precision of model weights and/or activations from high-precision floating point (FP32/FP16) to lower-precision formats (INT8, INT4, FP8). The goal is to reduce model memory footprint and accelerate matrix multiply operations — the dominant operation in transformer inference — at the cost of some representational accuracy.</p>
+        <p>Fundamentally: instead of storing a weight as a 32-bit float, you store it as an 8-bit or 4-bit integer, then scale it back during computation using a stored scale factor.</p>
+      </div>
+
+      <div class="subsection">
+        <div class="subsection-title">Why Quantization is Required</div>
+        <div class="card-grid">
+          <div class="card">
+            <div class="card-title">💾 Memory Wall</div>
+            <p>A 70B FP16 model needs ~140 GB VRAM. With INT4 it drops to ~35 GB — fits on a single 40GB A100 or 2×RTX 3090s. Without quantization, large models are simply unrunnable on most hardware.</p>
+          </div>
+          <div class="card">
+            <div class="card-title">⚡ Throughput Bottleneck</div>
+            <p>LLM inference is memory-bandwidth bound, not compute bound. Smaller dtypes = less data moved per token = higher throughput. INT8 can be 2× faster than FP16 on bandwidth-saturated hardware.</p>
+          </div>
+          <div class="card">
+            <div class="card-title">💰 Cost Reduction</div>
+            <p>Smaller models fit on cheaper GPUs. A model that required an A100 in FP16 might run on an RTX 4090 in INT4. Cost per token can drop 5–10×. Critical for API-serving businesses.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <div class="subsection-title">Core Trade-off Triangle</div>
+        <div class="card">
+          <div class="table-wrap" style="margin:0">
+            <table>
+              <thead><tr><th>Lower Precision →</th><th>Memory</th><th>Latency / Throughput</th><th>Accuracy</th></tr></thead>
+              <tbody>
+                <tr><td><strong>FP32</strong></td><td>🔴 4× baseline</td><td>🔴 Slowest</td><td>🟢 Full accuracy</td></tr>
+                <tr><td><strong>FP16 / BF16</strong></td><td>🟡 2× baseline</td><td>🟡 ~2× faster</td><td>🟢 Negligible loss</td></tr>
+                <tr><td><strong>INT8</strong></td><td>🟢 1× baseline</td><td>🟢 2–3× faster</td><td>🟡 &lt;1% degradation</td></tr>
+                <tr><td><strong>INT4</strong></td><td>🟢 0.5× baseline</td><td>🟢 3–4× faster</td><td>🟡 1–3% degradation</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <div class="subsection-title">Quantization vs Pruning vs Distillation</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Technique</th><th>What it does</th><th>Accuracy Cost</th><th>Best For</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Quantization</strong></td><td>Reduces precision of weights/activations</td><td>Low (0.5–3%)</td><td>Inference speed, VRAM reduction</td></tr>
+              <tr><td><strong>Pruning</strong></td><td>Removes unimportant weights (sets to 0)</td><td>Medium (can be high)</td><td>Structured sparsity, specialized hardware</td></tr>
+              <tr><td><strong>Distillation</strong></td><td>Trains smaller model to mimic larger one</td><td>Depends on size gap</td><td>Permanent smaller model, edge deployment</td></tr>
+              <tr><td><strong>Combined</strong></td><td>QAT + pruning + distillation</td><td>Controllable</td><td>Maximum compression with accuracy budget</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="rule-block"><strong>Rule:</strong> Quantization is almost always the first optimization to apply. It's non-destructive, reversible, and has well-established tooling. Pruning and distillation require retraining.</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- SECTION 2 -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div class="section" id="s2">
+      <div class="section-header">
+        <div class="section-num">§ 02</div>
+        <div>
+          <div class="section-title"><small>Reference</small>Types of Quantization</div>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <div class="subsection-title">Core Floating Point Formats</div>
+
+        <div class="quant-card fp16">
+          <div class="quant-header">
+            <div class="quant-name">FP16</div>
+            <div class="quant-bits">16-bit · Half Precision</div>
+          </div>
+          <div class="quant-desc">IEEE 754 half-precision. 1 sign bit, 5 exponent bits, 10 mantissa bits. Dynamic range: ~6×10⁻⁵ to 65504. The default "quantized" format for most GPU inference today.</div>
+          <div class="prop-grid">
+            <div class="prop-item"><div class="prop-label">Memory vs FP32</div><div class="prop-value">2× reduction</div></div>
+            <div class="prop-item"><div class="prop-label">Hardware</div><div class="prop-value">All modern GPUs</div></div>
+            <div class="prop-item"><div class="prop-label">Accuracy Loss</div><div class="prop-value">Negligible</div></div>
+            <div class="prop-item"><div class="prop-label">CUDA Tensor Cores</div><div class="prop-value">✅ Fully utilized</div></div>
+          </div>
+          <div class="pros-cons">
+            <div class="pros"><div class="pros-cons-title">Pros</div><ul><li>No accuracy loss vs FP32</li><li>Native GPU support everywhere</li><li>Default for HF Transformers</li></ul></div>
+            <div class="cons"><div class="pros-cons-title">Cons</div><ul><li>Can overflow (max 65504)</li><li>Less stable for training</li><li>2× FP32 memory still large</li></ul></div>
+          </div>
+          <div class="tags">
+            <span class="tag green">Production Default</span>
+            <span class="tag blue">vLLM Native</span>
+            <span class="tag blue">All NVIDIA GPUs</span>
+          </div>
+        </div>
+
+        <div class="quant-card bf16">
+          <div class="quant-header">
+            <div class="quant-name">BF16</div>
+            <div class="quant-bits">16-bit · Brain Float</div>
+          </div>
+          <div class="quant-desc">Google Brain's format. Same 1 sign bit, but 8 exponent bits (same as FP32!) and only 7 mantissa bits. Same dynamic range as FP32 but less precision. Critical: no gradient overflow during training.</div>
+          <div class="prop-grid">
+            <div class="prop-item"><div class="prop-label">Dynamic Range</div><div class="prop-value">Same as FP32</div></div>
+            <div class="prop-item"><div class="prop-label">Hardware</div><div class="prop-value">A100, H100, RTX 3090+</div></div>
+            <div class="prop-item"><div class="prop-label">vs FP16</div><div class="prop-value">More stable training</div></div>
+            <div class="prop-item"><div class="prop-label">Best For</div><div class="prop-value">Fine-tuning + inference</div></div>
+          </div>
+          <div class="rule-block"><strong>Rule:</strong> Prefer BF16 over FP16 for fine-tuning (no overflow) and for inference on Ampere+ hardware (A100, H100, RTX 3090+). FP16 on older Volta/Turing (V100, T4).</div>
+        </div>
+
+        <div class="quant-card int8">
+          <div class="quant-header">
+            <div class="quant-name">INT8</div>
+            <div class="quant-bits">8-bit · Integer</div>
+          </div>
+          <div class="quant-desc">8-bit integer quantization. Weights and/or activations are mapped to [-128, 127] using scale factors. Two flavors: <strong>W8A8</strong> (weights + activations both INT8, needs calibration) and <strong>W8A16</strong> (only weights INT8, activations stay FP16 — simpler, more common).</div>
+          <div class="prop-grid">
+            <div class="prop-item"><div class="prop-label">Memory vs FP16</div><div class="prop-value">2× reduction</div></div>
+            <div class="prop-item"><div class="prop-label">Throughput Gain</div><div class="prop-value">1.5–2.5× faster</div></div>
+            <div class="prop-item"><div class="prop-label">Accuracy Loss</div><div class="prop-value">&lt;1% (W8A16)</div></div>
+            <div class="prop-item"><div class="prop-label">Calibration</div><div class="prop-value">Needed for W8A8</div></div>
+          </div>
+          <div class="pros-cons">
+            <div class="pros"><div class="pros-cons-title">Pros</div><ul><li>Strong accuracy preservation</li><li>Widely supported</li><li>Excellent for production APIs</li></ul></div>
+            <div class="cons"><div class="pros-cons-title">Cons</div><ul><li>W8A8 needs calibration data</li><li>Some activations hard to quantize</li><li>Outlier problem (see SmoothQuant)</li></ul></div>
+          </div>
+        </div>
+
+        <div class="quant-card int4">
+          <div class="quant-header">
+            <div class="quant-name">INT4 / 4-bit</div>
+            <div class="quant-bits">4-bit · Integer</div>
+          </div>
+          <div class="quant-desc">Maps weights to 16 discrete values [-8, 7]. Groups of 64–128 weights share a scale factor (group quantization). Almost always W4A16 (activations stay FP16). The dominant format for consumer GPU inference today.</div>
+          <div class="prop-grid">
+            <div class="prop-item"><div class="prop-label">Memory vs FP16</div><div class="prop-value">4× reduction</div></div>
+            <div class="prop-item"><div class="prop-label">Accuracy Loss</div><div class="prop-value">1–3% (model-dependent)</div></div>
+            <div class="prop-item"><div class="prop-label">Group Size</div><div class="prop-value">g=128 typical</div></div>
+            <div class="prop-item"><div class="prop-label">Sweet Spot</div><div class="prop-value">7B–70B models</div></div>
+          </div>
+          <div class="warn-block"><strong>Warning:</strong> Small models (&lt;3B) degrade significantly with INT4. Larger models (70B+) are surprisingly robust. Always benchmark on your task before deploying INT4 in production.</div>
+          <div class="tags">
+            <span class="tag orange">Consumer GPU Sweet Spot</span>
+            <span class="tag purple">AWQ / GPTQ / GGUF</span>
+          </div>
+        </div>
+
+        <div class="quant-card fp8">
+          <div class="quant-header">
+            <div class="quant-name">FP8</div>
+            <div class="quant-bits">8-bit · Float (E4M3 / E5M2)</div>
+          </div>
+          <div class="quant-desc">Two FP8 variants: <strong>E4M3</strong> (4 exponent, 3 mantissa — better for weights/activations) and <strong>E5M2</strong> (5 exponent, 2 mantissa — better for gradients). Requires H100 or Ada Lovelace (RTX 4090) hardware. Native CUDA support in H100 Transformer Engine.</div>
+          <div class="prop-grid">
+            <div class="prop-item"><div class="prop-label">Memory vs FP16</div><div class="prop-value">2× reduction</div></div>
+            <div class="prop-item"><div class="prop-label">vs INT8</div><div class="prop-value">Better accuracy</div></div>
+            <div class="prop-item"><div class="prop-label">Hardware</div><div class="prop-value">H100, RTX 4090 only</div></div>
+            <div class="prop-item"><div class="prop-label">vLLM support</div><div class="prop-value">✅ With --dtype fp8</div></div>
+          </div>
+          <div class="rule-block"><strong>Rule:</strong> If you have H100s, FP8 is the best inference format — better accuracy than INT8 at the same memory, with native hardware acceleration. On older hardware, fall back to INT8/INT4.</div>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <div class="subsection-title">Advanced Quantization Methods</div>
+
+        <div class="quant-card gptq">
+          <div class="quant-header">
+            <div class="quant-name">GPTQ</div>
+            <div class="quant-bits">Post-Training · 4-bit / 8-bit</div>
+          </div>
+          <div class="quant-desc"><strong>Generative Pre-trained Transformer Quantization.</strong> Uses second-order weight information (Hessians) to minimally perturb weights during quantization. Offline quantization — run once, load the result. Produces W4A16 models. Industry standard for 4-bit inference.</div>
+          <div class="prop-grid">
+            <div class="prop-item"><div class="prop-label">Quantization Time</div><div class="prop-value">Minutes to hours (offline)</div></div>
+            <div class="prop-item"><div class="prop-label">Accuracy vs raw INT4</div><div class="prop-value">Significantly better</div></div>
+            <div class="prop-item"><div class="prop-label">Calibration Data</div><div class="prop-value">~128 samples needed</div></div>
+            <div class="prop-item"><div class="prop-label">Inference Engine</div><div class="prop-value">vLLM, TGI, AutoGPTQ</div></div>
+          </div>
+          <div class="pros-cons">
+            <div class="pros"><div class="pros-cons-title">Pros</div><ul><li>High accuracy preservation</li><li>Mature tooling (AutoGPTQ)</li><li>Pre-quantized models on HF Hub</li></ul></div>
+            <div class="cons"><div class="pros-cons-title">Cons</div><ul><li>Slow offline quantization</li><li>Less efficient than AWQ at inference time</li><li>Slightly worse perplexity than AWQ</li></ul></div>
+          </div>
+          <div class="tags">
+            <span class="tag blue">AutoGPTQ</span>
+            <span class="tag blue">TheBloke models</span>
+            <span class="tag green">vLLM supported</span>
+          </div>
+        </div>
+
+        <div class="quant-card awq">
+          <div class="quant-header">
+            <div class="quant-name">AWQ</div>
+            <div class="quant-bits">Activation-Aware Weight Quantization</div>
+          </div>
+          <div class="quant-desc"><strong>Key insight:</strong> Not all weights are equal — weights corresponding to high-activation channels cause disproportionate quantization error. AWQ identifies these "salient" channels by looking at activation magnitudes, then either keeps them in higher precision or scales them pre-quantization. Results in significantly better accuracy than GPTQ at same bit-width.</div>
+          <div class="prop-grid">
+            <div class="prop-item"><div class="prop-label">vs GPTQ</div><div class="prop-value">Better perplexity</div></div>
+            <div class="prop-item"><div class="prop-label">Inference Speed</div><div class="prop-value">Faster (efficient kernels)</div></div>
+            <div class="prop-item"><div class="prop-label">Calibration</div><div class="prop-value">Small unlabeled dataset</div></div>
+            <div class="prop-item"><div class="prop-label">Hardware</div><div class="prop-value">NVIDIA GPU required</div></div>
+          </div>
+          <div class="rule-block"><strong>Rule:</strong> AWQ is the preferred 4-bit format for production GPU serving. Use AutoAWQ for quantization. Load with vLLM or TGI. Better quality AND faster than GPTQ in most benchmarks.</div>
+          <div class="tags">
+            <span class="tag green">Preferred for vLLM</span>
+            <span class="tag blue">AutoAWQ</span>
+            <span class="tag green">Production Recommended</span>
+          </div>
+        </div>
+
+        <div class="quant-card gguf">
+          <div class="quant-header">
+            <div class="quant-name">GGUF</div>
+            <div class="quant-bits">llama.cpp format · CPU/GPU</div>
+          </div>
+          <div class="quant-desc"><strong>GGUF (GGML Unified Format)</strong> — the file format and quantization scheme used by llama.cpp. Supports a range of quantization levels: Q2_K, Q3_K_S/M/L, Q4_K_S/M, Q5_K_S/M, Q6_K, Q8_0. Uses k-quants with per-block scales and mixed precision within a block. CPU-first design.</div>
+          <div class="prop-grid">
+            <div class="prop-item"><div class="prop-label">CPU inference</div><div class="prop-value">✅ First-class</div></div>
+            <div class="prop-item"><div class="prop-label">GPU offload</div><div class="prop-value">Partial layers</div></div>
+            <div class="prop-item"><div class="prop-label">Best format</div><div class="prop-value">Q4_K_M (accuracy/speed)</div></div>
+            <div class="prop-item"><div class="prop-label">Apple Silicon</div><div class="prop-value">✅ MPS acceleration</div></div>
+          </div>
+          <div class="rule-block"><strong>Q4_K_M is the sweet spot</strong> — best quality-to-size ratio for GGUF. Use Q5_K_M if you have extra RAM and want near-FP16 quality.</div>
+          <div class="tags">
+            <span class="tag orange">CPU Deployment</span>
+            <span class="tag green">Mac M-series</span>
+            <span class="tag blue">llama.cpp / Ollama</span>
+          </div>
+        </div>
+
+        <div class="quant-card bnb">
+          <div class="quant-header">
+            <div class="quant-name">bitsandbytes</div>
+            <div class="quant-bits">8-bit / 4-bit · NF4</div>
+          </div>
+          <div class="quant-desc"><strong>Tim Dettmers' library.</strong> 8-bit uses vector-wise quantization with mixed 8-bit precision for outliers. 4-bit uses <strong>NF4 (NormalFloat4)</strong> — an information-theoretically optimal 4-bit type for normally distributed weights. Primary use-case: QLoRA fine-tuning. For inference, AWQ/GPTQ have better kernel performance.</div>
+          <div class="prop-grid">
+            <div class="prop-item"><div class="prop-label">NF4 vs INT4</div><div class="prop-value">Better for normal dists</div></div>
+            <div class="prop-item"><div class="prop-label">Primary Use</div><div class="prop-value">QLoRA training</div></div>
+            <div class="prop-item"><div class="prop-label">Inference Speed</div><div class="prop-value">⚠️ Slower than AWQ</div></div>
+            <div class="prop-item"><div class="prop-label">Double Quant</div><div class="prop-value">Quantize scale factors too</div></div>
+          </div>
+          <div class="warn-block"><strong>Warning:</strong> bitsandbytes is not optimized for pure inference throughput. Use it for QLoRA training or quick experiments. In production serving, prefer AWQ or GPTQ quantized models.</div>
+        </div>
+
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-title">🔄 QLoRA — Training vs Inference Distinction</div>
+          <p><strong>QLoRA training:</strong> Base model loaded in 4-bit NF4 (frozen). LoRA adapters trained in BF16. This dramatically reduces training VRAM. The 4-bit base is ONLY used to compute gradients for the adapters.</p>
+          <p><strong>After QLoRA training:</strong> You have a base 4-bit model + LoRA adapter weights in BF16. For inference, you can: (a) serve base model + merge adapters at runtime, or (b) dequantize → merge → re-quantize with AWQ/GPTQ for production. Option (b) is better for serving.</p>
+          <div class="rule-block"><strong>Critical:</strong> QLoRA-trained models in raw bitsandbytes format are NOT efficient for serving. Always merge and re-export for production.</div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">🔧 SmoothQuant & ZeroQuant</div>
+          <div class="two-col">
+            <div>
+              <h3>SmoothQuant</h3>
+              <p>Tackles the <strong>outlier problem in activations</strong>: some activation channels are 100× larger than others, making them hard to quantize. SmoothQuant mathematically migrates the quantization difficulty from activations to weights (which are easier to quantize) by introducing a per-channel scale factor. Enables W8A8 quantization with minimal accuracy loss.</p>
+              <div class="tags"><span class="tag blue">W8A8 enabler</span><span class="tag blue">TensorRT-LLM</span></div>
+            </div>
+            <div>
+              <h3>ZeroQuant</h3>
+              <p>Microsoft's method for W8A8 at the operator level. Uses token-wise quantization for activations and weight-wise for weights. Integrated into <strong>DeepSpeed</strong>. Supports INT4/INT8 with hardware-aware quantization kernels. Part of the ZeroQuant-V2 and ZeroQuant-FP extensions.</p>
+              <div class="tags"><span class="tag purple">DeepSpeed</span><span class="tag blue">W8A8</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- SECTION 3 -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div class="section" id="s3">
+      <div class="section-header">
+        <div class="section-num">§ 03</div>
+        <div>
+          <div class="section-title"><small>Decision Guide</small>Quantization Decision Framework</div>
+        </div>
+      </div>
+
+      <div class="decision-tree">
+        <h3 style="margin-bottom:16px;font-size:13px;color:var(--text-muted);letter-spacing:0.05em;text-transform:uppercase;">Hardware → Format Rules</h3>
+
+        <div class="decision-row">
+          <div class="decision-node">CPU only</div>
+          <div class="decision-arrow">→</div>
+          <div class="decision-result result-orange">GGUF Q4_K_M</div>
+          <div class="decision-arrow">via</div>
+          <div class="decision-result result-orange">llama.cpp / Ollama</div>
+        </div>
+
+        <div class="decision-row">
+          <div class="decision-node">Mac M1/M2/M3</div>
+          <div class="decision-arrow">→</div>
+          <div class="decision-result result-orange">GGUF Q4_K_M or Q5_K_M</div>
+          <div class="decision-arrow">via</div>
+          <div class="decision-result result-orange">llama.cpp (MPS)</div>
+        </div>
+
+        <div class="decision-row">
+          <div class="decision-node">RTX 3090 / 4090 (24GB)</div>
+          <div class="decision-arrow">→</div>
+          <div class="decision-result result-blue">AWQ 4-bit or FP16</div>
+          <div class="decision-arrow">via</div>
+          <div class="decision-result result-blue">vLLM</div>
+        </div>
+
+        <div class="decision-row">
+          <div class="decision-node">A100 / A6000 (40-80GB)</div>
+          <div class="decision-arrow">→</div>
+          <div class="decision-result result-green">FP16 / BF16 or AWQ</div>
+          <div class="decision-arrow">via</div>
+          <div class="decision-result result-green">vLLM</div>
+        </div>
+
+        <div class="decision-row">
+          <div class="decision-node">H100 (80GB)</div>
+          <div class="decision-arrow">→</div>
+          <div class="decision-result result-purple">FP8 E4M3</div>
+          <div class="decision-arrow">via</div>
+          <div class="decision-result result-purple">vLLM / TensorRT-LLM</div>
+        </div>
+
+        <div class="decision-row">
+          <div class="decision-node">Multi-GPU (2–8× A100)</div>
+          <div class="decision-arrow">→</div>
+          <div class="decision-result result-green">FP16 + Tensor Parallel</div>
+          <div class="decision-arrow">via</div>
+          <div class="decision-result result-green">vLLM (--tensor-parallel-size N)</div>
+        </div>
+
+        <div class="decision-row">
+          <div class="decision-node">Edge / Jetson / Mobile</div>
+          <div class="decision-arrow">→</div>
+          <div class="decision-result result-orange">INT4 or GGUF Q4</div>
+          <div class="decision-arrow">via</div>
+          <div class="decision-result result-orange">ONNX Runtime / llama.cpp</div>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <div class="subsection-title">Use-Case Rules</div>
+        <div class="rule-block"><strong>High throughput API (&gt;1000 req/s):</strong> FP8 on H100s with vLLM. Enable continuous batching + prefix caching. This is non-negotiable for cost efficiency at scale.</div>
+        <div class="rule-block"><strong>Latency-critical (&lt;50ms TTFT):</strong> FP16 or BF16 — quantization usually doesn't help latency for single requests, only throughput. Prefill optimization matters more.</div>
+        <div class="rule-block"><strong>Fitting model on consumer GPU:</strong> AWQ 4-bit. A 70B model fits on 2× RTX 3090. A 13B model fits on a single RTX 3080 10GB. A 7B model on RTX 3060 12GB.</div>
+        <div class="rule-block"><strong>Fine-tuned model deployment:</strong> Merge LoRA → full model → quantize with AWQ → serve with vLLM. Never serve raw bitsandbytes models at scale.</div>
+        <div class="rule-block"><strong>Accuracy is critical (medical/legal):</strong> FP16 minimum. If you must quantize, use INT8 with SmoothQuant calibration and always run task-specific evals before deploying.</div>
+        <div class="rule-block"><strong>VLM (vision-language model):</strong> Quantize text decoder aggressively (INT4/AWQ), but be conservative with vision encoder (FP16 or INT8 at minimum). Vision encoder activations are more sensitive.</div>
+      </div>
+
+      <div class="subsection">
+        <div class="subsection-title">Model Size × VRAM Matrix</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Model Size</th><th>FP16 VRAM</th><th>INT8 VRAM</th><th>INT4 VRAM</th><th>Min GPU (INT4)</th></tr></thead>
+            <tbody>
+              <tr><td><strong>3B</strong></td><td>6 GB</td><td>3 GB</td><td>1.8 GB</td><td>RTX 3060 (8GB)</td></tr>
+              <tr><td><strong>7B</strong></td><td>14 GB</td><td>7 GB</td><td>4 GB</td><td>RTX 3060 12GB</td></tr>
+              <tr><td><strong>13B</strong></td><td>26 GB</td><td>13 GB</td><td>7 GB</td><td>RTX 3080 10GB</td></tr>
+              <tr><td><strong>34B</strong></td><td>68 GB</td><td>34 GB</td><td>17 GB</td><td>2× RTX 3090</td></tr>
+              <tr><td><strong>70B</strong></td><td>140 GB</td><td>70 GB</td><td>35 GB</td><td>2× A100 40GB / 2× RTX 3090</td></tr>
+              <tr><td><strong>405B</strong></td><td>810 GB</td><td>405 GB</td><td>202 GB</td><td>8× A100 80GB (INT4)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="warn-block"><strong>Note:</strong> Add ~20–30% for KV cache overhead at serving time. These are weights-only estimates.</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- SECTION 4 -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div class="section" id="s4">
+      <div class="section-header">
+        <div class="section-num">§ 04</div>
+        <div>
+          <div class="section-title"><small>Reference</small>Hardware Compatibility Matrix</div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Hardware</th><th>Best Quant</th><th>FP8</th><th>INT8</th><th>INT4</th><th>GGUF</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>H100 80GB SXM</strong></td><td><span class="tag purple">FP8 E4M3</span></td><td class="compat-yes">✅</td><td class="compat-yes">✅</td><td class="compat-yes">✅</td><td class="compat-no">❌</td><td>Native FP8 Tensor Cores. Best-in-class inference. Use TensorRT-LLM or vLLM.</td></tr>
+            <tr><td><strong>A100 80GB</strong></td><td><span class="tag green">FP16 / AWQ</span></td><td class="compat-warn">⚠️</td><td class="compat-yes">✅</td><td class="compat-yes">✅</td><td class="compat-no">❌</td><td>No native FP8. BF16 Tensor Cores. Workhorse for production LLM serving.</td></tr>
+            <tr><td><strong>RTX 4090 24GB</strong></td><td><span class="tag blue">AWQ 4-bit</span></td><td class="compat-warn">⚠️</td><td class="compat-yes">✅</td><td class="compat-yes">✅</td><td class="compat-yes">✅</td><td>Ada Lovelace. Software FP8 support. Great value for single-GPU inference.</td></tr>
+            <tr><td><strong>RTX 3090 24GB</strong></td><td><span class="tag blue">AWQ 4-bit / INT8</span></td><td class="compat-no">❌</td><td class="compat-yes">✅</td><td class="compat-yes">✅</td><td class="compat-yes">✅</td><td>Ampere. BF16 supported. Popular for local 70B (2×) or 13B single GPU serving.</td></tr>
+            <tr><td><strong>RTX 3080 10GB</strong></td><td><span class="tag blue">AWQ 4-bit</span></td><td class="compat-no">❌</td><td class="compat-warn">⚠️</td><td class="compat-yes">✅</td><td class="compat-yes">✅</td><td>10GB limits to 7B-13B INT4. Tight for INT8 on 13B.</td></tr>
+            <tr><td><strong>T4 16GB (Cloud)</strong></td><td><span class="tag green">INT8</span></td><td class="compat-no">❌</td><td class="compat-yes">✅</td><td class="compat-yes">✅</td><td class="compat-yes">✅</td><td>Turing. No BF16. Common in GCP/AWS for cheap inference. FP16 inference.</td></tr>
+            <tr><td><strong>V100 16/32GB</strong></td><td><span class="tag green">INT8</span></td><td class="compat-no">❌</td><td class="compat-yes">✅</td><td class="compat-warn">⚠️</td><td class="compat-no">❌</td><td>Volta. No BF16, no INT4 Tensor Cores. Use bitsandbytes INT8 carefully.</td></tr>
+            <tr><td><strong>Apple M2/M3 (MPS)</strong></td><td><span class="tag orange">GGUF Q4_K_M</span></td><td class="compat-no">❌</td><td class="compat-warn">⚠️</td><td class="compat-yes">✅</td><td class="compat-yes">✅</td><td>Unified memory. llama.cpp with MPS. Outstanding for local dev / 7B-13B models.</td></tr>
+            <tr><td><strong>CPU (x86)</strong></td><td><span class="tag orange">GGUF Q4_K_M</span></td><td class="compat-no">❌</td><td class="compat-warn">⚠️</td><td class="compat-warn">⚠️</td><td class="compat-yes">✅</td><td>AVX2/AVX-512 for acceleration. llama.cpp. Slow but cost-effective for low traffic.</td></tr>
+            <tr><td><strong>Jetson Orin (Edge)</strong></td><td><span class="tag orange">INT4 / GGUF</span></td><td class="compat-no">❌</td><td class="compat-yes">✅</td><td class="compat-yes">✅</td><td class="compat-yes">✅</td><td>Ampere GPU + ARM. Use TensorRT for INT8. GGUF Q4 for flexibility.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- SECTION 5 -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div class="section" id="s5">
+      <div class="section-header">
+        <div class="section-num">§ 05</div>
+        <div>
+          <div class="section-title"><small>Implementation</small>Quantization Methods — Code & Usage</div>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <div class="subsection-title">5.1 bitsandbytes — 4-bit & 8-bit Loading</div>
+        <div class="code-block">
+          <div class="code-header"><div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div><div class="code-lang">Python · bitsandbytes</div></div>
+          <pre><span class="kw">from</span> <span class="var">transformers</span> <span class="kw">import</span> <span class="var">AutoModelForCausalLM</span>, <span class="var">AutoTokenizer</span>, <span class="var">BitsAndBytesConfig</span>
+<span class="kw">import</span> <span class="var">torch</span>
+
+<span class="cm"># 4-bit NF4 (QLoRA style — for fine-tuning or quick experiments)</span>
+<span class="var">bnb_config_4bit</span> = <span class="fn">BitsAndBytesConfig</span>(
+    <span class="var">load_in_4bit</span>=<span class="kw">True</span>,
+    <span class="var">bnb_4bit_quant_type</span>=<span class="str">"nf4"</span>,          <span class="cm"># NF4 for normally-distributed weights</span>
+    <span class="var">bnb_4bit_compute_dtype</span>=<span class="var">torch</span>.<span class="var">bfloat16</span>, <span class="cm"># Compute in BF16 during forward pass</span>
+    <span class="var">bnb_4bit_use_double_quant</span>=<span class="kw">True</span>,      <span class="cm"># Quantize scale factors too (~0.4 bits extra saving)</span>
+)
+
+<span class="cm"># 8-bit INT8 (better for inference accuracy)</span>
+<span class="var">bnb_config_8bit</span> = <span class="fn">BitsAndBytesConfig</span>(
+    <span class="var">load_in_8bit</span>=<span class="kw">True</span>,
+    <span class="var">llm_int8_threshold</span>=<span class="num">6.0</span>,  <span class="cm"># Outlier threshold — weights above go to FP16</span>
+)
+
+<span class="var">model</span> = <span class="var">AutoModelForCausalLM</span>.<span class="fn">from_pretrained</span>(
+    <span class="str">"meta-llama/Llama-3-8b-hf"</span>,
+    <span class="var">quantization_config</span>=<span class="var">bnb_config_4bit</span>,
+    <span class="var">device_map</span>=<span class="str">"auto"</span>,  <span class="cm"># Automatically distributes across available GPUs</span>
+)
+<span class="var">tokenizer</span> = <span class="var">AutoTokenizer</span>.<span class="fn">from_pretrained</span>(<span class="str">"meta-llama/Llama-3-8b-hf"</span>)</pre>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <div class="subsection-title">5.2 GPTQ — Offline Quantization</div>
+        <div class="code-block">
+          <div class="code-header"><div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div><div class="code-lang">Python · AutoGPTQ</div></div>
+          <pre><span class="kw">from</span> <span class="var">auto_gptq</span> <span class="kw">import</span> <span class="var">AutoGPTQForCausalLM</span>, <span class="var">BaseQuantizeConfig</span>
+
+<span class="cm"># Step 1: Quantize (run once offline, save result)</span>
+<span class="var">quantize_config</span> = <span class="fn">BaseQuantizeConfig</span>(
+    <span class="var">bits</span>=<span class="num">4</span>,         <span class="cm"># 4-bit quantization</span>
+    <span class="var">group_size</span>=<span class="num">128</span>,  <span class="cm"># Larger = better quality, slightly more VRAM</span>
+    <span class="var">desc_act</span>=<span class="kw">False</span>,  <span class="cm"># False = faster inference; True = better accuracy</span>
+)
+
+<span class="var">model</span> = <span class="var">AutoGPTQForCausalLM</span>.<span class="fn">from_pretrained</span>(<span class="str">"meta-llama/Llama-3-8b-hf"</span>, <span class="var">quantize_config</span>)
+<span class="var">model</span>.<span class="fn">quantize</span>(<span class="var">calibration_examples</span>)  <span class="cm"># List of tokenized text samples (~128)</span>
+<span class="var">model</span>.<span class="fn">save_quantized</span>(<span class="str">"./llama3-8b-gptq-4bit"</span>)
+
+<span class="cm"># Step 2: Load the quantized model for inference</span>
+<span class="var">model</span> = <span class="var">AutoGPTQForCausalLM</span>.<span class="fn">from_quantized</span>(
+    <span class="str">"./llama3-8b-gptq-4bit"</span>,
+    <span class="var">device_map</span>=<span class="str">"auto"</span>,
+    <span class="var">use_triton</span>=<span class="kw">True</span>,  <span class="cm"># Faster Triton kernels if available</span>
+)</pre>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <div class="subsection-title">5.3 AWQ — Activation-Aware Quantization</div>
+        <div class="code-block">
+          <div class="code-header"><div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div><div class="code-lang">Python · AutoAWQ</div></div>
+          <pre><span class="kw">from</span> <span class="var">awq</span> <span class="kw">import</span> <span class="var">AutoAWQForCausalLM</span>
+<span class="kw">from</span> <span class="var">transformers</span> <span class="kw">import</span> <span class="var">AutoTokenizer</span>
+
+<span class="cm"># Quantize offline</span>
+<span class="var">model</span> = <span class="var">AutoAWQForCausalLM</span>.<span class="fn">from_pretrained</span>(<span class="str">"meta-llama/Llama-3-8b-hf"</span>)
+<span class="var">tokenizer</span> = <span class="var">AutoTokenizer</span>.<span class="fn">from_pretrained</span>(<span class="str">"meta-llama/Llama-3-8b-hf"</span>)
+
+<span class="var">quant_config</span> = {<span class="str">"zero_point"</span>: <span class="kw">True</span>, <span class="str">"q_group_size"</span>: <span class="num">128</span>, <span class="str">"w_bit"</span>: <span class="num">4</span>, <span class="str">"version"</span>: <span class="str">"GEMM"</span>}
+<span class="var">model</span>.<span class="fn">quantize</span>(<span class="var">tokenizer</span>, <span class="var">quant_config</span>=<span class="var">quant_config</span>)
+<span class="var">model</span>.<span class="fn">save_quantized</span>(<span class="str">"./llama3-8b-awq-4bit"</span>)
+
+<span class="cm"># Load in vLLM (preferred serving path)</span>
+<span class="cm"># vllm serve ./llama3-8b-awq-4bit --quantization awq</span></pre>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <div class="subsection-title">5.4 GGUF — Convert & Run on CPU</div>
+        <div class="code-block">
+          <div class="code-header"><div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div><div class="code-lang">Bash · llama.cpp conversion</div></div>
+          <pre><span class="cm"># Step 1: Clone llama.cpp</span>
+git clone https://github.com/ggerganov/llama.cpp
+cd llama.cpp && make -j8  <span class="cm"># or: cmake -B build && cmake --build build --config Release</span>
+
+<span class="cm"># Step 2: Convert HF model to GGUF F16</span>
+python convert_hf_to_gguf.py /path/to/llama3-8b-hf --outtype f16 --outfile llama3-8b-f16.gguf
+
+<span class="cm"># Step 3: Quantize to Q4_K_M (recommended)</span>
+./llama-quantize llama3-8b-f16.gguf llama3-8b-q4km.gguf Q4_K_M
+
+<span class="cm"># Step 4: Run inference (CPU)</span>
+./llama-cli -m llama3-8b-q4km.gguf -p "Explain quantization in one paragraph:" -n 256
+
+<span class="cm"># With partial GPU offload (e.g. 20 layers to GPU)</span>
+./llama-cli -m llama3-8b-q4km.gguf -ngl 20 -p "Hello"
+
+<span class="cm"># Serve as OpenAI-compatible API</span>
+./llama-server -m llama3-8b-q4km.gguf --port 8080</pre>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <div class="subsection-title">5.5 FP8 with vLLM</div>
+        <div class="code-block">
+          <div class="code-header"><div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div><div class="code-lang">Bash · vLLM FP8 (H100 required)</div></div>
+          <pre><span class="cm"># Static FP8 quantization via vLLM's quantization toolkit</span>
+python -m llmcompressor.transformers.compression.compress \
+  --model meta-llama/Llama-3-70b-hf \
+  --recipe fp8_recipe.yaml \
+  --save_dir ./llama3-70b-fp8
+
+<span class="cm"># Or: dynamic FP8 (no calibration needed, slightly lower quality)</span>
+vllm serve meta-llama/Llama-3-70b-hf \
+  --dtype float16 \
+  --quantization fp8 \
+  --tensor-parallel-size 4</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- SECTION 6 -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div class="section" id="s6">
+      <div class="section-header">
+        <div class="section-num">§ 06</div>
+        <div>
+          <div class="section-title"><small>Critical Section</small>Inference Engines</div>
+        </div>
+      </div>
+
+      <div class="engine-card">
+        <div class="engine-icon">⚡</div>
+        <div>
+          <div class="engine-name">vLLM</div>
+          <div class="engine-sub">UC Berkeley · Production GPU LLM Serving</div>
+          <p>The <strong>default choice for production GPU inference</strong>. Built around PagedAttention for near-zero KV cache waste, continuous batching, and a growing list of quantization support. OpenAI-compatible API out of the box. Python-native, easy to deploy.</p>
+          <div class="pros-cons" style="margin-top:12px">
+            <div class="pros"><div class="pros-cons-title">Strengths</div><ul><li>PagedAttention (near-zero memory waste)</li><li>Continuous batching</li><li>AWQ, GPTQ, FP8, INT8 support</li><li>Tensor parallelism built-in</li><li>OpenAI API compatible</li></ul></div>
+            <div class="cons"><div class="pros-cons-title">Weaknesses</div><ul><li>No CPU inference</li><li>NVIDIA GPU only (AMD experimental)</li><li>Less tunable than TensorRT</li><li>Not ideal for very small models</li></ul></div>
+          </div>
+          <div class="tags" style="margin-top:12px">
+            <span class="tag green">FP16 / BF16</span><span class="tag green">AWQ</span><span class="tag green">GPTQ</span><span class="tag green">FP8</span><span class="tag green">INT8</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="engine-card">
+        <div class="engine-icon">🚀</div>
+        <div>
+          <div class="engine-name">TensorRT-LLM</div>
+          <div class="engine-sub">NVIDIA · Maximum GPU Throughput</div>
+          <p>NVIDIA's production-grade engine. Compiles models into TensorRT graphs with fused kernels, optimal memory layouts, and hardware-specific optimizations. <strong>Highest raw throughput</strong> on NVIDIA hardware, but complex to set up and inflexible (model format locked to TRT).</p>
+          <div class="pros-cons" style="margin-top:12px">
+            <div class="pros"><div class="pros-cons-title">Strengths</div><ul><li>Maximum throughput on NVIDIA</li><li>FP8, INT8, SmoothQuant native</li><li>Speculative decoding, LoRA</li><li>Production-tested by NVIDIA</li></ul></div>
+            <div class="cons"><div class="pros-cons-title">Weaknesses</div><ul><li>Complex build pipeline</li><li>NVIDIA-only, CUDA-locked</li><li>Slow model compilation step</li><li>Less flexible than vLLM</li></ul></div>
+          </div>
+          <div class="tags" style="margin-top:12px">
+            <span class="tag green">FP8</span><span class="tag green">INT8</span><span class="tag green">SmoothQuant</span><span class="tag blue">NVIDIA Only</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="engine-card">
+        <div class="engine-icon">🦙</div>
+        <div>
+          <div class="engine-name">llama.cpp</div>
+          <div class="engine-sub">Georgi Gerganov · CPU-First Inference</div>
+          <p>The CPU inference champion. Pure C++ with AVX/AVX2/AVX-512 and Apple MPS support. GGUF format with k-quants (Q2_K through Q8_0). Supports partial GPU offload. <strong>Default choice for local/CPU/edge deployments</strong>. Powers Ollama, LM Studio, Jan.</p>
+          <div class="pros-cons" style="margin-top:12px">
+            <div class="pros"><div class="pros-cons-title">Strengths</div><ul><li>CPU and Apple Silicon native</li><li>Partial GPU offload</li><li>OpenAI API via llama-server</li><li>Wide model support</li></ul></div>
+            <div class="cons"><div class="pros-cons-title">Weaknesses</div><ul><li>Not for high-throughput GPU serving</li><li>GGUF format only</li><li>No continuous batching</li></ul></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="engine-card">
+        <div class="engine-icon">🤗</div>
+        <div>
+          <div class="engine-name">HuggingFace Transformers</div>
+          <div class="engine-sub">Experimentation & Fine-tuning</div>
+          <p>The research and experimentation standard. Not optimized for production throughput but unmatched in flexibility and model coverage. Use for: fine-tuning, custom architectures, research, quick testing. Integrates bitsandbytes, GPTQ, and AWQ via quantization configs. <strong>Not for production serving at scale.</strong></p>
+          <div class="warn-block" style="margin-top:12px"><strong>Production warning:</strong> HF Transformers has no continuous batching, poor memory management, and naive sequential batching. At scale (&gt;10 req/s), switch to vLLM or TGI.</div>
+        </div>
+      </div>
+
+      <div class="engine-card">
+        <div class="engine-icon">🏭</div>
+        <div>
+          <div class="engine-name">TGI (Text Generation Inference)</div>
+          <div class="engine-sub">HuggingFace · Production Serving</div>
+          <p>HuggingFace's production inference server. Continuous batching, tensor parallelism, GPTQ/AWQ support. Slightly less throughput than vLLM on benchmarks but very well-integrated with HF Hub models. Good choice if your stack is HF-centric.</p>
+          <div class="tags" style="margin-top:12px">
+            <span class="tag green">FP16</span><span class="tag green">GPTQ</span><span class="tag green">AWQ</span><span class="tag blue">HF Hub native</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="engine-card">
+        <div class="engine-icon">🔷</div>
+        <div>
+          <div class="engine-name">ONNX Runtime</div>
+          <div class="engine-sub">Microsoft · Cross-Platform Edge/Cloud</div>
+          <p>Export-compile-deploy pipeline. Best for: cross-platform deployment (Windows, iOS, Android, WebAssembly), small models, edge devices. Supports INT8 quantization and DirectML for non-NVIDIA GPUs. Not ideal for large autoregressive LLMs — optimized for encoder models and smaller decoders.</p>
+          <div class="tags" style="margin-top:12px">
+            <span class="tag orange">Edge Devices</span><span class="tag blue">INT8</span><span class="tag blue">DirectML</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="engine-card">
+        <div class="engine-icon">🌊</div>
+        <div>
+          <div class="engine-name">DeepSpeed Inference</div>
+          <div class="engine-sub">Microsoft · Multi-GPU Large Models</div>
+          <p>Microsoft's inference optimization library. Kernel injection for fused ops, ZeroQuant INT4/INT8 quantization, and tensor parallelism. Best for very large models (&gt;100B) on multi-GPU clusters where model doesn't fit in standard configurations. Also used for DeepSpeed-Chat serving pipeline.</p>
+          <div class="tags" style="margin-top:12px">
+            <span class="tag purple">100B+ Models</span><span class="tag blue">ZeroQuant</span><span class="tag blue">Multi-GPU</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- SECTION 7 -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div class="section" id="s7">
+      <div class="section-header">
+        <div class="section-num">§ 07</div>
+        <div>
+          <div class="section-title"><small>Reference Matrix</small>Engine × Quantization Compatibility</div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Engine</th><th>FP32</th><th>FP16/BF16</th><th>INT8</th><th>INT4</th><th>FP8</th><th>GPTQ</th><th>AWQ</th><th>GGUF</th><th>NF4 (bnb)</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>vLLM</strong></td><td class="compat-no">❌</td><td class="compat-yes">✅</td><td class="compat-yes">✅</td><td class="compat-yes">✅</td><td class="compat-yes">✅</td><td class="compat-yes">✅</td><td class="compat-yes">✅</td><td class="compat-no">❌</td><td class="compat-warn">⚠️</td></tr>
+            <tr><td><strong>TensorRT-LLM</strong></td><td class="compat-no">❌</td><td class="compat-yes">✅</td><td class="compat-yes">✅</td><td class="compat-yes">✅</td><td class="compat-yes">✅</td><td class="compat-yes">✅</td><td class="compat-yes">✅</td><td class="compat-no">❌</td><td class="compat-no">❌</td></tr>
+            <tr><td><strong>llama.cpp</strong></td><td class="compat-no">❌</td><td class="compat-warn">⚠️</td><td class="compat-warn">⚠️</td><td class="compat-yes">✅</td><td class="compat-no">❌</td><td class="compat-no">❌</td><td class="compat-no">❌</td><td class="compat-yes">✅</td><td class="compat-no">❌</td></tr>
+            <tr><td><strong>HF Transformers</strong></td><td class="compat-yes">✅</td><td class="compat-yes">✅</td><td class="compat-yes">✅</td><td class="compat-yes">✅</td><td class="compat-warn">⚠️</td><td class="compat-yes">✅</td><td class="compat-yes">✅</td><td class="compat-no">❌</td><td class="compat-yes">✅</td></tr>
+            <tr><td><strong>TGI</strong></td><td class="compat-no">❌</td><td class="compat-yes">✅</td><td class="compat-yes">✅</td><td class="compat-yes">✅</td><td class="compat-warn">⚠️</td><td class="compat-yes">✅</td><td class="compat-yes">✅</td><td class="compat-no">❌</td><td class="compat-no">❌</td></tr>
+            <tr><td><strong>ONNX Runtime</strong></td><td class="compat-yes">✅</td><td class="compat-yes">✅</td><td class="compat-yes">✅</td><td class="compat-warn">⚠️</td><td class="compat-no">❌</td><td class="compat-no">❌</td><td class="compat-no">❌</td><td class="compat-no">❌</td><td class="compat-no">❌</td></tr>
+            <tr><td><strong>DeepSpeed</strong></td><td class="compat-yes">✅</td><td class="compat-yes">✅</td><td class="compat-yes">✅</td><td class="compat-yes">✅</td><td class="compat-warn">⚠️</td><td class="compat-no">❌</td><td class="compat-no">❌</td><td class="compat-no">❌</td><td class="compat-no">❌</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="margin-top:8px;font-size:12px"><span class="compat-yes">✅</span> Native support  <span class="compat-warn">⚠️</span> Partial / experimental  <span class="compat-no">❌</span> Not supported</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- SECTION 8 -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div class="section" id="s8">
+      <div class="section-header">
+        <div class="section-num">§ 08</div>
+        <div>
+          <div class="section-title"><small>Critical Differences</small>LLM vs VLM Quantization</div>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <div class="subsection-title">Why VLM Quantization is Harder</div>
+        <p>Vision-Language Models (LLaVA, Qwen-VL, InternVL, Idefics, etc.) consist of at minimum two components: a <strong>vision encoder</strong> (ViT-based) and a <strong>text decoder</strong> (transformer LLM). These have fundamentally different quantization characteristics.</p>
+
+        <div class="two-col">
+          <div class="card">
+            <div class="card-title">🖼️ Vision Encoder</div>
+            <ul>
+              <li>Processes raw pixel values → patch embeddings</li>
+              <li><strong>Activations have high variance</strong> and extreme outliers</li>
+              <li>Many operations are not matmul-dominated (Conv2d, LayerNorm)</li>
+              <li>INT4 causes severe visual distortion artifacts</li>
+              <li>FP16 or INT8 with careful calibration is the minimum</li>
+              <li>CLIP encoders particularly sensitive</li>
+            </ul>
+          </div>
+          <div class="card">
+            <div class="card-title">📝 Text Decoder</div>
+            <ul>
+              <li>Standard autoregressive transformer</li>
+              <li>Can be aggressively quantized (INT4/AWQ)</li>
+              <li>Larger proportion of model VRAM</li>
+              <li>Standard LLM quantization techniques apply</li>
+              <li>AWQ or GPTQ 4-bit works well here</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="warn-block" style="margin-top:16px"><strong>Critical rule:</strong> Never apply INT4 to vision encoders in production. The quantization error propagates into multimodal embeddings and causes <strong>hallucinations that are hard to detect</strong> — the model may confidently describe a completely different image.</div>
+      </div>
+
+      <div class="subsection">
+        <div class="subsection-title">Recommended VLM Quantization Strategy</div>
+        <div class="decision-tree">
+          <div class="decision-row">
+            <div class="decision-node">Vision Encoder</div>
+            <div class="decision-arrow">→</div>
+            <div class="decision-result result-blue">Keep FP16 or INT8 with SmoothQuant</div>
+          </div>
+          <div class="decision-row">
+            <div class="decision-node">Cross-Attention / MLP Projector</div>
+            <div class="decision-arrow">→</div>
+            <div class="decision-result result-blue">INT8 W8A16 (conservative)</div>
+          </div>
+          <div class="decision-row">
+            <div class="decision-node">Text Decoder LLM</div>
+            <div class="decision-arrow">→</div>
+            <div class="decision-result result-green">AWQ 4-bit or INT8</div>
+          </div>
+          <div class="decision-row">
+            <div class="decision-node">Mixed precision total</div>
+            <div class="decision-arrow">→</div>
+            <div class="decision-result result-purple">~60% memory savings vs full FP16</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <div class="subsection-title">Common VLM Quantization Failure Modes</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Failure Mode</th><th>Root Cause</th><th>Fix</th></tr></thead>
+            <tbody>
+              <tr><td>Wrong object identification</td><td>Vision encoder INT4 causes embedding distortion</td><td>Upgrade vision encoder to FP16</td></tr>
+              <tr><td>Color/count errors</td><td>Patch embedding quantization error</td><td>Use INT8 for vision encoder, calibrate</td></tr>
+              <tr><td>Coherent text but wrong image</td><td>Projector layer quantized aggressively</td><td>Keep projector in FP16</td></tr>
+              <tr><td>Increased hallucination rate</td><td>Multimodal embedding space corrupted</td><td>Run visual QA benchmarks (VQAv2) post-quant</td></tr>
+              <tr><td>Slow inference despite quantization</td><td>Mixed precision dequantization overhead</td><td>Profile with nsight; batch vision pre-processing</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- SECTION 9 -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div class="section" id="s9">
+      <div class="section-header">
+        <div class="section-num">§ 09</div>
+        <div>
+          <div class="section-title"><small>End-to-End</small>Deployment Pipelines</div>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <div class="subsection-title">Pipeline A: GPTQ → vLLM Production Serving</div>
+        <div class="pipeline">
+          <div class="pipeline-step"><div class="step-num">1</div><div class="step-content"><div class="step-title">Prepare Calibration Dataset</div><div class="step-desc">Select ~128 representative text samples from your use case. Domain-specific data gives better calibration than generic data.</div></div></div>
+          <div class="pipeline-step"><div class="step-num">2</div><div class="step-content"><div class="step-title">Run GPTQ Quantization</div><div class="step-desc"><code>auto-gptq quantize --bits 4 --group-size 128 --model llama3-70b --output ./llama3-70b-gptq4b</code>. Takes 1–4 hours on A100.</div></div></div>
+          <div class="pipeline-step"><div class="step-num">3</div><div class="step-content"><div class="step-title">Validate Perplexity</div><div class="step-desc">Measure WikiText-2 perplexity of quantized vs original. Accept if delta &lt;0.5 for most models. Run task-specific evals (HellaSwag, MMLU) for accuracy-critical apps.</div></div></div>
+          <div class="pipeline-step"><div class="step-num">4</div><div class="step-content"><div class="step-title">Serve with vLLM</div><div class="step-desc"><code>vllm serve ./llama3-70b-gptq4b --quantization gptq --tensor-parallel-size 2 --port 8000</code></div></div></div>
+          <div class="pipeline-step"><div class="step-num">5</div><div class="step-content"><div class="step-title">Load Test</div><div class="step-desc">Use <code>locust</code> or <code>wrk</code> to verify throughput under expected load. Monitor GPU memory and token/sec.</div></div></div>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <div class="subsection-title">Pipeline B: GGUF for Local CPU/Mac Deployment</div>
+        <div class="pipeline">
+          <div class="pipeline-step"><div class="step-num">1</div><div class="step-content"><div class="step-title">Download HF Model</div><div class="step-desc"><code>huggingface-cli download meta-llama/Llama-3-8b-hf --local-dir ./llama3-8b</code></div></div></div>
+          <div class="pipeline-step"><div class="step-num">2</div><div class="step-content"><div class="step-title">Convert to GGUF FP16</div><div class="step-desc"><code>python llama.cpp/convert_hf_to_gguf.py ./llama3-8b --outtype f16 --outfile llama3-8b-f16.gguf</code></div></div></div>
+          <div class="pipeline-step"><div class="step-num">3</div><div class="step-content"><div class="step-title">Quantize to Q4_K_M</div><div class="step-desc"><code>./llama-quantize llama3-8b-f16.gguf llama3-8b-q4km.gguf Q4_K_M</code>. ~4GB output for 8B model.</div></div></div>
+          <div class="pipeline-step"><div class="step-num">4</div><div class="step-content"><div class="step-title">Serve with llama-server</div><div class="step-desc"><code>./llama-server -m llama3-8b-q4km.gguf -c 4096 --port 8080 -ngl 99</code> (ngl=layers on GPU, 99=all)</div></div></div>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <div class="subsection-title">Pipeline C: INT8 + TensorRT-LLM on H100</div>
+        <div class="pipeline">
+          <div class="pipeline-step"><div class="step-num">1</div><div class="step-content"><div class="step-title">Calibrate with SmoothQuant</div><div class="step-desc">Run SmoothQuant calibration to migrate outliers from activations to weights. Requires 512 calibration samples.</div></div></div>
+          <div class="pipeline-step"><div class="step-num">2</div><div class="step-content"><div class="step-title">Build TensorRT Engine</div><div class="step-desc"><code>python convert_checkpoint.py --model_dir llama3-70b --dtype float16 --use_smooth_quant --int8_kv_cache</code></div></div></div>
+          <div class="pipeline-step"><div class="step-num">3</div><div class="step-content"><div class="step-title">Compile with trtllm-build</div><div class="step-desc"><code>trtllm-build --checkpoint_dir ./trt_ckpts --output_dir ./trt_engines --gemm_plugin float16</code>. This step takes 20–60 min.</div></div></div>
+          <div class="pipeline-step"><div class="step-num">4</div><div class="step-content"><div class="step-title">Deploy via Triton Server</div><div class="step-desc">Serve TRT engine via NVIDIA Triton Inference Server with TensorRT-LLM backend for production scale.</div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- SECTION 10 -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div class="section" id="s10">
+      <div class="section-header">
+        <div class="section-num">§ 10</div>
+        <div>
+          <div class="section-title"><small>Performance</small>Optimization Techniques</div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">📦 KV Cache Optimization</div>
+          <p><strong>KV cache = the biggest VRAM consumer after weights.</strong> For 70B, FP16 KV cache can exceed model weights at long contexts.</p>
+          <ul>
+            <li><strong>PagedAttention (vLLM):</strong> Non-contiguous KV blocks, near-zero waste, enables sharing for parallel sampling</li>
+            <li><strong>INT8 KV cache:</strong> --kv-cache-dtype int8 in vLLM. 50% KV cache memory reduction, &lt;0.5% quality loss</li>
+            <li><strong>KV cache quantization:</strong> per-token scale factors for activations; more accurate than per-tensor</li>
+            <li><strong>Context length management:</strong> Set --max-model-len conservatively. Longer context = quadratic KV growth</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-title">🔄 Continuous Batching</div>
+          <p>The key throughput unlock. Unlike static batching (wait for all requests, process together), continuous batching slots in new requests as soon as GPU compute is free.</p>
+          <ul>
+            <li>Eliminates idle GPU time between requests</li>
+            <li>Supported in vLLM, TGI, TensorRT-LLM natively</li>
+            <li>3–10× throughput improvement over naive batching</li>
+            <li>Critical for mixed-length workloads</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-title">⏱️ Prefill vs Decode Optimization</div>
+          <p>Two distinct phases with different bottlenecks:</p>
+          <ul>
+            <li><strong>Prefill:</strong> compute-bound (processes entire prompt in one pass). Optimize with chunked prefill to overlap with decode.</li>
+            <li><strong>Decode:</strong> memory-bandwidth bound (one token at a time). Optimize with batching (more sequences = better GPU utilization) and quantization.</li>
+            <li><strong>Chunked prefill (vLLM v1):</strong> Break long prompts into chunks, interleave with decode steps to avoid decode stalls.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-title">🎯 Speculative Decoding</div>
+          <p>Use a small draft model (e.g. 1B) to speculatively generate 3–5 tokens, then verify with the target model in a single forward pass. Effective for latency-bound workloads.</p>
+          <ul>
+            <li>Reduces decode latency 1.5–2.5× for appropriate tasks</li>
+            <li>No accuracy loss (mathematically equivalent)</li>
+            <li>Supported in vLLM, TensorRT-LLM</li>
+            <li>Works best for predictable output distributions</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <div class="subsection-title">Prefix Caching (APC)</div>
+        <p>Store and reuse KV cache for repeated prompt prefixes (system prompts, RAG context). In vLLM, Automatic Prefix Caching (APC) is enabled by default in v1. Eliminates redundant prefill computation for requests sharing a long common prefix. For chatbots with a fixed system prompt, this can reduce effective compute by 40–60%.</p>
+        <div class="rule-block"><strong>Production rule:</strong> Always use APC in vLLM. Structure your prompts to front-load the shared prefix (system prompt + RAG docs) before the user message. Ensure prompt stability — even small changes break cache hits.</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- SECTION 11 -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div class="section" id="s11">
+      <div class="section-header">
+        <div class="section-num">§ 11</div>
+        <div>
+          <div class="section-title"><small>Troubleshooting</small>Debugging & Failure Modes</div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Issue</th><th>Likely Cause</th><th>Diagnosis</th><th>Fix</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>Significant accuracy drop after INT4</strong></td>
+              <td>Model too small, or high-variance activations</td>
+              <td>Compare perplexity before/after. Run task evals.</td>
+              <td>Switch to INT8 or AWQ with smaller group size (g=64)</td>
+            </tr>
+            <tr>
+              <td><strong>OOM during quantization</strong></td>
+              <td>Full model loaded in FP16 before quantization</td>
+              <td>nvidia-smi, torch memory profiler</td>
+              <td>Quantize layer-by-layer, use CPU offload during GPTQ</td>
+            </tr>
+            <tr>
+              <td><strong>OOM during serving</strong></td>
+              <td>KV cache overflows, batch too large</td>
+              <td>Check vLLM logs for KV cache usage</td>
+              <td>Reduce --max-model-len, add --gpu-memory-utilization 0.85, use INT8 KV cache</td>
+            </tr>
+            <tr>
+              <td><strong>Slow inference despite GPU</strong></td>
+              <td>Memory bandwidth saturation, small batch size</td>
+              <td>Profile with nsight; check tokens/sec per GPU</td>
+              <td>Increase batch size, enable tensor parallelism, check for CPU-GPU transfer bottlenecks</td>
+            </tr>
+            <tr>
+              <td><strong>Repetitive or incoherent output</strong></td>
+              <td>Quantization degraded attention mechanisms</td>
+              <td>Compare outputs vs FP16 on same prompts</td>
+              <td>Increase precision (INT8→FP16), check if attention layers are quantized</td>
+            </tr>
+            <tr>
+              <td><strong>GGUF slower than expected on CPU</strong></td>
+              <td>Missing AVX2/AVX-512, wrong thread count</td>
+              <td><code>./llama-cli --help</code> check BLAS backend</td>
+              <td>Compile with <code>GGML_AVX2=ON</code>, set <code>-t</code> to physical cores</td>
+            </tr>
+            <tr>
+              <td><strong>VLM seeing wrong image content</strong></td>
+              <td>Vision encoder over-quantized</td>
+              <td>Test with known images, compare to FP16 baseline</td>
+              <td>Keep vision encoder in FP16, only quantize text decoder</td>
+            </tr>
+            <tr>
+              <td><strong>vLLM prefix cache miss rate high</strong></td>
+              <td>Prompt instability, timestamp/dynamic content in prefix</td>
+              <td>Check vLLM metrics endpoint for cache hit rate</td>
+              <td>Move dynamic content to end of prompt, stabilize system prompt</td>
+            </tr>
+            <tr>
+              <td><strong>TensorRT build fails</strong></td>
+              <td>CUDA version mismatch, unsupported op</td>
+              <td>TRT build logs, check CUDA compute capability</td>
+              <td>Match TRT version to CUDA driver, verify model is in supported list</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- SECTION 12 -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div class="section" id="s12">
+      <div class="section-header">
+        <div class="section-num">§ 12</div>
+        <div>
+          <div class="section-title"><small>Applied Examples</small>Real-World Scenarios</div>
+        </div>
+      </div>
+
+      <div class="scenario">
+        <div class="scenario-title">🖥️ Low-Cost Chatbot on CPU <span class="scenario-badge result-orange">CPU / Edge</span></div>
+        <div class="three-col">
+          <div><div class="prop-label" style="margin-bottom:6px">Model</div><div class="prop-value" style="font-size:13px">Llama-3-8B or Mistral-7B</div></div>
+          <div><div class="prop-label" style="margin-bottom:6px">Quantization</div><div class="prop-value" style="font-size:13px">GGUF Q4_K_M</div></div>
+          <div><div class="prop-label" style="margin-bottom:6px">Engine</div><div class="prop-value" style="font-size:13px">llama.cpp / Ollama</div></div>
+        </div>
+        <p style="margin-top:12px">Deploy on a $5/month VPS (4 cores, 8GB RAM) or even a local Mac Mini. ~2–5 tokens/sec on CPU. Suitable for &lt;5 concurrent users. Ollama gives a one-command server. Total infra cost: near zero.</p>
+        <div class="tags"><span class="tag orange">~3.5GB RAM</span><span class="tag orange">No GPU</span><span class="tag green">$0 GPU cost</span></div>
+      </div>
+
+      <div class="scenario">
+        <div class="scenario-title">⚡ High-Throughput API (1000+ req/s) <span class="scenario-badge result-green">Production Scale</span></div>
+        <div class="three-col">
+          <div><div class="prop-label" style="margin-bottom:6px">Model</div><div class="prop-value" style="font-size:13px">Llama-3-70B or Mixtral 8×7B</div></div>
+          <div><div class="prop-label" style="margin-bottom:6px">Quantization</div><div class="prop-value" style="font-size:13px">FP8 (H100) or AWQ 4-bit (A100)</div></div>
+          <div><div class="prop-label" style="margin-bottom:6px">Engine</div><div class="prop-value" style="font-size:13px">vLLM + tensor parallelism</div></div>
+        </div>
+        <p style="margin-top:12px">8× H100 cluster with vLLM in FP8. Continuous batching + prefix caching. INT8 KV cache. Target: 5,000 tokens/sec/GPU. Use a load balancer across multiple vLLM instances. Horizontal scaling with Kubernetes. With FP8 on H100: ~40% cost reduction vs FP16 on A100s.</p>
+        <div class="code-block" style="margin-top:12px">
+          <div class="code-header"><div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div><div class="code-lang">Bash</div></div>
+          <pre>vllm serve meta-llama/Llama-3-70B \
+  --tensor-parallel-size 8 \
+  --dtype float16 \
+  --quantization fp8 \
+  --enable-prefix-caching \
+  --kv-cache-dtype fp8_e5m2 \
+  --max-model-len 8192 \
+  --gpu-memory-utilization 0.90</pre>
+        </div>
+      </div>
+
+      <div class="scenario">
+        <div class="scenario-title">📷 Multi-Camera VLM System <span class="scenario-badge result-purple">VLM Production</span></div>
+        <div class="three-col">
+          <div><div class="prop-label" style="margin-bottom:6px">Model</div><div class="prop-value" style="font-size:13px">InternVL-2-26B or LLaVA-1.6</div></div>
+          <div><div class="prop-label" style="margin-bottom:6px">Quantization</div><div class="prop-value" style="font-size:13px">Vision: FP16, Text: AWQ 4-bit</div></div>
+          <div><div class="prop-label" style="margin-bottom:6px">Engine</div><div class="prop-value" style="font-size:13px">vLLM (VLM support) or custom</div></div>
+        </div>
+        <p style="margin-top:12px">Smart factory use case: 8 cameras feed images to VLM for defect detection. Batch images from multiple cameras into a single forward pass. Keep vision encoder in FP16 — critical for defect pixel-level accuracy. Use text decoder in AWQ 4-bit to fit on 2× RTX 3090. Pre-process images asynchronously to hide latency.</p>
+        <div class="warn-block" style="margin-top:12px"><strong>Key insight:</strong> For manufacturing/defect applications, never quantize the vision encoder below INT8. False negatives in defect detection are critical failures.</div>
+      </div>
+
+      <div class="scenario">
+        <div class="scenario-title">🔧 Edge Deployment (Industrial IoT) <span class="scenario-badge result-orange">Edge</span></div>
+        <div class="three-col">
+          <div><div class="prop-label" style="margin-bottom:6px">Hardware</div><div class="prop-value" style="font-size:13px">Jetson Orin or Raspberry Pi 5</div></div>
+          <div><div class="prop-label" style="margin-bottom:6px">Model</div><div class="prop-value" style="font-size:13px">Qwen2.5-1.5B or Phi-3-mini</div></div>
+          <div><div class="prop-label" style="margin-bottom:6px">Quantization</div><div class="prop-value" style="font-size:13px">INT4 (TensorRT on Jetson) / GGUF Q4</div></div>
+        </div>
+        <p style="margin-top:12px">On-device inference with no cloud dependency. Jetson Orin: use TensorRT INT8 for maximum throughput (supports 7B models at ~10 tokens/sec). Raspberry Pi 5: GGUF Q4 on CPU via llama.cpp — 1–3B models only at ~1–3 tokens/sec. Functional for offline industrial QA assistants.</p>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- SECTION 13 -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div class="section" id="s13">
+      <div class="section-header">
+        <div class="section-num">§ 13</div>
+        <div>
+          <div class="section-title"><small>High Value</small>Practical Tips</div>
+        </div>
+      </div>
+
+      <div class="tip-item"><div class="tip-icon">🎯</div><div class="tip-text"><strong>AWQ &gt; GPTQ for new deployments.</strong> Unless you have a specific reason (e.g., pre-quantized GPTQ model already available), AWQ produces better perplexity and has faster inference kernels. The gap is ~0.3–0.8 perplexity points in favor of AWQ at 4-bit.</div></div>
+      <div class="tip-item"><div class="tip-icon">💡</div><div class="tip-text"><strong>Calibration data matters more than you think.</strong> GPTQ/AWQ calibration data should match your use case. Medical LLM? Calibrate on medical text. Code assistant? Use code samples. Domain mismatch in calibration can cost 1–2% task accuracy.</div></div>
+      <div class="tip-item"><div class="tip-icon">⚠️</div><div class="tip-text"><strong>Never benchmark tokens/sec on a single request.</strong> That measures decode speed, not serving throughput. Use a realistic concurrency level (10–100 simultaneous requests). vLLM's throughput benchmark: <code>python benchmarks/benchmark_throughput.py</code></div></div>
+      <div class="tip-item"><div class="tip-icon">🔢</div><div class="tip-text"><strong>INT8 KV cache is almost always free money.</strong> Enable <code>--kv-cache-dtype int8</code> in vLLM. 50% KV cache memory reduction, &lt;0.3% perplexity increase. This lets you serve longer contexts or more concurrent requests without touching model weights.</div></div>
+      <div class="tip-item"><div class="tip-icon">📊</div><div class="tip-text"><strong>For 70B+ models: don't try to squeeze onto fewer GPUs than needed.</strong> Running a 70B AWQ model on 2× RTX 3090s barely works but PCIe bandwidth becomes the bottleneck. 2× A100 40GB is far more efficient despite similar raw VRAM.</div></div>
+      <div class="tip-item"><div class="tip-icon">🚀</div><div class="tip-text"><strong>Speculative decoding 3B + 70B is often the highest throughput setup for latency-constrained serving.</strong> Draft with a fast 3B model, verify with the 70B. Achieves near 70B quality at close to 3B speeds for many query types.</div></div>
+      <div class="tip-item"><div class="tip-icon">🔄</div><div class="tip-text"><strong>Prefix caching is your cheapest optimization.</strong> For RAG systems with large context documents, APC eliminates re-prefilling the same document chunks repeatedly. Can improve effective throughput by 2–4× in RAG workloads. Structure: [system prompt][retrieved docs][user query].</div></div>
+      <div class="tip-item"><div class="tip-icon">💰</div><div class="tip-text"><strong>The 10× cost reduction formula:</strong> FP16 on A100 → AWQ 4-bit on 2× RTX 4090. Same model quality, same (or better) throughput, ~10× cheaper GPU rental cost. This is the most practical cost lever available today.</div></div>
+      <div class="tip-item"><div class="tip-icon">🧪</div><div class="tip-text"><strong>Always run task-specific evals, not just perplexity.</strong> A model can have good perplexity but poor accuracy on your specific task after quantization. For classification tasks, quantization error tends to affect boundary cases first.</div></div>
+      <div class="tip-item"><div class="tip-icon">🏗️</div><div class="tip-text"><strong>For fine-tuned models: train QLoRA → merge → re-quantize with AWQ.</strong> Never serve the raw QLoRA model with bitsandbytes. The merged+AWQ path gives 2–3× better throughput. The extra conversion step is worth it for any production deployment.</div></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- SECTION 14 -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div class="section" id="s14">
+      <div class="section-header">
+        <div class="section-num">§ 14</div>
+        <div>
+          <div class="section-title"><small>Reference Code</small>Code Snippets</div>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <div class="subsection-title">vLLM — Production Inference</div>
+        <div class="code-block">
+          <div class="code-header"><div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div><div class="code-lang">Python · vLLM</div></div>
+          <pre><span class="kw">from</span> <span class="var">vllm</span> <span class="kw">import</span> <span class="var">LLM</span>, <span class="var">SamplingParams</span>
+
+<span class="cm"># Load AWQ 4-bit model</span>
+<span class="var">llm</span> = <span class="fn">LLM</span>(
+    <span class="var">model</span>=<span class="str">"./llama3-8b-awq-4bit"</span>,
+    <span class="var">quantization</span>=<span class="str">"awq"</span>,
+    <span class="var">tensor_parallel_size</span>=<span class="num">1</span>,      <span class="cm"># Number of GPUs</span>
+    <span class="var">gpu_memory_utilization</span>=<span class="num">0.90</span>,   <span class="cm"># Reserve 10% for safety</span>
+    <span class="var">enable_prefix_caching</span>=<span class="kw">True</span>,   <span class="cm"># APC - huge win for RAG</span>
+    <span class="var">kv_cache_dtype</span>=<span class="str">"fp8_e5m2"</span>,    <span class="cm"># INT8 KV cache</span>
+    <span class="var">max_model_len</span>=<span class="num">8192</span>,
+)
+
+<span class="var">params</span> = <span class="fn">SamplingParams</span>(<span class="var">temperature</span>=<span class="num">0.7</span>, <span class="var">top_p</span>=<span class="num">0.9</span>, <span class="var">max_tokens</span>=<span class="num">512</span>)
+
+<span class="cm"># Batched inference (always batch for throughput)</span>
+<span class="var">prompts</span> = [<span class="str">"Tell me about LLM quantization"</span>, <span class="str">"What is AWQ?"</span>]
+<span class="var">outputs</span> = <span class="var">llm</span>.<span class="fn">generate</span>(<span class="var">prompts</span>, <span class="var">params</span>)
+
+<span class="kw">for</span> <span class="var">output</span> <span class="kw">in</span> <span class="var">outputs</span>:
+    <span class="fn">print</span>(<span class="var">output</span>.<span class="var">outputs</span>[<span class="num">0</span>].<span class="var">text</span>)</pre>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <div class="subsection-title">vLLM OpenAI-Compatible API Server</div>
+        <div class="code-block">
+          <div class="code-header"><div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div><div class="code-lang">Bash · vLLM Server</div></div>
+          <pre><span class="cm"># Start server (AWQ model, 2 GPUs, prefix caching enabled)</span>
+vllm serve ./llama3-70b-awq \
+  --quantization awq \
+  --tensor-parallel-size 2 \
+  --enable-prefix-caching \
+  --kv-cache-dtype fp8_e5m2 \
+  --max-model-len 16384 \
+  --host 0.0.0.0 \
+  --port 8000
+
+<span class="cm"># Query with standard OpenAI client</span>
+curl http://localhost:8000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model": "llama3-70b-awq", "messages": [{"role": "user", "content": "Hello"}]}'</pre>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <div class="subsection-title">Check Model Memory Requirements Before Loading</div>
+        <div class="code-block">
+          <div class="code-header"><div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div><div class="code-lang">Python · Memory Estimator</div></div>
+          <pre><span class="kw">def</span> <span class="fn">estimate_vram</span>(<span class="var">param_billions</span>, <span class="var">dtype_bytes</span>=<span class="num">2</span>, <span class="var">kv_overhead</span>=<span class="num">1.3</span>):
+    <span class="str">"""
+    param_billions: model size (e.g. 7 for 7B)
+    dtype_bytes: 2=FP16, 1=INT8, 0.5=INT4
+    kv_overhead: 1.2-1.4x for KV cache + activations
+    """</span>
+    <span class="var">weights_gb</span> = ((<span class="var">param_billions</span> * <span class="num">1e9</span>) * <span class="var">dtype_bytes</span>) / (<span class="num">1024</span>**<span class="num">3</span>)
+    <span class="kw">return</span> <span class="var">weights_gb</span> * <span class="var">kv_overhead</span>
+
+<span class="cm"># Examples</span>
+<span class="fn">print</span>(<span class="fn">f"70B FP16: {<span class="fn">estimate_vram</span>(<span class="num">70</span>, <span class="num">2</span>):.1f} GB"</span>)    <span class="cm"># ~182 GB</span>
+<span class="fn">print</span>(<span class="fn">f"70B INT8: {<span class="fn">estimate_vram</span>(<span class="num">70</span>, <span class="num">1</span>):.1f} GB"</span>)    <span class="cm"># ~91 GB</span>
+<span class="fn">print</span>(<span class="fn">f"70B INT4: {<span class="fn">estimate_vram</span>(<span class="num">70</span>, <span class="num">0.5</span>):.1f} GB"</span>)  <span class="cm"># ~45 GB</span>
+<span class="fn">print</span>(<span class="fn">f"8B INT4:  {<span class="fn">estimate_vram</span>(<span class="num">8</span>, <span class="num">0.5</span>):.1f} GB"</span>)   <span class="cm"># ~5.2 GB</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- SECTION 15 -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div class="section" id="s15">
+      <div class="section-header">
+        <div class="section-num">§ 15</div>
+        <div>
+          <div class="section-title"><small>Final Reference</small>Comparison Summary</div>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <div class="subsection-title">Quantization Methods — Final Comparison</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Method</th><th>Bits</th><th>Accuracy</th><th>Inference Speed</th><th>CPU</th><th>Primary Use</th><th>Tooling</th></tr></thead>
+            <tbody>
+              <tr><td><strong>FP16/BF16</strong></td><td>16</td><td>🟢 Baseline</td><td>🟡 Baseline</td><td class="compat-no">❌</td><td>Default GPU serving</td><td>All frameworks</td></tr>
+              <tr><td><strong>FP8 E4M3</strong></td><td>8</td><td>🟢 ~FP16</td><td>🟢 ~2× FP16</td><td class="compat-no">❌</td><td>H100 production</td><td>vLLM, TensorRT</td></tr>
+              <tr><td><strong>INT8 (W8A8)</strong></td><td>8</td><td>🟢 &lt;1% loss</td><td>🟢 1.5–2×</td><td class="compat-warn">⚠️</td><td>Bandwidth-limited</td><td>bitsandbytes, TRT</td></tr>
+              <tr><td><strong>AWQ 4-bit</strong></td><td>4</td><td>🟡 1–2% loss</td><td>🟢 3–4×</td><td class="compat-no">❌</td><td>Production GPU 4-bit</td><td>AutoAWQ, vLLM</td></tr>
+              <tr><td><strong>GPTQ 4-bit</strong></td><td>4</td><td>🟡 1–2.5% loss</td><td>🟡 2–3×</td><td class="compat-no">❌</td><td>4-bit GPU inference</td><td>AutoGPTQ, TGI</td></tr>
+              <tr><td><strong>GGUF Q4_K_M</strong></td><td>~4.5</td><td>🟡 ~1.5% loss</td><td>🟡 CPU-optimized</td><td class="compat-yes">✅</td><td>CPU/local deployment</td><td>llama.cpp, Ollama</td></tr>
+              <tr><td><strong>NF4 (bnb)</strong></td><td>4</td><td>🟡 1–2% loss</td><td>🔴 Slow kernels</td><td class="compat-no">❌</td><td>QLoRA training only</td><td>bitsandbytes</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <div class="subsection-title">Inference Engine — Final Comparison</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Engine</th><th>Best For</th><th>Throughput</th><th>Ease of Use</th><th>GPU Required</th><th>CPU</th></tr></thead>
+            <tbody>
+              <tr><td><strong>vLLM</strong></td><td>Production GPU serving</td><td>🟢 Excellent</td><td>🟢 Easy</td><td class="compat-yes">✅</td><td class="compat-no">❌</td></tr>
+              <tr><td><strong>TensorRT-LLM</strong></td><td>Max throughput NVIDIA</td><td>🟢 Best</td><td>🔴 Complex</td><td class="compat-yes">✅</td><td class="compat-no">❌</td></tr>
+              <tr><td><strong>llama.cpp</strong></td><td>CPU / local / edge</td><td>🟡 CPU-limited</td><td>🟢 Easy</td><td class="compat-warn">Optional</td><td class="compat-yes">✅</td></tr>
+              <tr><td><strong>HF Transformers</strong></td><td>Research / fine-tuning</td><td>🔴 Poor</td><td>🟢 Best</td><td class="compat-warn">Optional</td><td class="compat-yes">✅</td></tr>
+              <tr><td><strong>TGI</strong></td><td>HF-integrated production</td><td>🟡 Good</td><td>🟢 Good</td><td class="compat-yes">✅</td><td class="compat-no">❌</td></tr>
+              <tr><td><strong>ONNX Runtime</strong></td><td>Cross-platform / edge</td><td>🟡 Medium</td><td>🟡 Medium</td><td class="compat-warn">Optional</td><td class="compat-yes">✅</td></tr>
+              <tr><td><strong>DeepSpeed</strong></td><td>100B+ models</td><td>🟡 Good</td><td>🔴 Complex</td><td class="compat-yes">✅</td><td class="compat-no">❌</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <div class="subsection-title">Recommended Stack Per Use Case</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Use Case</th><th>Model Size</th><th>Quantization</th><th>Engine</th><th>Hardware</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Local developer assistant</strong></td><td>7–13B</td><td>GGUF Q4_K_M</td><td>Ollama</td><td>Mac M2+ / Any CPU</td></tr>
+              <tr><td><strong>Team internal API</strong></td><td>7–34B</td><td>AWQ 4-bit</td><td>vLLM</td><td>1–2× RTX 3090/4090</td></tr>
+              <tr><td><strong>Public API (&lt;100 req/s)</strong></td><td>7–70B</td><td>AWQ 4-bit</td><td>vLLM</td><td>2–4× A100 40GB</td></tr>
+              <tr><td><strong>High-scale API (&gt;1000 req/s)</strong></td><td>70B</td><td>FP8</td><td>vLLM / TensorRT</td><td>8× H100</td></tr>
+              <tr><td><strong>Fine-tuned model (QLoRA)</strong></td><td>7–13B</td><td>QLoRA train → AWQ serve</td><td>vLLM</td><td>1× RTX 3090+ train, A100 serve</td></tr>
+              <tr><td><strong>RAG application</strong></td><td>7–34B</td><td>AWQ 4-bit + APC</td><td>vLLM (prefix cache ON)</td><td>1–2× A100</td></tr>
+              <tr><td><strong>VLM production</strong></td><td>7–26B</td><td>Vision: FP16, Text: AWQ</td><td>vLLM (VLM) / custom</td><td>2–4× A100</td></tr>
+              <tr><td><strong>Edge / IoT</strong></td><td>1–7B</td><td>INT4 / GGUF Q4</td><td>TensorRT / llama.cpp</td><td>Jetson Orin / ARM</td></tr>
+              <tr><td><strong>Experimentation</strong></td><td>Any</td><td>bitsandbytes 4-bit</td><td>HF Transformers</td><td>Any GPU</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" style="background: linear-gradient(135deg, rgba(79,142,247,0.06), rgba(124,92,252,0.06)); border-color: rgba(79,142,247,0.2); margin-top: 32px;">
+        <div class="card-title" style="font-size:15px">🎯 The Production Decision in Two Steps</div>
+        <div class="decision-row">
+          <div class="decision-node">Have GPU?</div>
+          <div class="decision-arrow">YES →</div>
+          <div class="decision-node">H100?</div>
+          <div class="decision-arrow">YES →</div>
+          <div class="decision-result result-purple">FP8 + vLLM</div>
+        </div>
+        <div class="decision-row" style="margin-left:120px">
+          <div class="decision-arrow">NO →</div>
+          <div class="decision-result result-blue">AWQ 4-bit + vLLM</div>
+        </div>
+        <div class="decision-row">
+          <div class="decision-node">Have GPU?</div>
+          <div class="decision-arrow">NO →</div>
+          <div class="decision-result result-orange">GGUF Q4_K_M + llama.cpp</div>
+        </div>
+        <p style="margin-top:16px;font-size:12px;color:var(--text-muted)">In 90% of cases, this two-step decision covers the optimal choice. Layer on refinements (speculative decoding, KV cache tuning, SmoothQuant) only after validating this baseline works for your requirements.</p>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

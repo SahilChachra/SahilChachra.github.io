@@ -9,20 +9,24 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://sahilchachra.github.io"),
-  title: "Sahil Chachra — Founding AI Engineer",
+  title: "Sahil Chachra — AI Architect",
   description:
-    "Architecting Intelligence, From the Ground Up. Founding AI Engineer building AI platforms that scale.",
+    "Architecting Intelligence, From the Ground Up. AI Architect building AI platforms that scale.",
   keywords: ["AI Engineer", "Machine Learning", "AI Platform", "LLMs", "AI Consulting"],
   authors: [{ name: "Sahil Chachra" }],
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+  },
   openGraph: {
-    title: "Sahil Chachra — Founding AI Engineer",
+    title: "Sahil Chachra — AI Architect",
     description: "Architecting Intelligence, From the Ground Up.",
     type: "website",
     url: "https://sahilchachra.github.io",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Sahil Chachra — Founding AI Engineer",
+    title: "Sahil Chachra — AI Architect",
     description: "Architecting Intelligence, From the Ground Up.",
   },
 };

@@ -7,6 +7,7 @@ import { SectionHeader } from "@/components/SectionHeader"
 const SKILL_ROWS = [
   [
     "LLMs",
+    "VLMs",
     "Computer Vision",
     "Multi-Agent Systems",
     "RAG",
@@ -14,6 +15,8 @@ const SKILL_ROWS = [
     "Multimodal Models",
     "MLOps",
     "Embeddings",
+    "Video Compression",
+    "Local Inferencing",
   ],
   [
     "PyTorch",
@@ -35,6 +38,7 @@ const SKILL_ROWS = [
     "TensorRT",
     "NVIDIA Jetson",
     "GitHub Actions",
+    "Claude Code",
   ],
 ]
 

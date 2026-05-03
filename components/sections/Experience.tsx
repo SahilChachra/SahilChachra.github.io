@@ -77,7 +77,11 @@ export function Experience() {
                     {exp.tags.map((tag) => (
                       <span
                         key={tag}
-                        className="rounded-full bg-zinc-800 border border-zinc-700 px-3 py-1 text-xs font-medium text-zinc-300"
+                        className="rounded-full bg-white/5 border border-white/10 backdrop-blur-sm px-3 py-1 text-xs font-medium text-zinc-300"
+                        style={{
+                          boxShadow:
+                            "0 0 8px rgba(0,0,0,0.03),0 2px 6px rgba(0,0,0,0.08),inset 3px 3px 0.5px -3.5px rgba(255,255,255,0.09),inset -3px -3px 0.5px -3.5px rgba(255,255,255,0.85),inset 1px 1px 1px -0.5px rgba(255,255,255,0.6),inset -1px -1px 1px -0.5px rgba(255,255,255,0.6),inset 0 0 6px 6px rgba(255,255,255,0.12),inset 0 0 2px 2px rgba(255,255,255,0.06),0 0 12px rgba(0,0,0,0.15)",
+                        }}
                       >
                         {tag}
                       </span>

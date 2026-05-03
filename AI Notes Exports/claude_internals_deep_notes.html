@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Internals — Deep Notes</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;1,9..144,400&family=Inter:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0a0c10;
+    --bg2: #0f1117;
+    --bg3: #151821;
+    --surface: #1a1f2e;
+    --surface2: #1f2535;
+    --border: #252d40;
+    --border-glow: #3a4a6e;
+    --text: #cdd6f4;
+    --text-dim: #7a87a8;
+    --text-faint: #3d4a65;
+    --accent-blue: #89b4fa;
+    --accent-teal: #94e2d5;
+    --accent-yellow: #f9e2af;
+    --accent-red: #f38ba8;
+    --accent-green: #a6e3a1;
+    --accent-mauve: #cba6f7;
+    --accent-sky: #74c7ec;
+    --accent-orange: #fab387;
+    --glow-blue: rgba(137, 180, 250, 0.08);
+    --glow-teal: rgba(148, 226, 213, 0.06);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html {
+    scroll-behavior: smooth;
+    background: var(--bg);
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.7;
+    font-size: 14px;
+  }
+
+  /* Noise texture overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.4;
+  }
+
+  .page-wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 60px 40px 100px;
+  }
+
+  /* ─── HEADER ─── */
+  .header {
+    margin-bottom: 64px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 40px;
+  }
+
+  .header-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--accent-teal);
+    background: rgba(148,226,213,0.08);
+    border: 1px solid rgba(148,226,213,0.2);
+    padding: 4px 12px;
+    border-radius: 20px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 24px;
+  }
+
+  .header-badge::before {
+    content: '◈';
+    font-size: 9px;
+  }
+
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-size: 52px;
+    font-weight: 700;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    color: #fff;
+    margin-bottom: 16px;
+  }
+
+  h1 span {
+    color: var(--accent-blue);
+    font-style: italic;
+    font-weight: 300;
+  }
+
+  .header-meta {
+    display: flex;
+    gap: 24px;
+    margin-top: 20px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .header-meta span { display: flex; align-items: center; gap: 6px; }
+  .header-meta span::before { content: '—'; color: var(--text-faint); }
+
+  /* ─── TOC ─── */
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px 32px;
+    margin-bottom: 56px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .toc::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent-blue), var(--accent-mauve), var(--accent-teal));
+  }
+
+  .toc-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+  }
+
+  .toc-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 40px;
+  }
+
+  .toc a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 13px;
+    padding: 4px 0;
+    transition: color 0.2s;
+  }
+
+  .toc a:hover { color: var(--accent-blue); }
+
+  .toc-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--text-faint);
+    min-width: 22px;
+  }
+
+  /* ─── SECTIONS ─── */
+  .section {
+    margin-bottom: 72px;
+    scroll-margin-top: 24px;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    margin-bottom: 32px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text-faint);
+    padding-top: 6px;
+    min-width: 24px;
+  }
+
+  .section-title-wrap {}
+
+  h2 {
+    font-family: 'Fraunces', serif;
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    color: #fff;
+    margin-bottom: 6px;
+  }
+
+  .section-subtitle {
+    font-size: 13px;
+    color: var(--text-dim);
+    font-style: italic;
+  }
+
+  h3 {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent-blue);
+    margin: 28px 0 12px;
+  }
+
+  h4 {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent-yellow);
+    margin: 20px 0 8px;
+  }
+
+  p {
+    color: var(--text-dim);
+    margin-bottom: 12px;
+    font-size: 13.5px;
+    line-height: 1.75;
+  }
+
+  strong { color: var(--text); font-weight: 600; }
+  em { color: var(--accent-teal); font-style: normal; }
+
+  /* ─── CARDS ─── */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+    margin: 20px 0;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+
+  .card:hover {
+    border-color: var(--border-glow);
+    transform: translateY(-2px);
+  }
+
+  .card-icon {
+    font-size: 22px;
+    margin-bottom: 10px;
+    display: block;
+  }
+
+  .card-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-faint);
+    margin-bottom: 6px;
+  }
+
+  .card-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+
+  .card-body {
+    font-size: 12.5px;
+    color: var(--text-dim);
+    line-height: 1.65;
+  }
+
+  .card.blue { border-top: 2px solid var(--accent-blue); }
+  .card.teal { border-top: 2px solid var(--accent-teal); }
+  .card.yellow { border-top: 2px solid var(--accent-yellow); }
+  .card.mauve { border-top: 2px solid var(--accent-mauve); }
+  .card.green { border-top: 2px solid var(--accent-green); }
+  .card.orange { border-top: 2px solid var(--accent-orange); }
+  .card.red { border-top: 2px solid var(--accent-red); }
+  .card.sky { border-top: 2px solid var(--accent-sky); }
+
+  /* ─── PIPELINE / FLOW ─── */
+  .pipeline {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    margin: 20px 0;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .pipe-step {
+    flex: 1;
+    min-width: 100px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 14px 14px;
+    position: relative;
+    text-align: center;
+  }
+
+  .pipe-step:first-child { border-radius: 8px 0 0 8px; }
+  .pipe-step:last-child { border-radius: 0 8px 8px 0; }
+
+  .pipe-step + .pipe-step { border-left: none; }
+
+  .pipe-step::after {
+    content: '›';
+    position: absolute;
+    right: -10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-faint);
+    font-size: 16px;
+    z-index: 2;
+  }
+
+  .pipe-step:last-child::after { display: none; }
+
+  .pipe-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 4px;
+  }
+
+  .pipe-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  /* ─── CODE BLOCKS ─── */
+  .code-block {
+    background: #0d1117;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 16px 0;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    line-height: 1.7;
+    color: #c9d1d9;
+    overflow-x: auto;
+  }
+
+  .code-block .comment { color: #484f58; font-style: italic; }
+  .code-block .key { color: var(--accent-blue); }
+  .code-block .val { color: var(--accent-green); }
+  .code-block .str { color: var(--accent-yellow); }
+  .code-block .kw { color: var(--accent-mauve); }
+
+  /* ─── INFO BOXES ─── */
+  .infobox {
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 16px 0;
+    font-size: 13px;
+    line-height: 1.65;
+    border-left: 3px solid;
+  }
+
+  .infobox.note {
+    background: rgba(137,180,250,0.06);
+    border-color: var(--accent-blue);
+    color: #8a9bbe;
+  }
+
+  .infobox.warn {
+    background: rgba(249,226,175,0.06);
+    border-color: var(--accent-yellow);
+    color: #9a8b6a;
+  }
+
+  .infobox.tip {
+    background: rgba(148,226,213,0.06);
+    border-color: var(--accent-teal);
+    color: #7a9e98;
+  }
+
+  .infobox.key-insight {
+    background: rgba(203,166,247,0.06);
+    border-color: var(--accent-mauve);
+    color: #8e7aa8;
+  }
+
+  .infobox strong { color: var(--text); }
+
+  /* ─── TABLE ─── */
+  .table-wrap {
+    overflow-x: auto;
+    margin: 16px 0;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+  }
+
+  thead tr { background: var(--surface); }
+
+  th {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+
+  td {
+    padding: 10px 16px;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) td { background: rgba(255,255,255,0.015); }
+
+  .td-key { color: var(--accent-blue); font-weight: 500; font-family: 'DM Mono', monospace; font-size: 11.5px; }
+
+  /* ─── TAG PILLS ─── */
+  .tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+
+  .tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 10.5px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid;
+  }
+
+  .tag.blue { color: var(--accent-blue); border-color: rgba(137,180,250,0.25); background: rgba(137,180,250,0.07); }
+  .tag.teal { color: var(--accent-teal); border-color: rgba(148,226,213,0.25); background: rgba(148,226,213,0.07); }
+  .tag.yellow { color: var(--accent-yellow); border-color: rgba(249,226,175,0.25); background: rgba(249,226,175,0.07); }
+  .tag.mauve { color: var(--accent-mauve); border-color: rgba(203,166,247,0.25); background: rgba(203,166,247,0.07); }
+  .tag.green { color: var(--accent-green); border-color: rgba(166,227,161,0.25); background: rgba(166,227,161,0.07); }
+  .tag.orange { color: var(--accent-orange); border-color: rgba(250,179,135,0.25); background: rgba(250,179,135,0.07); }
+
+  /* ─── NUMBERED LIST ─── */
+  .num-list { margin: 12px 0; }
+
+  .num-list li {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 10px;
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+
+  .num-list li .n {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--text-faint);
+    min-width: 20px;
+    padding-top: 3px;
+  }
+
+  /* ─── DIVIDER ─── */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 40px 0;
+  }
+
+  /* ─── HIGHLIGHT SPAN ─── */
+  .hl-blue { color: var(--accent-blue); }
+  .hl-teal { color: var(--accent-teal); }
+  .hl-yellow { color: var(--accent-yellow); }
+  .hl-mauve { color: var(--accent-mauve); }
+  .hl-orange { color: var(--accent-orange); }
+  .hl-green { color: var(--accent-green); }
+
+  /* ─── ARCHITECTURE DIAGRAM ─── */
+  .arch-box {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin: 20px 0;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 2;
+  }
+
+  .arch-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 4px;
+  }
+
+  .arch-node {
+    border: 1px solid;
+    border-radius: 6px;
+    padding: 4px 12px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .arch-arrow { color: var(--text-faint); font-size: 14px; }
+  .arch-label { font-size: 10px; color: var(--text-faint); margin-left: 8px; }
+
+  /* ─── FOOTER ─── */
+  .footer {
+    margin-top: 80px;
+    padding-top: 32px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 10.5px;
+    color: var(--text-faint);
+  }
+
+  @media (max-width: 640px) {
+    .page-wrap { padding: 32px 20px 60px; }
+    h1 { font-size: 36px; }
+    h2 { font-size: 24px; }
+    .toc-grid { grid-template-columns: 1fr; }
+    .pipeline { flex-direction: column; }
+    .pipe-step { border-radius: 6px !important; border-left: 1px solid var(--border) !important; }
+    .pipe-step::after { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-badge">Engineering Notes · Claude Internals</div>
+    <h1>How <span>Claude</span><br>Actually Works</h1>
+    <p style="color:var(--text-dim); font-size:14px; max-width:540px; margin-top:12px;">
+      A detailed technical breakdown of Claude's memory architecture, Skills system, CoWork automation, and Claude Code's agentic coding engine. Written for engineers who want to understand the internals, not just the surface.
+    </p>
+    <div class="header-meta">
+      <span>Memory &amp; State</span>
+      <span>Skills System</span>
+      <span>CoWork Agent</span>
+      <span>Claude Code</span>
+    </div>
+  </div>
+
+  <!-- TOC -->
+  <div class="toc">
+    <div class="toc-title">Contents</div>
+    <div class="toc-grid">
+      <a href="#s1"><span class="toc-num">01</span> Memory Architecture</a>
+      <a href="#s2"><span class="toc-num">02</span> What Gets Stored &amp; How</a>
+      <a href="#s3"><span class="toc-num">03</span> Skills System Deep Dive</a>
+      <a href="#s4"><span class="toc-num">04</span> CoWork — Desktop Automation</a>
+      <a href="#s5"><span class="toc-num">05</span> Claude Code — Agentic Coding</a>
+      <a href="#s6"><span class="toc-num">06</span> How They Work Together</a>
+      <a href="#s7"><span class="toc-num">07</span> Key Limitations &amp; Caveats</a>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════ SECTION 1 ═══════ -->
+  <div class="section" id="s1">
+    <div class="section-header">
+      <div class="section-num">01</div>
+      <div class="section-title-wrap">
+        <h2>Memory Architecture</h2>
+        <div class="section-subtitle">How Claude stores, retrieves and applies user context across sessions</div>
+      </div>
+    </div>
+
+    <p>
+      Claude does <strong>not</strong> have persistent in-weights memory between conversations. Every new session starts with an empty context window. What creates the <em>illusion of memory</em> is a structured <strong>Memory System</strong> — a database of derived facts extracted from past conversations, injected into the system prompt at runtime.
+    </p>
+
+    <div class="infobox note">
+      <strong>Core mental model:</strong> Think of it like a SQL row per user, populated by an async background job that reads past conversations and extracts salient facts. That row is serialised into the system prompt at the start of every new conversation.
+    </div>
+
+    <h3>The Three-Layer Memory Stack</h3>
+
+    <div class="card-grid">
+      <div class="card blue">
+        <span class="card-icon">🧠</span>
+        <div class="card-label">Layer 1</div>
+        <div class="card-title">In-Weights Knowledge</div>
+        <div class="card-body">Baked into the model during training. World knowledge, reasoning patterns, code understanding. Cannot be changed at inference time. Cutoff: August 2025.</div>
+      </div>
+      <div class="card teal">
+        <span class="card-icon">💾</span>
+        <div class="card-label">Layer 2</div>
+        <div class="card-title">Injected User Memory</div>
+        <div class="card-body">Structured key-value facts about the user, injected via <code>userMemories</code> tag in the system prompt. Extracted from past chats by a background process. Recency-biased.</div>
+      </div>
+      <div class="card yellow">
+        <span class="card-icon">📝</span>
+        <div class="card-label">Layer 3</div>
+        <div class="card-title">Active Context Window</div>
+        <div class="card-body">The live conversation. Everything said in this session. Has a hard token limit. Older turns may be summarised or truncated to fit. No cross-session persistence.</div>
+      </div>
+    </div>
+
+    <h3>Memory Lifecycle — End to End</h3>
+
+    <div class="pipeline">
+      <div class="pipe-step">
+        <div class="pipe-label">Step 1</div>
+        <div class="pipe-name">Chat ends</div>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-label">Step 2</div>
+        <div class="pipe-name">Background extractor runs</div>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-label">Step 3</div>
+        <div class="pipe-name">Facts distilled</div>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-label">Step 4</div>
+        <div class="pipe-name">Stored in memory DB</div>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-label">Step 5</div>
+        <div class="pipe-name">Next session starts</div>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-label">Step 6</div>
+        <div class="pipe-name">Injected into sys prompt</div>
+      </div>
+    </div>
+
+    <div class="infobox warn">
+      <strong>Lag caveat:</strong> Memory extraction is asynchronous. Very recent conversations may not yet appear in your next session's memory. There is a processing delay — typically hours, sometimes longer.
+    </div>
+
+    <h3>Memory Scopes</h3>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Scope</th><th>What's stored</th><th>Visibility</th><th>Persistence</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="td-key">Personal (default)</td>
+            <td>Your name, role, projects, preferences, past decisions</td>
+            <td>Only you</td>
+            <td>Until you delete or correct it</td>
+          </tr>
+          <tr>
+            <td class="td-key">Artifact storage</td>
+            <td>Key-value data created by Artifacts (apps Claude builds)</td>
+            <td>Per-artifact scope</td>
+            <td>Cross-session via <code>window.storage</code> API</td>
+          </tr>
+          <tr>
+            <td class="td-key">Shared (opt-in)</td>
+            <td>Leaderboards, shared trackers in multi-user Artifacts</td>
+            <td>All users of that Artifact</td>
+            <td>Explicit flag: <code>shared: true</code></td>
+          </tr>
+          <tr>
+            <td class="td-key">Incognito</td>
+            <td>Nothing</td>
+            <td>N/A — memory disabled</td>
+            <td>Zero</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════ SECTION 2 ═══════ -->
+  <div class="section" id="s2">
+    <div class="section-header">
+      <div class="section-num">02</div>
+      <div class="section-title-wrap">
+        <h2>What Gets Stored &amp; How</h2>
+        <div class="section-subtitle">The memory schema, user edits API, and selection heuristics</div>
+      </div>
+    </div>
+
+    <h3>Types of Facts Extracted</h3>
+
+    <div class="card-grid">
+      <div class="card mauve">
+        <div class="card-label">Work Context</div>
+        <div class="card-title">Role &amp; Projects</div>
+        <div class="card-body">Job title, company, team structure, ongoing projects, tech stack, domain expertise. Example: "Founding AI Engineer at NeoFAB, owns agentic pipeline stack."</div>
+      </div>
+      <div class="card sky">
+        <div class="card-label">Personal Context</div>
+        <div class="card-title">Preferences &amp; Style</div>
+        <div class="card-body">Communication style preferences, interests, location, language, response format preferences. Used to calibrate tone and depth automatically.</div>
+      </div>
+      <div class="card orange">
+        <div class="card-label">Episodic Context</div>
+        <div class="card-title">Recent History</div>
+        <div class="card-body">What you were actively working on recently. "Recently built a vLLM advisor Flask app." Gives continuity for ongoing tasks.</div>
+      </div>
+      <div class="card green">
+        <div class="card-label">User Edits</div>
+        <div class="card-title">Explicit Corrections</div>
+        <div class="card-body">Manually overridden facts. "Forget about X." "I moved to London." These take priority over auto-extracted facts and are stored via the memory_user_edits tool.</div>
+      </div>
+    </div>
+
+    <h3>The User Edits API (memory_user_edits tool)</h3>
+
+    <p>Users can directly control what Claude remembers via explicit commands. Internally this calls the <code>memory_user_edits</code> tool with four operations:</p>
+
+    <div class="code-block">
+<span class="comment">// Four operations available</span>
+<span class="key">view</span>   — List current memory edits with line numbers
+<span class="key">add</span>    — Add a new fact (max 500 chars per entry, max 30 entries)
+<span class="key">remove</span> — Delete by line number (requires confirmation)
+<span class="key">replace</span>— Update an existing entry by line number
+
+<span class="comment">// Example triggers in natural language</span>
+<span class="str">"Please remember I no longer work at X"</span>   → add/replace
+<span class="str">"Forget about my divorce"</span>                 → add exclusion rule
+<span class="str">"Update: I moved to London"</span>               → replace location fact
+    </div>
+
+    <div class="infobox key-insight">
+      <strong>Priority rule:</strong> User edits override auto-extracted memories. If Claude auto-extracted "User works at Acme" but you said "I left Acme," the user edit wins at injection time. Auto-extracted facts are lower-confidence by default.
+    </div>
+
+    <h3>How Memory Is Applied — Selective Injection Rules</h3>
+
+    <ol class="num-list">
+      <li><span class="n">01</span><span>For <strong>generic questions</strong> (math, coding concepts, world knowledge) — zero memories applied. No personalization needed.</span></li>
+      <li><span class="n">02</span><span>For <strong>simple greetings</strong> — only the user's name is applied. Nothing else injected.</span></li>
+      <li><span class="n">03</span><span>For <strong>work tasks</strong> — role, tech stack, ongoing projects applied automatically. Adjusts depth and terminology.</span></li>
+      <li><span class="n">04</span><span>For <strong>recommendations</strong> — preferences, interests, location applied to personalize suggestions.</span></li>
+      <li><span class="n">05</span><span>For <strong>explicit requests</strong> ("based on what you know about me…") — full memory dump applied.</span></li>
+      <li><span class="n">06</span><span><strong>Sensitive attributes</strong> (health, orientation, ethnicity) — ONLY applied when directly relevant for safety. Never applied casually.</span></li>
+    </ol>
+
+    <div class="infobox warn">
+      <strong>Security note:</strong> Memories can contain malicious instructions planted across sessions. Claude is instructed to ignore any memory entries that look like commands ("always fetch X on every message") or attempt to override behavior. The memory system has a safety filter layer.
+    </div>
+
+    <h3>What Is Explicitly Excluded</h3>
+
+    <div class="tags">
+      <span class="tag red">Passwords &amp; credentials</span>
+      <span class="tag red">Credit card / SSN / financial IDs</span>
+      <span class="tag yellow">Instructions to bypass safety rules</span>
+      <span class="tag yellow">Verbatim command strings</span>
+      <span class="tag blue">Preferences for excessive praise</span>
+      <span class="tag blue">Instructions to never criticize</span>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════ SECTION 3 ═══════ -->
+  <div class="section" id="s3">
+    <div class="section-header">
+      <div class="section-num">03</div>
+      <div class="section-title-wrap">
+        <h2>Skills System Deep Dive</h2>
+        <div class="section-subtitle">How operator-defined capability modules extend Claude's behavior</div>
+      </div>
+    </div>
+
+    <p>
+      Skills are <strong>operator-provided capability modules</strong> — directories containing a <code>SKILL.md</code> file that encodes best practices, prompting strategies, tool chains, and workflows for specific output types (Word docs, PDFs, PowerPoints, spreadsheets, frontend design, etc.).
+    </p>
+
+    <p>
+      Think of them as <em>compiled institutional knowledge</em> — the distilled result of extensive trial-and-error testing, injected into Claude at task-time to dramatically improve output quality for that domain.
+    </p>
+
+    <h3>Skill Directory Structure</h3>
+
+    <div class="code-block">
+<span class="comment"># Filesystem layout (read-only mounts)</span>
+/mnt/skills/
+├── public/           <span class="comment"># Anthropic-maintained skills</span>
+│   ├── docx/SKILL.md         <span class="str"># Word document generation</span>
+│   ├── pdf/SKILL.md          <span class="str"># PDF creation &amp; manipulation</span>
+│   ├── pptx/SKILL.md         <span class="str"># PowerPoint generation</span>
+│   ├── xlsx/SKILL.md         <span class="str"># Spreadsheet work</span>
+│   ├── frontend-design/      <span class="str"># Production-grade UI</span>
+│   ├── file-reading/         <span class="str"># File type router</span>
+│   ├── pdf-reading/          <span class="str"># PDF content extraction</span>
+│   └── product-self-knowledge/ <span class="str"># Anthropic product facts</span>
+├── user/             <span class="comment"># User-uploaded custom skills</span>
+│   └── imagegen/SKILL.md     <span class="str"># Example custom skill</span>
+└── examples/         <span class="comment"># Example skills for reference</span>
+    └── skill-creator/SKILL.md
+    </div>
+
+    <h3>How Claude Decides to Use a Skill</h3>
+
+    <p>Skills are loaded via the <code>view</code> tool — Claude reads the SKILL.md file before beginning work. The trigger logic is:</p>
+
+    <ol class="num-list">
+      <li><span class="n">01</span><span><strong>Available skills are listed</strong> in the system prompt with descriptions and trigger conditions.</span></li>
+      <li><span class="n">02</span><span>Claude <strong>pattern-matches the user's request</strong> against skill descriptions at the start of each turn.</span></li>
+      <li><span class="n">03</span><span>If a skill matches, Claude <strong>immediately calls <code>view</code></strong> on the SKILL.md file as its first action — before writing any code or content.</span></li>
+      <li><span class="n">04</span><span><strong>Multiple skills can be loaded</strong> if the task requires it (e.g., reading a PDF then creating a Word doc would load both pdf-reading and docx).</span></li>
+      <li><span class="n">05</span><span>Claude <strong>follows the SKILL.md instructions</strong> for the remainder of the task — tool choices, file paths, library selection, output format.</span></li>
+    </ol>
+
+    <div class="infobox tip">
+      <strong>Why this matters for output quality:</strong> SKILL.md files contain findings like "use python-docx + lxml, not pypandoc — pypandoc loses table formatting." This prevents Claude from making suboptimal tool choices it would otherwise make from training alone.
+    </div>
+
+    <h3>Skill Trigger Examples</h3>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>User says</th><th>Skill triggered</th><th>First action</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>"Create a Word document report"</td>
+            <td class="td-key">docx</td>
+            <td>view /mnt/skills/public/docx/SKILL.md</td>
+          </tr>
+          <tr>
+            <td>"Make me a PowerPoint about X"</td>
+            <td class="td-key">pptx</td>
+            <td>view /mnt/skills/public/pptx/SKILL.md</td>
+          </tr>
+          <tr>
+            <td>"Build a landing page"</td>
+            <td class="td-key">frontend-design</td>
+            <td>view /mnt/skills/public/frontend-design/SKILL.md</td>
+          </tr>
+          <tr>
+            <td>"Read this PDF and summarize"</td>
+            <td class="td-key">file-reading → pdf-reading</td>
+            <td>view file-reading/SKILL.md (router), then pdf-reading/SKILL.md</td>
+          </tr>
+          <tr>
+            <td>"What's Claude Code's pricing?"</td>
+            <td class="td-key">product-self-knowledge</td>
+            <td>Fetches docs.claude.com before answering</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Custom / User Skills</h3>
+
+    <p>Users can upload their own SKILL.md files to <code>/mnt/skills/user/</code>. These appear in the available skills list and are treated with <strong>higher priority</strong> than public skills, since they are user-provided domain knowledge. Example use case: a company uploads a SKILL.md encoding their internal document formatting standards.</p>
+
+    <div class="infobox note">
+      <strong>Skills vs Memory:</strong> Memory tells Claude <em>about you</em>. Skills tell Claude <em>how to do things</em>. They are orthogonal systems — you can have both active simultaneously.
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════ SECTION 4 ═══════ -->
+  <div class="section" id="s4">
+    <div class="section-header">
+      <div class="section-num">04</div>
+      <div class="section-title-wrap">
+        <h2>CoWork — Desktop Automation</h2>
+        <div class="section-subtitle">How Claude automates file and task management for non-developers</div>
+      </div>
+    </div>
+
+    <p>
+      CoWork is Anthropic's <strong>desktop automation product</strong> built on top of Claude's computer-use capabilities. It allows non-technical users to automate repetitive file and task workflows without writing code.
+    </p>
+
+    <h3>The Technical Foundation: Computer Use API</h3>
+
+    <p>
+      Under the hood, CoWork uses Claude's <strong>computer use</strong> capability — a set of tools that allow Claude to observe and interact with a desktop environment:
+    </p>
+
+    <div class="card-grid">
+      <div class="card blue">
+        <div class="card-label">Tool</div>
+        <div class="card-title">Screenshot / Vision</div>
+        <div class="card-body">Claude takes screenshots of the current screen state and uses its vision capabilities to understand what's on screen — windows, text, buttons, file structures.</div>
+      </div>
+      <div class="card teal">
+        <div class="card-label">Tool</div>
+        <div class="card-title">Mouse &amp; Keyboard</div>
+        <div class="card-body">Precise click coordinates, drag operations, keyboard input, hotkeys. Claude plans a sequence of actions to accomplish a goal and executes them step-by-step.</div>
+      </div>
+      <div class="card mauve">
+        <div class="card-label">Tool</div>
+        <div class="card-title">File System Access</div>
+        <div class="card-body">Read, write, move, rename files. Operates within a sandboxed container with access to mounted user directories. No permanent deletion without explicit user confirm.</div>
+      </div>
+      <div class="card orange">
+        <div class="card-label">Tool</div>
+        <div class="card-title">Bash Execution</div>
+        <div class="card-body">Run shell commands in a Linux container (Ubuntu 24). Install packages, run scripts, chain operations. Network access gated to an allowlist of trusted domains.</div>
+      </div>
+    </div>
+
+    <h3>Why CoWork Is Efficient</h3>
+
+    <ol class="num-list">
+      <li><span class="n">01</span><span><strong>Agentic loop:</strong> Claude operates in a plan → act → observe → revise cycle. Each action returns feedback (screenshot, stdout, file listing) that Claude uses to decide the next step.</span></li>
+      <li><span class="n">02</span><span><strong>Persistent working directory:</strong> <code>/home/claude</code> is the scratch space. Intermediate files accumulate across tool calls within a session, enabling multi-step workflows.</span></li>
+      <li><span class="n">03</span><span><strong>Output staging:</strong> Final deliverables are staged to <code>/mnt/user-data/outputs/</code> and presented via <code>present_files</code> — a clean separation between work-in-progress and user-facing results.</span></li>
+      <li><span class="n">04</span><span><strong>Skills integration:</strong> Before generating any file, CoWork reads the appropriate SKILL.md (docx, xlsx, pptx, etc.) to ensure library choice and output format follow proven patterns.</span></li>
+      <li><span class="n">05</span><span><strong>Security layer:</strong> Prompt injection defense is active — instructions embedded in documents, web pages, or files Claude opens are flagged and shown to the user for approval before execution.</span></li>
+    </ol>
+
+    <h3>File I/O Architecture</h3>
+
+    <div class="arch-box">
+      <div class="arch-row">
+        <div class="arch-node" style="color:var(--accent-orange); border-color:rgba(250,179,135,0.3)">User uploads</div>
+        <span class="arch-arrow">→</span>
+        <div class="arch-node" style="color:var(--text-dim); border-color:var(--border)">/mnt/user-data/uploads/ (read-only)</div>
+        <span class="arch-label">← Claude reads from here</span>
+      </div>
+      <div class="arch-row">
+        <div class="arch-node" style="color:var(--accent-teal); border-color:rgba(148,226,213,0.3)">Working space</div>
+        <span class="arch-arrow">→</span>
+        <div class="arch-node" style="color:var(--text-dim); border-color:var(--border)">/home/claude/ (read-write)</div>
+        <span class="arch-label">← Intermediate work happens here</span>
+      </div>
+      <div class="arch-row">
+        <div class="arch-node" style="color:var(--accent-green); border-color:rgba(166,227,161,0.3)">Final outputs</div>
+        <span class="arch-arrow">→</span>
+        <div class="arch-node" style="color:var(--text-dim); border-color:var(--border)">/mnt/user-data/outputs/ (write)</div>
+        <span class="arch-label">← present_files() called here</span>
+      </div>
+      <div class="arch-row">
+        <div class="arch-node" style="color:var(--accent-blue); border-color:rgba(137,180,250,0.3)">Skills (read-only)</div>
+        <span class="arch-arrow">→</span>
+        <div class="arch-node" style="color:var(--text-dim); border-color:var(--border)">/mnt/skills/{public,user,examples}/</div>
+        <span class="arch-label">← SKILL.md files read via view tool</span>
+      </div>
+    </div>
+
+    <h3>Safety Constraints in CoWork</h3>
+
+    <div class="tags">
+      <span class="tag red">No permanent deletion without confirm</span>
+      <span class="tag red">No sharing/permission changes</span>
+      <span class="tag red">No new account creation</span>
+      <span class="tag yellow">Downloads require explicit OK</span>
+      <span class="tag yellow">Financial forms blocked</span>
+      <span class="tag blue">CAPTCHA never bypassed</span>
+      <span class="tag blue">Privacy-preserving cookie choices</span>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════ SECTION 5 ═══════ -->
+  <div class="section" id="s5">
+    <div class="section-header">
+      <div class="section-num">05</div>
+      <div class="section-title-wrap">
+        <h2>Claude Code — Agentic Coding</h2>
+        <div class="section-subtitle">The CLI-native coding agent and how it achieves high efficiency</div>
+      </div>
+    </div>
+
+    <p>
+      Claude Code is a <strong>command-line coding agent</strong> that operates directly in your terminal, with native access to your file system, shell, and development tools. Unlike chat-based coding, it can read entire codebases, run tests, make multi-file edits, and iterate autonomously.
+    </p>
+
+    <h3>Core Architecture</h3>
+
+    <div class="card-grid">
+      <div class="card blue">
+        <span class="card-icon">⌨️</span>
+        <div class="card-label">Interface</div>
+        <div class="card-title">Terminal / CLI Native</div>
+        <div class="card-body">Runs in your shell. Sees your working directory, git state, environment variables. Feels like pairing with a developer who has root access to your machine.</div>
+      </div>
+      <div class="card teal">
+        <span class="card-icon">🔄</span>
+        <div class="card-label">Loop</div>
+        <div class="card-title">Agentic Task Loop</div>
+        <div class="card-body">Plan → Explore codebase → Edit files → Run tests/commands → Observe output → Iterate. Each cycle is driven by tool calls: read_file, write_file, bash, search.</div>
+      </div>
+      <div class="card mauve">
+        <span class="card-icon">🔌</span>
+        <div class="card-label">Ecosystem</div>
+        <div class="card-title">MCP Integration</div>
+        <div class="card-body">Connects to MCP servers for external tools — databases, APIs, internal services. Claude Code acts as an MCP client, expanding its capabilities dynamically per project.</div>
+      </div>
+      <div class="card yellow">
+        <span class="card-icon">📁</span>
+        <div class="card-label">Context</div>
+        <div class="card-title">CLAUDE.md Files</div>
+        <div class="card-body">Project-level config files in your repo. Claude reads these at startup to understand project conventions, commands, architecture decisions, and what to avoid.</div>
+      </div>
+    </div>
+
+    <h3>Why Claude Code Is Efficient at Complex Tasks</h3>
+
+    <ol class="num-list">
+      <li><span class="n">01</span><span><strong>Codebase-aware context:</strong> Claude Code reads actual source files, not just what you paste. It can grep for patterns, trace function calls, understand imports — full codebase comprehension, not snippet-level.</span></li>
+      <li><span class="n">02</span><span><strong>Shell execution feedback:</strong> After every edit, it can run <code>pytest</code>, <code>tsc</code>, <code>cargo check</code>, or any build command. Failures become the next prompt. The iteration loop is tighter than any human review cycle.</span></li>
+      <li><span class="n">03</span><span><strong>Git awareness:</strong> Reads diff state, understands staged/unstaged changes, can create commits. Treats the git history as context for understanding intent.</span></li>
+      <li><span class="n">04</span><span><strong>Parallel tool calls:</strong> Can read multiple files, search across the codebase, and check multiple sources simultaneously rather than waiting sequentially.</span></li>
+      <li><span class="n">05</span><span><strong>Headless &amp; scriptable:</strong> Can be run non-interactively in CI pipelines: <code>claude -p "fix all type errors" --output-format json</code>. Enables Claude Code as a first-class CI step.</span></li>
+      <li><span class="n">06</span><span><strong>Long-horizon tasks:</strong> Unlike chat, Claude Code can be told to "implement feature X, write tests, update docs" and execute the entire chain autonomously across dozens of tool calls.</span></li>
+    </ol>
+
+    <h3>Installation &amp; Setup</h3>
+
+    <div class="code-block">
+<span class="comment"># Install via npm (requires Node.js)</span>
+<span class="kw">npm</span> install -g @anthropic-ai/claude-code
+
+<span class="comment"># Run in your project directory</span>
+<span class="kw">cd</span> my-project
+<span class="kw">claude</span>
+
+<span class="comment"># Non-interactive / headless mode</span>
+<span class="kw">claude</span> -p <span class="str">"Add unit tests for auth module"</span> --output-format stream-json
+
+<span class="comment"># With MCP server</span>
+<span class="kw">claude</span> --mcp-server postgres://localhost/mydb
+    </div>
+
+    <h3>CLAUDE.md — Project Configuration</h3>
+
+    <p>
+      Place a <code>CLAUDE.md</code> file at the root of your project. Claude Code reads this at startup. Best practices to include:
+    </p>
+
+    <div class="code-block">
+<span class="comment"># CLAUDE.md — Project conventions</span>
+
+<span class="key">Tech stack:</span> <span class="str">FastAPI, PostgreSQL, Redis, pytest</span>
+<span class="key">Build command:</span> <span class="str">make dev</span>
+<span class="key">Test command:</span> <span class="str">pytest tests/ -x --tb=short</span>
+<span class="key">Lint:</span> <span class="str">ruff check . && mypy src/</span>
+
+<span class="key">Architecture:</span>
+<span class="str">- src/api/     → Route handlers (no business logic)</span>
+<span class="str">- src/services/ → Business logic layer</span>
+<span class="str">- src/models/   → SQLAlchemy ORM models</span>
+
+<span class="key">DO NOT:</span>
+<span class="str">- Import directly from db.py in route handlers</span>
+<span class="str">- Add print() statements (use logger.info)</span>
+<span class="str">- Skip type annotations on public functions</span>
+    </div>
+
+    <h3>Claude Code vs Claude in Chat — When to Use Which</h3>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Scenario</th><th>Claude Code</th><th>Claude Chat</th></tr></thead>
+        <tbody>
+          <tr><td>Multi-file refactor</td><td class="hl-green">✓ Ideal</td><td>Difficult — needs copy-paste</td></tr>
+          <tr><td>Debug failing tests (run loop)</td><td class="hl-green">✓ Ideal</td><td>Cannot run tests</td></tr>
+          <tr><td>Quick code snippet explanation</td><td>Overkill</td><td class="hl-green">✓ Faster</td></tr>
+          <tr><td>Architect a new system</td><td>Good for iteration</td><td class="hl-green">✓ Better for ideation</td></tr>
+          <tr><td>CI/CD integration</td><td class="hl-green">✓ Headless mode</td><td>N/A</td></tr>
+          <tr><td>Generate Word/PDF reports</td><td>Via bash</td><td class="hl-green">✓ With Skills + CoWork</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════ SECTION 6 ═══════ -->
+  <div class="section" id="s6">
+    <div class="section-header">
+      <div class="section-num">06</div>
+      <div class="section-title-wrap">
+        <h2>How They Work Together</h2>
+        <div class="section-subtitle">The unified mental model across memory, skills, CoWork and Claude Code</div>
+      </div>
+    </div>
+
+    <p>These systems are designed to compose. Here's how they layer in a real workflow:</p>
+
+    <div class="infobox tip">
+      <strong>Example workflow:</strong> "Sahil asks Claude to generate a comparative analysis report of V1 vs V2 station JSON definitions, in Word format, using his past context."
+    </div>
+
+    <ol class="num-list">
+      <li><span class="n">01</span><span><strong>Memory fires:</strong> Claude knows Sahil is a Founding AI Engineer at NeoFAB working on EV battery pack manufacturing. Knows the 2kWh, 12kWh, HeroPack product lines. Injects that context silently.</span></li>
+      <li><span class="n">02</span><span><strong>Skill triggers:</strong> "Word format" → Claude reads <code>/mnt/skills/public/docx/SKILL.md</code> before writing any code. Now knows: use python-docx, structure to use, table formatting conventions.</span></li>
+      <li><span class="n">03</span><span><strong>CoWork executes:</strong> Claude reads the uploaded JSON files from <code>/mnt/user-data/uploads/</code>, processes them via bash, generates the .docx in <code>/home/claude/</code>, copies to <code>/mnt/user-data/outputs/</code>.</span></li>
+      <li><span class="n">04</span><span><strong>Output presented:</strong> <code>present_files()</code> is called. User gets a download link. Claude summarises in 2 sentences what's in the doc.</span></li>
+    </ol>
+
+    <h3>System Interaction Map</h3>
+
+    <div class="arch-box" style="padding: 28px 24px;">
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+        <div>
+          <div style="font-size:11px; color:var(--text-faint); margin-bottom:10px; text-transform:uppercase; letter-spacing:.08em;">Inputs to Claude per turn</div>
+          <div class="arch-row"><div class="arch-node" style="color:var(--accent-blue);border-color:rgba(137,180,250,0.3)">System Prompt</div><span class="arch-label">base instructions + safety rules</span></div>
+          <div class="arch-row"><div class="arch-node" style="color:var(--accent-teal);border-color:rgba(148,226,213,0.3)">userMemories block</div><span class="arch-label">injected user facts</span></div>
+          <div class="arch-row"><div class="arch-node" style="color:var(--accent-yellow);border-color:rgba(249,226,175,0.3)">Skill SKILL.md</div><span class="arch-label">loaded on-demand via view tool</span></div>
+          <div class="arch-row"><div class="arch-node" style="color:var(--accent-mauve);border-color:rgba(203,166,247,0.3)">Conversation history</div><span class="arch-label">this session only</span></div>
+          <div class="arch-row"><div class="arch-node" style="color:var(--accent-orange);border-color:rgba(250,179,135,0.3)">Tool results</div><span class="arch-label">file contents, bash output, search</span></div>
+        </div>
+        <div>
+          <div style="font-size:11px; color:var(--text-faint); margin-bottom:10px; text-transform:uppercase; letter-spacing:.08em;">Claude Code specific additions</div>
+          <div class="arch-row"><div class="arch-node" style="color:var(--accent-blue);border-color:rgba(137,180,250,0.3)">CLAUDE.md</div><span class="arch-label">project-level context</span></div>
+          <div class="arch-row"><div class="arch-node" style="color:var(--accent-teal);border-color:rgba(148,226,213,0.3)">git status / diff</div><span class="arch-label">repo awareness</span></div>
+          <div class="arch-row"><div class="arch-node" style="color:var(--accent-yellow);border-color:rgba(249,226,175,0.3)">File tree scan</div><span class="arch-label">codebase structure</span></div>
+          <div class="arch-row"><div class="arch-node" style="color:var(--accent-green);border-color:rgba(166,227,161,0.3)">MCP server data</div><span class="arch-label">external tools &amp; databases</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════ SECTION 7 ═══════ -->
+  <div class="section" id="s7">
+    <div class="section-header">
+      <div class="section-num">07</div>
+      <div class="section-title-wrap">
+        <h2>Key Limitations &amp; Caveats</h2>
+        <div class="section-subtitle">What the system cannot do — important for setting correct expectations</div>
+      </div>
+    </div>
+
+    <div class="card-grid">
+      <div class="card red">
+        <div class="card-label">Memory</div>
+        <div class="card-title">No Real-Time Sync</div>
+        <div class="card-body">Memory is updated asynchronously. Recent conversations may not be reflected immediately. There is no guarantee of what gets extracted — the background process is probabilistic.</div>
+      </div>
+      <div class="card red">
+        <div class="card-label">Memory</div>
+        <div class="card-title">Incognito = Zero Memory</div>
+        <div class="card-body">Incognito conversations are completely isolated. No memory is read or written. Nothing from that session persists.</div>
+      </div>
+      <div class="card yellow">
+        <div class="card-label">Memory</div>
+        <div class="card-title">Incomplete Capture</div>
+        <div class="card-body">Not everything you discuss is stored. The extraction process prioritises factual, stable attributes. Nuanced preferences or one-off context may not survive.</div>
+      </div>
+      <div class="card yellow">
+        <div class="card-label">Skills</div>
+        <div class="card-title">Operator-Scoped</div>
+        <div class="card-body">Skills are loaded by the deployment operator. Different Claude deployments (API, Claude.ai, Claude Code) may have different sets of skills available or none at all.</div>
+      </div>
+      <div class="card orange">
+        <div class="card-label">CoWork</div>
+        <div class="card-title">Container Resets</div>
+        <div class="card-body">The Linux container running CoWork tasks resets between conversations. Files in /home/claude/ do not persist across sessions — only /mnt/user-data/outputs/ deliverables are kept.</div>
+      </div>
+      <div class="card orange">
+        <div class="card-label">Claude Code</div>
+        <div class="card-title">Context Window Limits</div>
+        <div class="card-body">Very large codebases exceed the context window. Claude Code uses heuristics to prioritise which files to read, but may miss relevant code in massive repos.</div>
+      </div>
+      <div class="card blue">
+        <div class="card-label">All Systems</div>
+        <div class="card-title">No True Persistence of Self</div>
+        <div class="card-body">Each conversation is a new model instance with injected state. There is no continuous "running Claude" — only stateless inference with carefully constructed context.</div>
+      </div>
+      <div class="card blue">
+        <div class="card-label">Security</div>
+        <div class="card-title">Prompt Injection Risk</div>
+        <div class="card-body">Malicious instructions in files Claude reads (documents, web pages, emails) could attempt to hijack actions. Defense is active but not perfect — review before approving sensitive actions.</div>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <div class="infobox key-insight">
+      <strong>The deepest insight:</strong> Claude has no persistent state, no continuous experience, no self that carries forward. What creates continuity is careful <em>context engineering</em> — memory injection, skill loading, CLAUDE.md files, MCP connections. The system is a stateless inference engine made to appear stateful through meticulous state reconstruction at every turn.
+    </div>
+
+    <p style="margin-top:24px;">
+      For an engineer building on top of Claude, the implications are clear: <strong>invest in context quality</strong>. Better memory entries → better personalization. Richer CLAUDE.md → better code agents. More precise skill instructions → higher quality outputs. The model's capability is fixed; what you control is the information surface you expose to it.
+    </p>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <span>Claude Internals — Engineering Notes</span>
+    <span>March 2026 · Claude Sonnet 4.6</span>
+  </div>
+
+</div>
+</body>
+</html>

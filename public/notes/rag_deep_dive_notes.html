@@ -1,0 +1,1603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAG Deep Dive — Part 2</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,600;1,400&family=Fraunces:ital,wght@0,300;0,600;0,800;1,300&display=swap');
+
+:root {
+  --bg: #f5f0e8;
+  --bg2: #ede8de;
+  --surface: #fff9f0;
+  --border: #d4c9b5;
+  --border2: #bfb09a;
+  --ink: #1a1612;
+  --ink2: #4a3f35;
+  --muted: #8a7a6a;
+  --accent: #c0392b;
+  --accent2: #2471a3;
+  --accent3: #1e8449;
+  --accent4: #7d3c98;
+  --accent5: #d68910;
+  --highlight: #fef9c3;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  line-height: 1.75;
+  min-height: 100vh;
+}
+
+/* GRAIN OVERLAY */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0.6;
+}
+
+/* LAYOUT */
+#shell { display: flex; height: 100vh; overflow: hidden; }
+
+/* SIDEBAR */
+#sidebar {
+  width: 260px;
+  min-width: 260px;
+  background: var(--ink);
+  color: var(--bg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: 3px solid var(--accent);
+}
+
+#sidebar-header {
+  padding: 24px 18px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+#sidebar-header h1 {
+  font-family: 'Fraunces', serif;
+  font-size: 17px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+#sidebar-header .sub {
+  font-size: 10px;
+  color: rgba(255,255,255,0.4);
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+#nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0 20px;
+  scrollbar-width: none;
+}
+#nav::-webkit-scrollbar { display: none; }
+
+.nav-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 18px;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  transition: all 0.15s;
+  color: rgba(255,255,255,0.5);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+.nav-item:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.85); }
+.nav-item.active {
+  border-left-color: var(--accent);
+  background: rgba(192,57,43,0.15);
+  color: #fff;
+}
+.nav-num {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--accent);
+  min-width: 18px;
+  padding-top: 2px;
+  opacity: 0.8;
+}
+.nav-item.active .nav-num { opacity: 1; }
+
+/* PROGRESS */
+#progress-wrap { padding: 12px 18px 16px; border-top: 1px solid rgba(255,255,255,0.1); }
+#progress-track { background: rgba(255,255,255,0.1); height: 3px; border-radius: 2px; overflow: hidden; }
+#progress-fill { height: 100%; background: var(--accent); transition: width 0.4s; width: 0%; }
+#progress-label { font-size: 10px; color: rgba(255,255,255,0.35); margin-top: 6px; }
+
+/* MAIN */
+#main {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--bg);
+}
+
+#content {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 44px 52px 100px;
+}
+
+/* SECTIONS */
+.section { display: none; animation: slideIn 0.2s ease; }
+.section.active { display: block; }
+@keyframes slideIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+/* TYPOGRAPHY */
+.q-tag {
+  display: inline-block;
+  background: var(--accent);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  padding: 3px 8px;
+  border-radius: 2px;
+  margin-bottom: 12px;
+}
+
+h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 30px;
+  font-weight: 800;
+  color: var(--ink);
+  line-height: 1.15;
+  margin-bottom: 20px;
+  letter-spacing: -0.02em;
+}
+
+h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 36px 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--border);
+  letter-spacing: -0.01em;
+}
+
+h4 {
+  font-family: 'Fraunces', serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  margin: 22px 0 8px;
+}
+
+p {
+  color: var(--ink2);
+  margin-bottom: 13px;
+  font-size: 13px;
+}
+
+strong { color: var(--ink); font-weight: 600; }
+em { color: var(--accent); font-style: italic; }
+
+/* CALLOUTS */
+.note {
+  padding: 13px 16px;
+  margin: 16px 0;
+  border-radius: 3px;
+  border-left: 4px solid;
+}
+.note.green { border-color: var(--accent3); background: #f0faf3; }
+.note.red { border-color: var(--accent); background: #fdf3f2; }
+.note.blue { border-color: var(--accent2); background: #f0f6ff; }
+.note.yellow { border-color: var(--accent5); background: var(--highlight); }
+.note.purple { border-color: var(--accent4); background: #faf0ff; }
+.note-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 5px; }
+.note.green .note-title { color: var(--accent3); }
+.note.red .note-title { color: var(--accent); }
+.note.blue .note-title { color: var(--accent2); }
+.note.yellow .note-title { color: var(--accent5); }
+.note.purple .note-title { color: var(--accent4); }
+.note p { margin: 0; font-size: 12.5px; }
+
+/* CODE */
+code {
+  background: var(--ink);
+  color: #a8d8a8;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 11.5px;
+}
+
+pre {
+  background: var(--ink);
+  border: 1px solid var(--border2);
+  border-radius: 5px;
+  padding: 18px 20px;
+  overflow-x: auto;
+  margin: 16px 0;
+  position: relative;
+}
+pre code {
+  background: none;
+  padding: 0;
+  font-size: 12px;
+  color: #d4d0c8;
+  display: block;
+  line-height: 1.85;
+}
+.kw { color: #f0b37e; }
+.fn { color: #7ec8f0; }
+.str { color: #a8d8a8; }
+.cm { color: #686060; font-style: italic; }
+.num { color: #f0d07e; }
+.cl { color: #f0c0f0; }
+
+/* TABLES */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 12px;
+}
+th {
+  background: var(--ink);
+  color: #fff;
+  text-align: left;
+  padding: 10px 13px;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+td {
+  padding: 9px 13px;
+  border-bottom: 1px solid var(--border);
+  color: var(--ink2);
+  vertical-align: top;
+}
+tr:nth-child(even) td { background: var(--bg2); }
+td strong { color: var(--ink); }
+
+/* FLOW */
+.flow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0;
+  row-gap: 8px;
+  margin: 16px 0;
+  background: var(--bg2);
+  padding: 14px 16px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+.fb {
+  background: var(--surface);
+  border: 1.5px solid var(--border2);
+  border-radius: 3px;
+  padding: 6px 11px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.fb.r { border-color: var(--accent); color: var(--accent); background: #fdf3f2; }
+.fb.b { border-color: var(--accent2); color: var(--accent2); background: #f0f6ff; }
+.fb.g { border-color: var(--accent3); color: var(--accent3); background: #f0faf3; }
+.fb.y { border-color: var(--accent5); color: var(--accent5); background: var(--highlight); }
+.fa { color: var(--muted); padding: 0 7px; font-size: 15px; }
+
+/* CARDS GRID */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+.card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 4px;
+  padding: 14px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.card:hover { border-color: var(--border2); box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+.card h5 {
+  font-family: 'Fraunces', serif;
+  font-size: 13.5px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--ink);
+}
+.card p { font-size: 12px; margin: 0; }
+.card .ct { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--accent2); margin-bottom: 5px; }
+
+/* FORMULA */
+.formula {
+  background: var(--ink);
+  color: #f0e68c;
+  padding: 14px 18px;
+  border-radius: 4px;
+  text-align: center;
+  font-size: 14px;
+  margin: 14px 0;
+  letter-spacing: 0.04em;
+}
+
+/* SECTION DIVIDER */
+.sep { border: none; border-top: 1.5px solid var(--border); margin: 28px 0; }
+
+/* EXAMPLE BOX */
+.example {
+  background: var(--highlight);
+  border: 1.5px solid #e8d24a;
+  border-radius: 4px;
+  padding: 14px 16px;
+  margin: 14px 0;
+}
+.example .ex-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--accent5);
+  margin-bottom: 7px;
+}
+.example p { margin: 0; font-size: 12.5px; color: var(--ink2); }
+
+/* TIMELINE */
+.timeline { margin: 16px 0; }
+.tl-item {
+  display: flex;
+  gap: 14px;
+  padding: 0 0 20px 0;
+  position: relative;
+}
+.tl-item:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 15px;
+  top: 30px;
+  bottom: 0;
+  width: 2px;
+  background: var(--border);
+}
+.tl-num {
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  z-index: 1;
+}
+.tl-body h5 {
+  font-family: 'Fraunces', serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 4px;
+  padding-top: 4px;
+}
+.tl-body p { font-size: 12.5px; margin: 0; }
+
+/* PILL */
+.pill {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 2px;
+}
+.pill.r { background: #fdf3f2; color: var(--accent); border: 1px solid #f5c6c2; }
+.pill.b { background: #f0f6ff; color: var(--accent2); border: 1px solid #c2d7f5; }
+.pill.g { background: #f0faf3; color: var(--accent3); border: 1px solid #b2e0bc; }
+.pill.y { background: var(--highlight); color: var(--accent5); border: 1px solid #e0d06a; }
+
+/* COMPARISON */
+.vs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px 0; }
+.vs-col { background: var(--surface); border: 1.5px solid var(--border); border-radius: 4px; padding: 13px; }
+.vs-col h5 { font-family: 'Fraunces', serif; font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+.vs-col.r { border-top: 3px solid var(--accent); }
+.vs-col.r h5 { color: var(--accent); }
+.vs-col.b { border-top: 3px solid var(--accent2); }
+.vs-col.b h5 { color: var(--accent2); }
+.vs-col.g { border-top: 3px solid var(--accent3); }
+.vs-col.g h5 { color: var(--accent3); }
+.vs-col ul { list-style: none; }
+.vs-col ul li { font-size: 12px; color: var(--ink2); padding: 4px 0; border-bottom: 1px solid var(--border); }
+.vs-col ul li:last-child { border: none; }
+.vs-col ul li::before { content: '· '; color: var(--muted); }
+
+/* INTERVIEW Q */
+.iq {
+  background: var(--ink);
+  color: rgba(255,255,255,0.85);
+  padding: 14px 16px;
+  border-radius: 4px;
+  margin: 20px 0 8px;
+  border-left: 4px solid var(--accent);
+}
+.iq .iq-q { font-size: 11px; color: var(--accent); font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 6px; }
+.iq p { color: rgba(255,255,255,0.75); font-size: 12.5px; margin: 0; }
+
+/* scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+</style>
+</head>
+<body>
+<div id="shell">
+
+<!-- SIDEBAR -->
+<aside id="sidebar">
+  <div id="sidebar-header">
+    <h1>RAG Deep Dive<br>Part II</h1>
+    <div class="sub">10 Critical Topics</div>
+  </div>
+  <nav id="nav"></nav>
+  <div id="progress-wrap">
+    <div id="progress-track"><div id="progress-fill"></div></div>
+    <div id="progress-label">0 / 10 read</div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main id="main">
+<div id="content">
+
+<!-- ===== S0: SEMANTIC CACHE ===== -->
+<div class="section active" id="s0">
+  <div class="q-tag">Topic 01</div>
+  <h2>Semantic Cache — How It Really Works</h2>
+  <p>A semantic cache stores the result of a query and retrieves it again when a <em>semantically similar</em> (not necessarily identical) query comes in. Unlike a key-value cache where the key must match exactly, semantic cache uses vector similarity to find near-matches.</p>
+
+  <h3>Core Mechanism</h3>
+  <div class="flow">
+    <div class="fb r">User Query</div><div class="fa">→</div>
+    <div class="fb">Embed query</div><div class="fa">→</div>
+    <div class="fb b">Search cache index</div><div class="fa">→</div>
+    <div class="fb g">Similarity ≥ threshold?</div><div class="fa">→</div>
+    <div class="fb g">Return cached response</div>
+  </div>
+  <div class="flow">
+    <div class="fb">Similarity &lt; threshold</div><div class="fa">→</div>
+    <div class="fb r">Full RAG pipeline</div><div class="fa">→</div>
+    <div class="fb b">Store (embedding, response) in cache</div>
+  </div>
+
+  <pre><code><span class="cm"># Pseudocode — semantic cache lookup</span>
+<span class="kw">def</span> <span class="fn">query_with_cache</span>(user_query):
+    q_emb = <span class="fn">embed</span>(user_query)
+
+    <span class="cm"># search the cache (it's a small vector store)</span>
+    hit = cache_index.<span class="fn">search</span>(q_emb, top_k=<span class="num">1</span>)
+    <span class="kw">if</span> hit.score >= <span class="num">0.95</span>:               <span class="cm"># threshold</span>
+        <span class="kw">return</span> hit.cached_response       <span class="cm"># 0 LLM cost, ~5ms</span>
+
+    <span class="cm"># cache miss — run full pipeline</span>
+    response = <span class="fn">full_rag_pipeline</span>(user_query, q_emb)
+    cache_index.<span class="fn">upsert</span>(q_emb, response)  <span class="cm"># store for next time</span>
+    <span class="kw">return</span> response</code></pre>
+
+  <div class="note yellow">
+    <div class="note-title">⚠ Threshold Matters Enormously</div>
+    <p>0.95+ = very strict, only near-identical queries match. 0.85 = broader match, risk of wrong cached answer. For factual RAG: stay at 0.92–0.95. For conversational bots: 0.88–0.92 is often fine.</p>
+  </div>
+
+  <h3>The Big Question: Does Chat History Break Semantic Cache?</h3>
+  <p><strong>Yes — if you're naive about it.</strong> If you cache raw user messages without context, you'll return wrong cached answers. The same message "What is the refund period?" means different things depending on chat history.</p>
+  <p>There are two strategies:</p>
+
+  <h4>Strategy A — Cache Condensed Standalone Queries</h4>
+  <p>Convert the multi-turn history into a single standalone query first (LLM rewrite), then cache that. The cache key is the standalone query embedding, not the raw user message.</p>
+  <pre><code>standalone = llm(<span class="str">"""Given chat history:
+User: "What products do you sell?"
+Bot: "We sell SaaS subscriptions..."
+User: "What is the refund period?"
+
+Rewrite the last question as a fully standalone question."""</span>)
+<span class="cm"># → "What is the refund period for your SaaS subscriptions?"</span>
+response = <span class="fn">query_with_cache</span>(standalone)</code></pre>
+
+  <h4>Strategy B — Cache Only User-Independent Queries</h4>
+  <p>Don't cache personal, session-specific, or history-dependent queries at all. Only cache queries that are truly universal: "What is the company's vacation policy?" is cacheable. "What is MY leave balance?" is not.</p>
+
+  <h3>Where Semantic Cache Actually Helps — Real Scenarios</h3>
+  <div class="cards">
+    <div class="card">
+      <div class="ct">Customer Support Bot</div>
+      <h5>FAQ Repetition</h5>
+      <p>"How do I reset my password?" vs "forgot my password steps" vs "change password guide" — all hit the same cached answer. Massive win for support bots.</p>
+    </div>
+    <div class="card">
+      <div class="ct">Internal Knowledge Base</div>
+      <h5>Policy Questions</h5>
+      <p>"What is the PTO policy?" / "How many vacation days do employees get?" → same cache hit. 40–60% of enterprise knowledge base queries are variations of the same few dozen questions.</p>
+    </div>
+    <div class="card">
+      <div class="ct">Product Search / Catalog</div>
+      <h5>Product Discovery</h5>
+      <p>"Cheapest laptop under 50k" vs "budget laptops below 50000 rupees" → same answer. Cache works beautifully here.</p>
+    </div>
+    <div class="card">
+      <div class="ct">Medical / Legal RAG</div>
+      <h5>Definition Queries</h5>
+      <p>"What is hypertension?" vs "define high blood pressure" → safe to cache. But "Should I take metoprolol?" is user-specific — never cache.</p>
+    </div>
+    <div class="card">
+      <div class="ct">Code Assistant</div>
+      <h5>Common Patterns</h5>
+      <p>"How to read a file in Python?" asked by 1000 developers. Cache once, serve all. Cost savings are enormous.</p>
+    </div>
+    <div class="card">
+      <div class="ct">Analytics Chatbot</div>
+      <h5>Report Queries</h5>
+      <p>"Show last month's revenue" — if it was expensive to compute, cache for 30 minutes. Time-bounded cache (TTL) + semantic similarity.</p>
+    </div>
+  </div>
+
+  <h3>Cache Invalidation — When to Bust</h3>
+  <table>
+    <tr><th>Trigger</th><th>Action</th><th>Example</th></tr>
+    <tr><td>New document indexed</td><td>Invalidate related cache entries</td><td>New policy doc → bust policy-related cache</td></tr>
+    <tr><td>Document updated</td><td>Tag-based invalidation</td><td>Price changes → bust product Q&A cache</td></tr>
+    <tr><td>TTL expiry</td><td>Time-based expiry</td><td>News/events: cache for 1 hour only</td></tr>
+    <tr><td>User feedback "wrong answer"</td><td>Delete specific cache entry</td><td>User flags incorrect answer</td></tr>
+  </table>
+
+  <h3>Semantic Cache vs Exact Cache</h3>
+  <div class="vs">
+    <div class="vs-col r">
+      <h5>Exact Cache (Redis KV)</h5>
+      <ul>
+        <li>Key = exact query string</li>
+        <li>Hit only on identical queries</li>
+        <li>O(1) lookup, near-zero overhead</li>
+        <li>Useless for natural language variation</li>
+        <li>Great for structured queries (API calls, SQL)</li>
+      </ul>
+    </div>
+    <div class="vs-col b">
+      <h5>Semantic Cache</h5>
+      <ul>
+        <li>Key = query embedding vector</li>
+        <li>Hit on semantically similar queries</li>
+        <li>ANN lookup, ~5–15ms overhead</li>
+        <li>Handles natural language well</li>
+        <li>Risk: false positive hits at low thresholds</li>
+      </ul>
+    </div>
+  </div>
+
+  <p><strong>In production:</strong> Use both. Exact cache (Redis) as first check (~0ms), semantic cache as second (~10ms), then full pipeline as fallback.</p>
+
+  <div class="iq">
+    <div class="iq-q">💬 Interview Q</div>
+    <p>"Semantic cache returned a wrong answer — how do you debug?" → Check the threshold. Print the similarity score of the hit. If 0.87 matched and gave wrong answer, raise threshold to 0.93. Also add a staleness TTL. Log all cache hits with query pairs for audit.</p>
+  </div>
+</div>
+
+<!-- ===== S1: OTHER CACHE METHODS ===== -->
+<div class="section" id="s1">
+  <div class="q-tag">Topic 02</div>
+  <h2>Other Caching Methods in RAG</h2>
+  <p>Semantic cache solves the "same question phrased differently" problem. But there are several other caching layers in a RAG system — each targeting a different bottleneck.</p>
+
+  <h3>1. Prefix / Prompt Caching (KV Cache)</h3>
+  <p>Modern LLM APIs (Anthropic, OpenAI) support <strong>prompt prefix caching</strong>. If the beginning of your prompt (system prompt + retrieved docs) is identical across requests, the KV cache in the attention layers is reused. You only pay compute for the new part (the user question).</p>
+  <pre><code><span class="cm"># Same system prompt + context repeated → cached by provider</span>
+system = <span class="str">"You are a helpful assistant. Use the following docs: [1000 tokens of context]"</span>
+
+<span class="cm"># First call: full computation</span>
+response_1 = llm(system + <span class="str">"Question: What is the return policy?"</span>)
+
+<span class="cm"># Second call with same prefix: KV cache reused</span>
+<span class="cm"># ~50-80% cheaper if prefix is long and identical</span>
+response_2 = llm(system + <span class="str">"Question: How long for refund?"</span>)</code></pre>
+  <div class="note blue">
+    <div class="note-title">When This Helps</div>
+    <p>Works best when you have a fixed large system prompt OR when you can serve multiple queries against the same retrieved document set (batch mode). Anthropic charges 90% less for cached input tokens.</p>
+  </div>
+
+  <h3>2. Embedding Cache</h3>
+  <p>Embedding the same text twice is wasteful. Cache (text → vector) pairs in Redis or a local dict. Critical for the indexing pipeline where the same chunk might be re-processed multiple times.</p>
+  <pre><code><span class="cm"># Embedding cache with TTL</span>
+<span class="kw">import</span> redis, hashlib, json
+
+<span class="kw">def</span> <span class="fn">cached_embed</span>(text):
+    key = <span class="str">"emb:"</span> + hashlib.<span class="fn">md5</span>(text.<span class="fn">encode</span>()).<span class="fn">hexdigest</span>()
+    cached = redis.<span class="fn">get</span>(key)
+    <span class="kw">if</span> cached:
+        <span class="kw">return</span> json.<span class="fn">loads</span>(cached)
+    vec = openai_embed(text)
+    redis.<span class="fn">setex</span>(key, <span class="num">86400</span>, json.<span class="fn">dumps</span>(vec))  <span class="cm"># 24h TTL</span>
+    <span class="kw">return</span> vec</code></pre>
+
+  <h3>3. Retrieval Result Cache</h3>
+  <p>Cache the vector search results (chunk IDs + content) for a query embedding, not just the final LLM answer. This is useful when you want fresh LLM generation but don't want to repeat expensive retrieval.</p>
+  <pre><code><span class="cm"># Cache retrieval results separately from LLM response</span>
+chunks_key = <span class="str">f"retrieval:{hash(q_emb)}"</span>
+chunks = redis.<span class="fn">get</span>(chunks_key)
+<span class="kw">if not</span> chunks:
+    chunks = <span class="fn">vector_search</span>(q_emb)
+    redis.<span class="fn">setex</span>(chunks_key, <span class="num">300</span>, <span class="fn">serialize</span>(chunks))  <span class="cm"># 5 min TTL</span>
+
+<span class="cm"># LLM call happens every time (freshness), but retrieval is cached</span>
+response = llm.<span class="fn">generate</span>(query, chunks)</code></pre>
+
+  <h3>4. Query Normalization Before Caching</h3>
+  <p>Before any cache lookup, normalize the query to reduce variation. This dramatically increases cache hit rate.</p>
+  <table>
+    <tr><th>Technique</th><th>Example: Before → After</th><th>Effect</th></tr>
+    <tr><td><strong>Lowercase</strong></td><td>"What is RAG?" → "what is rag?"</td><td>Removes case variation</td></tr>
+    <tr><td><strong>Punctuation strip</strong></td><td>"How does RAG work?!" → "how does rag work"</td><td>Cleans noise</td></tr>
+    <tr><td><strong>Stopword remove</strong></td><td>"Can you tell me what RAG is" → "RAG is"</td><td>Reduces semantic dilution</td></tr>
+    <tr><td><strong>Spelling correction</strong></td><td>"How does retreival work?" → "How does retrieval work?"</td><td>Unifies typos</td></tr>
+    <tr><td><strong>LLM rewrite</strong></td><td>Any phrasing → canonical form</td><td>Best quality, adds ~100ms</td></tr>
+  </table>
+
+  <h3>5. Document-Level Generation Cache</h3>
+  <p>If you generate summaries, metadata, or structured extractions from documents during ingestion, cache them. Re-ingesting the same doc should not re-run expensive LLM passes.</p>
+  <pre><code><span class="cm"># During ingestion pipeline</span>
+doc_hash = <span class="fn">sha256</span>(doc_content)
+<span class="kw">if</span> db.<span class="fn">exists</span>(<span class="str">f"doc:{doc_hash}"</span>):
+    <span class="kw">return</span> db.<span class="fn">get</span>(<span class="str">f"doc:{doc_hash}"</span>)  <span class="cm"># already processed</span>
+
+summary = llm(<span class="str">f"Summarize: {doc_content}"</span>)   <span class="cm"># expensive</span>
+entities = llm(<span class="str">f"Extract entities: {doc_content}"</span>)
+db.<span class="fn">set</span>(<span class="str">f"doc:{doc_hash}"</span>, {summary, entities})
+<span class="kw">return</span> summary, entities</code></pre>
+
+  <h3>Cache Layer Stack — Full Picture</h3>
+  <div class="flow">
+    <div class="fb">Query</div><div class="fa">→</div>
+    <div class="fb y">Normalize</div><div class="fa">→</div>
+    <div class="fb r">Exact cache (Redis, ~0ms)</div><div class="fa">→</div>
+    <div class="fb b">Semantic cache (~10ms)</div><div class="fa">→</div>
+    <div class="fb">Retrieval cache</div><div class="fa">→</div>
+    <div class="fb g">LLM (prompt prefix cache)</div>
+  </div>
+
+  <div class="iq">
+    <div class="iq-q">💬 Interview Q</div>
+    <p>"Same question written 5 different ways — how do you cache efficiently?" → Normalize first (lowercase, strip punctuation). Then semantic cache with 0.93 threshold. Optionally: LLM-rewrite to canonical form before cache lookup. Store all query variants that led to the same answer, so future hits improve.</p>
+  </div>
+</div>
+
+<!-- ===== S2: CHUNKING ===== -->
+<div class="section" id="s2">
+  <div class="q-tag">Topic 03</div>
+  <h2>Chunking Methods — Deep Dive with Examples</h2>
+  <p>Chunking is splitting your documents into pieces before embedding. <em>The chunk is the unit of retrieval</em> — what you embed, what gets returned, what goes into the LLM context. Bad chunking breaks everything downstream, regardless of how good your model is.</p>
+
+  <div class="note red">
+    <div class="note-title">🎯 Golden Rule</div>
+    <p>One chunk should contain one coherent idea. It should be self-contained enough that someone reading just that chunk can understand the point — without needing the surrounding text.</p>
+  </div>
+
+  <h3>Method 1 — Fixed-Size / Token-Based Chunking</h3>
+  <p>Split every N tokens, regardless of content. Simple, predictable.</p>
+  <pre><code><span class="kw">from</span> langchain.text_splitter <span class="kw">import</span> RecursiveCharacterTextSplitter
+
+splitter = <span class="fn">RecursiveCharacterTextSplitter</span>(
+    chunk_size=<span class="num">512</span>,      <span class="cm"># tokens per chunk</span>
+    chunk_overlap=<span class="num">64</span>,   <span class="cm"># overlap between consecutive chunks</span>
+    separators=[<span class="str">"\n\n"</span>, <span class="str">"\n"</span>, <span class="str">". "</span>, <span class="str">" "</span>]
+)
+chunks = splitter.<span class="fn">split_text</span>(document)</code></pre>
+
+  <div class="example">
+    <div class="ex-title">📄 Example</div>
+    <p>Document: "The refund policy allows returns within 30 days. Products must be unused. | To start a return, visit our portal. Click 'Return Item'. You will receive a label within 2 hours."<br><br>
+    With chunk_size=20 tokens, overlap=5:<br>
+    Chunk 1: "The refund policy allows returns within 30 days. Products must be unused."<br>
+    Chunk 2: "Products must be unused. To start a return, visit our portal."<br>
+    ← The overlap ("Products must be unused") ensures boundary context isn't lost.</p>
+  </div>
+
+  <table>
+    <tr><th>✓ Pros</th><th>✗ Cons</th></tr>
+    <tr><td>Dead simple to implement</td><td>Cuts sentences mid-thought</td></tr>
+    <tr><td>Predictable chunk sizes</td><td>Chunks may lack coherence</td></tr>
+    <tr><td>Fast</td><td>Chunk boundary = information loss</td></tr>
+  </table>
+
+  <h3>Method 2 — Sentence-Based Chunking</h3>
+  <p>Use NLP (spaCy/NLTK) to detect sentence boundaries. Group N sentences per chunk. Never cuts mid-sentence.</p>
+  <pre><code><span class="kw">import</span> spacy
+nlp = spacy.<span class="fn">load</span>(<span class="str">"en_core_web_sm"</span>)
+
+<span class="kw">def</span> <span class="fn">sentence_chunks</span>(text, sentences_per_chunk=<span class="num">5</span>, overlap=<span class="num">1</span>):
+    doc = <span class="fn">nlp</span>(text)
+    sentences = [sent.text <span class="kw">for</span> sent <span class="kw">in</span> doc.sents]
+    chunks = []
+    <span class="kw">for</span> i <span class="kw">in</span> range(<span class="num">0</span>, len(sentences), sentences_per_chunk - overlap):
+        chunk = <span class="str">" "</span>.<span class="fn">join</span>(sentences[i : i + sentences_per_chunk])
+        chunks.<span class="fn">append</span>(chunk)
+    <span class="kw">return</span> chunks</code></pre>
+
+  <h3>Method 3 — Semantic / Embedding-Based Chunking</h3>
+  <p>Split based on <em>meaning shifts</em>. Embed each sentence, measure cosine similarity between adjacent sentences. When similarity drops sharply → that's a natural topic boundary → split there.</p>
+  <pre><code><span class="kw">def</span> <span class="fn">semantic_chunk</span>(sentences, threshold=<span class="num">0.85</span>):
+    embeddings = [<span class="fn">embed</span>(s) <span class="kw">for</span> s <span class="kw">in</span> sentences]
+    chunks, current = [], [sentences[<span class="num">0</span>]]
+    <span class="kw">for</span> i <span class="kw">in</span> range(<span class="num">1</span>, len(sentences)):
+        sim = <span class="fn">cosine_similarity</span>(embeddings[i-<span class="num">1</span>], embeddings[i])
+        <span class="kw">if</span> sim &lt; threshold:   <span class="cm"># topic changed → new chunk</span>
+            chunks.<span class="fn">append</span>(<span class="str">" "</span>.<span class="fn">join</span>(current))
+            current = []
+        current.<span class="fn">append</span>(sentences[i])
+    chunks.<span class="fn">append</span>(<span class="str">" "</span>.<span class="fn">join</span>(current))
+    <span class="kw">return</span> chunks</code></pre>
+
+  <div class="example">
+    <div class="ex-title">📄 Example</div>
+    <p>Sentences: S1="The product ships in 3 days." S2="Free shipping on orders over 500." S3="Our headquarters is in Mumbai." S4="We have offices in Delhi too."<br><br>
+    Similarity(S2, S3) drops below threshold (shipping → geography = topic shift).<br>
+    Result: Chunk 1 = [S1, S2] (shipping/delivery), Chunk 2 = [S3, S4] (location). Clean topic separation!</p>
+  </div>
+
+  <h3>Method 4 — Hierarchical / Parent-Child Chunking</h3>
+  <p>Store chunks at two resolutions. <em>Small chunks</em> (128 tokens) for retrieval — precise, high-signal. <em>Large parent chunks</em> (512–1024 tokens) returned to the LLM for context.</p>
+  <div class="flow">
+    <div class="fb b">Document</div><div class="fa">→</div>
+    <div class="fb">Parent (512 tok)</div><div class="fa">→</div>
+    <div class="fb r">Children (128 tok) ← embedded</div>
+  </div>
+  <div class="flow">
+    <div class="fb r">Query → Child match</div><div class="fa">→</div>
+    <div class="fb y">Lookup parent_id</div><div class="fa">→</div>
+    <div class="fb g">Return parent to LLM</div>
+  </div>
+  <pre><code><span class="cm"># LlamaIndex implementation</span>
+<span class="kw">from</span> llama_index.node_parser <span class="kw">import</span> HierarchicalNodeParser
+
+parser = <span class="fn">HierarchicalNodeParser</span>.from_defaults(
+    chunk_sizes=[<span class="num">2048</span>, <span class="num">512</span>, <span class="num">128</span>]
+)
+<span class="cm"># Query retrieves 128-token nodes → fetch 512-token parent → LLM gets 512</span></code></pre>
+
+  <div class="note green">
+    <div class="note-title">✓ Best Practice in Production</div>
+    <p>Parent-child is the best default for production RAG. Small chunks give precise retrieval (higher hit rate). Large parent gives the LLM enough context to answer well. Win-win.</p>
+  </div>
+
+  <h3>Method 5 — Document-Structure Aware Chunking</h3>
+  <p>Respect document structure. Split on headings, section breaks, code blocks, table boundaries. This keeps semantic units intact.</p>
+  <pre><code><span class="cm"># Markdown-aware chunking</span>
+<span class="kw">from</span> langchain.text_splitter <span class="kw">import</span> MarkdownHeaderTextSplitter
+
+headers = [(<span class="str">"#"</span>, <span class="str">"title"</span>), (<span class="str">"##"</span>, <span class="str">"section"</span>), (<span class="str">"###"</span>, <span class="str">"subsection"</span>)]
+splitter = <span class="fn">MarkdownHeaderTextSplitter</span>(headers_to_split_on=headers)
+chunks = splitter.<span class="fn">split_text</span>(markdown_doc)
+<span class="cm"># Each chunk carries metadata: {"title": "...", "section": "..."}</span></code></pre>
+
+  <h3>Method 6 — Proposition Chunking</h3>
+  <p>Extract atomic facts ("propositions") from text using an LLM. Each chunk = one factual statement. Highest quality, highest cost. Used in research / high-stakes RAG.</p>
+  <pre><code>prompt = <span class="str">"""Extract all atomic factual propositions from the text below.
+Each proposition should be a single, self-contained factual claim.
+Return as JSON list.
+
+Text: "Apple was founded in 1976 by Steve Jobs and Steve Wozniak. 
+The first product was the Apple I computer."
+
+Output: [
+  "Apple was founded in 1976.",
+  "Apple was founded by Steve Jobs.",
+  "Apple was founded by Steve Wozniak.",
+  "The Apple I was Apple's first product.",
+  "The Apple I is a computer."
+]"""</span></code></pre>
+
+  <h3>Chunking Strategy Decision Guide</h3>
+  <table>
+    <tr><th>Scenario</th><th>Best Strategy</th><th>Why</th></tr>
+    <tr><td>Quick prototype</td><td>Fixed-size (512, overlap 64)</td><td>Fast, works well enough</td></tr>
+    <tr><td>Production, mixed docs</td><td>Parent-child hierarchical</td><td>Best recall + context</td></tr>
+    <tr><td>PDFs with structure</td><td>Structure-aware + parent-child</td><td>Preserves document logic</td></tr>
+    <tr><td>High-quality knowledge base</td><td>Semantic chunking</td><td>Topic-coherent chunks</td></tr>
+    <tr><td>Legal / medical (precision)</td><td>Proposition chunking</td><td>Atomic facts = no ambiguity</td></tr>
+    <tr><td>Code repositories</td><td>AST-based (function/class level)</td><td>Code = structure matters</td></tr>
+  </table>
+
+  <div class="iq">
+    <div class="iq-q">💬 Interview Q</div>
+    <p>"Your RAG gives partial answers — it has SOME information but misses details." → Classic chunk boundary issue. The relevant detail is in the second half of a chunk that got cut. Fix: increase overlap, use sentence-based chunking, or switch to parent-child (retrieve narrow, return wide).</p>
+  </div>
+</div>
+
+<!-- ===== S3: INGESTION PIPELINE ===== -->
+<div class="section" id="s3">
+  <div class="q-tag">Topic 04</div>
+  <h2>Document Ingestion Pipeline at Scale</h2>
+  <p>Ingestion is everything that happens <em>before</em> a query. It's your data preparation layer. A poor ingestion pipeline cannot be fixed by a good retrieval model.</p>
+
+  <h3>Full Pipeline Overview</h3>
+  <div class="timeline">
+    <div class="tl-item">
+      <div class="tl-num">1</div>
+      <div class="tl-body">
+        <h5>Document Acquisition & Deduplication</h5>
+        <p>Receive documents (upload, crawl, S3 event, webhook). Check hash (SHA256 of content) against registry — skip if already processed. Store original to S3/GCS immediately.</p>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-num">2</div>
+      <div class="tl-body">
+        <h5>Format Detection & Parsing</h5>
+        <p>Detect format (PDF, DOCX, HTML, CSV, PPTX). Route to appropriate parser. Extract raw text + preserve structure signals (headings, tables, page numbers).</p>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-num">3</div>
+      <div class="tl-body">
+        <h5>Cleaning & Normalization</h5>
+        <p>Strip headers/footers/page numbers. Remove boilerplate (nav bars, legal disclaimers if not relevant). Fix encoding issues. Normalize whitespace. Detect and remove duplicated content within the document.</p>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-num">4</div>
+      <div class="tl-body">
+        <h5>Metadata Extraction</h5>
+        <p>Extract or infer: title, author, date, doc_type, source_url, language, tags. Optionally run LLM to extract richer metadata: summary, key topics, entities. This metadata powers filtering later.</p>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-num">5</div>
+      <div class="tl-body">
+        <h5>Chunking</h5>
+        <p>Apply strategy appropriate for document type. Attach metadata to each chunk: {doc_id, chunk_index, page, section, parent_id}.</p>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-num">6</div>
+      <div class="tl-body">
+        <h5>Embedding (Batch GPU)</h5>
+        <p>Embed all chunks in batches (batch_size=64–256). GPU batch embedding is 50–100× faster than one-by-one API calls. Use vLLM or SentenceTransformer batch API. Cache embedding results.</p>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-num">7</div>
+      <div class="tl-body">
+        <h5>Upsert to Vector DB</h5>
+        <p>Bulk upsert chunks + embeddings into vector DB. Update document registry in PostgreSQL: {doc_id, status=indexed, indexed_at, chunk_count}.</p>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-num">8</div>
+      <div class="tl-body">
+        <h5>Post-Indexing Enrichment (Optional)</h5>
+        <p>Generate cross-document summaries. Build knowledge graph. Update search indexes (Elasticsearch BM25). Trigger notifications.</p>
+      </div>
+    </div>
+  </div>
+
+  <h3>Parsing Strategies by Format</h3>
+  <table>
+    <tr><th>Format</th><th>Tool</th><th>Special Handling</th></tr>
+    <tr><td><strong>PDF (text-based)</strong></td><td>PyMuPDF, pdfplumber</td><td>Multi-column layout detection, preserve reading order</td></tr>
+    <tr><td><strong>PDF (scanned/image)</strong></td><td>AWS Textract, Tesseract + layout</td><td>OCR required; table extraction mode</td></tr>
+    <tr><td><strong>DOCX</strong></td><td>python-docx</td><td>Extract heading hierarchy for structure-aware chunking</td></tr>
+    <tr><td><strong>PPTX</strong></td><td>python-pptx</td><td>Slide title + bullet text; slide = natural chunk boundary</td></tr>
+    <tr><td><strong>HTML/Web</strong></td><td>Trafilatura, BeautifulSoup</td><td>Remove nav/ads; preserve article structure</td></tr>
+    <tr><td><strong>Spreadsheet (XLSX)</strong></td><td>openpyxl + LLM</td><td>Convert rows to natural language: "Product X has price Y"</td></tr>
+    <tr><td><strong>Code</strong></td><td>Tree-sitter AST</td><td>Chunk at function/class boundaries, preserve docstrings</td></tr>
+    <tr><td><strong>JSON/CSV</strong></td><td>pandas + template</td><td>Schema-aware → natural language conversion</td></tr>
+  </table>
+
+  <h3>Handling Tables</h3>
+  <p>Tables are tricky for embedding. Option A: Convert to Markdown table (preserves structure, embeds OK). Option B: Convert each row to a natural language sentence. Option B generally retrieves better.</p>
+  <pre><code><span class="cm"># Table row → natural language</span>
+row = {<span class="str">"Product"</span>: <span class="str">"Laptop X"</span>, <span class="str">"Price"</span>: <span class="num">45000</span>, <span class="str">"RAM"</span>: <span class="str">"16GB"</span>}
+text = <span class="str">f"Laptop X costs ₹{row['Price']} and has {row['RAM']} RAM."</span>
+<span class="cm"># This embeds much better than raw JSON or CSV</span></code></pre>
+
+  <h3>Scale: Async Queue-Based Architecture</h3>
+  <pre><code><span class="cm"># Event-driven ingestion for scale</span>
+S3 upload event
+  → SQS / Kafka message: {doc_id, s3_path, tenant_id}
+  → Celery worker picks up job
+  → Worker: parse → clean → chunk → batch embed
+  → Upsert to Qdrant in batches of 100
+  → Update PostgreSQL registry: status=indexed
+  → Emit indexing_complete event</code></pre>
+
+  <div class="note yellow">
+    <div class="note-title">⚠ Most Common Ingestion Bugs</div>
+    <p><strong>1.</strong> Scanned PDF with no OCR → silent empty embeddings. Always validate chunk text length (skip &lt;20 tokens). <strong>2.</strong> Missing metadata → can't filter later. Enforce metadata schema at ingestion time. <strong>3.</strong> No dedup → same doc indexed 3× → retrieval returns duplicates constantly.</p>
+  </div>
+
+  <div class="iq">
+    <div class="iq-q">💬 Interview Q</div>
+    <p>"How do you handle a 500-page legal PDF with scanned pages, embedded tables, and complex formatting?" → Textract for OCR + table detection. Convert tables to markdown. Structure-aware chunking on sections. Parent-child: sections as parents, paragraphs as children. Store page number in metadata for citation.</p>
+  </div>
+</div>
+
+<!-- ===== S4: KEEPING VECTOR DB UPDATED ===== -->
+<div class="section" id="s4">
+  <div class="q-tag">Topic 05</div>
+  <h2>Keeping the Vector DB Updated</h2>
+  <p>Documents change. New ones arrive. Old ones become outdated. Your vector DB must reflect the real world — and <em>no, you don't re-embed everything every time.</em></p>
+
+  <h3>The Core Update Operations</h3>
+  <div class="cards">
+    <div class="card">
+      <div class="ct">New Document</div>
+      <h5>Additive Insert</h5>
+      <p>Parse → chunk → embed → upsert new vectors. HNSW handles incremental inserts without full rebuild. O(log n) per insertion.</p>
+    </div>
+    <div class="card">
+      <div class="ct">Document Updated</div>
+      <h5>Delete + Re-insert</h5>
+      <p>Delete all chunks with doc_id=X from vector DB. Re-run full ingestion pipeline on new version. Store version in metadata.</p>
+    </div>
+    <div class="card">
+      <div class="ct">Document Deleted</div>
+      <h5>Soft or Hard Delete</h5>
+      <p>Hard delete by doc_id filter (Qdrant/Pinecone support this). Or soft delete: mark as deleted in metadata, filter out at query time.</p>
+    </div>
+    <div class="card">
+      <div class="ct">Embedding Model Changed</div>
+      <h5>Full Re-embed</h5>
+      <p>No way around this. Must re-embed ALL chunks. Run in background, swap index atomically. Never mix two embedding models in one index.</p>
+    </div>
+  </div>
+
+  <h3>Do I Re-Chunk When Updating a Document?</h3>
+  <div class="note blue">
+    <div class="note-title">Answer: Yes, for updated documents. No, for others.</div>
+    <p>When a document is updated, delete its old chunks and re-run the full pipeline (parse → chunk → embed → upsert) on the new version. <strong>Other documents are untouched.</strong> There is no cascading effect between documents in a vector DB.</p>
+  </div>
+  <p>The only time you re-chunk/re-embed EVERYTHING is:</p>
+  <table>
+    <tr><th>Scenario</th><th>Must Re-embed All?</th><th>Reason</th></tr>
+    <tr><td>New document added</td><td><span class="pill g">No</span></td><td>Incremental upsert</td></tr>
+    <tr><td>Document updated</td><td><span class="pill y">That doc only</span></td><td>Delete old chunks, insert new</td></tr>
+    <tr><td>Embedding model changed</td><td><span class="pill r">Yes, all</span></td><td>Vector space is different</td></tr>
+    <tr><td>Chunk strategy changed</td><td><span class="pill r">Yes, all</span></td><td>Old and new chunk sizes incompatible</td></tr>
+    <tr><td>Metadata schema changed</td><td><span class="pill y">Maybe</span></td><td>If filters break; else just migrate metadata</td></tr>
+  </table>
+
+  <h3>Incremental Indexing Pipeline</h3>
+  <pre><code><span class="cm"># Track document versions in PostgreSQL</span>
+<span class="cm">CREATE TABLE doc_registry (</span>
+<span class="cm">  doc_id TEXT PRIMARY KEY,</span>
+<span class="cm">  content_hash TEXT,        -- SHA256 of content</span>
+<span class="cm">  indexed_at TIMESTAMP,</span>
+<span class="cm">  embedding_model TEXT,     -- 'text-embedding-3-small-v1'</span>
+<span class="cm">  chunk_strategy TEXT,      -- 'hierarchical-512-128'</span>
+<span class="cm">  status TEXT               -- 'indexed' | 'pending' | 'failed'</span>
+<span class="cm">);</span>
+
+<span class="kw">def</span> <span class="fn">should_reindex</span>(doc_id, new_content):
+    record = db.<span class="fn">get</span>(doc_id)
+    <span class="kw">if not</span> record: <span class="kw">return</span> <span class="kw">True</span>         <span class="cm"># new doc</span>
+    new_hash = <span class="fn">sha256</span>(new_content)
+    <span class="kw">if</span> record.content_hash != new_hash: <span class="kw">return</span> <span class="kw">True</span>  <span class="cm"># changed</span>
+    <span class="kw">return</span> <span class="kw">False</span>                                    <span class="cm"># unchanged</span></code></pre>
+
+  <h3>Handling Embedding Model Migration</h3>
+  <p>Switching from <code>text-embedding-ada-002</code> to <code>text-embedding-3-large</code> means ALL your existing vectors are in the wrong space. Migration strategy:</p>
+  <div class="flow">
+    <div class="fb">Create new index (v2)</div><div class="fa">→</div>
+    <div class="fb b">Re-embed all docs (background)</div><div class="fa">→</div>
+    <div class="fb y">Run both indexes in parallel</div><div class="fa">→</div>
+    <div class="fb">A/B test quality</div><div class="fa">→</div>
+    <div class="fb g">Atomic swap: v1→v2</div><div class="fa">→</div>
+    <div class="fb r">Delete v1</div>
+  </div>
+
+  <h3>Freshness SLA — How Fresh is Fresh Enough?</h3>
+  <table>
+    <tr><th>Use Case</th><th>Acceptable Staleness</th><th>Strategy</th></tr>
+    <tr><td>Internal HR policy docs</td><td>1 week</td><td>Weekly batch re-index of changed files</td></tr>
+    <tr><td>Product catalog</td><td>1 hour</td><td>Webhook on product update → queue indexing</td></tr>
+    <tr><td>News / blog posts</td><td>Real-time</td><td>Event-driven: publish → auto-index</td></tr>
+    <tr><td>Legal contracts</td><td>Immediately on upload</td><td>Synchronous indexing on upload (small doc)</td></tr>
+  </table>
+
+  <div class="iq">
+    <div class="iq-q">💬 Interview Q</div>
+    <p>"10,000 PDFs in your DB and you want to upgrade embedding model. How?" → Build new index in parallel. Re-embed in background using batch processing (GPU, 1000 docs/hour). Keep serving from old index. Once new index is complete and eval shows improvement, do atomic pointer swap. Zero downtime. Old index kept as rollback for 48h.</p>
+  </div>
+</div>
+
+<!-- ===== S5: BM25 & HYBRID SEARCH ===== -->
+<div class="section" id="s5">
+  <div class="q-tag">Topic 06</div>
+  <h2>BM25 & Hybrid Search Explained</h2>
+
+  <h3>What is BM25?</h3>
+  <p>BM25 (Best Match 25) is a <em>sparse retrieval</em> algorithm — the modern standard for keyword-based search. It's an evolution of TF-IDF that adds document length normalization and term saturation.</p>
+
+  <div class="formula">BM25(q, d) = Σ IDF(tᵢ) × [ tf(tᵢ,d) × (k₁+1) ] / [ tf(tᵢ,d) + k₁(1 - b + b·|d|/avgdl) ]</div>
+
+  <p><strong>IDF(t)</strong>: Inverse Document Frequency — rare terms score higher.<br>
+  <strong>tf(t,d)</strong>: Term frequency in the document.<br>
+  <strong>|d|/avgdl</strong>: Normalization for document length.<br>
+  <strong>k₁ (1.2–2.0)</strong>: Term frequency saturation — prevents a term appearing 100× from dominating.<br>
+  <strong>b (0–1, default 0.75)</strong>: Length normalization strength.</p>
+
+  <div class="example">
+    <div class="ex-title">📄 Example — Why BM25 Matters</div>
+    <p>Query: "Qwen3-0.6B LoRA training RunPod"<br><br>
+    <strong>Dense (embedding) search</strong> might return generic ML training docs — because the embedding captures general ML semantics.<br><br>
+    <strong>BM25</strong> will find the exact doc that mentions "Qwen3", "0.6B", "LoRA", "RunPod" — because it looks for exact term matches. Product codes, model names, version numbers, IDs → BM25 wins.</p>
+  </div>
+
+  <h3>Dense vs Sparse — When Each Wins</h3>
+  <div class="vs">
+    <div class="vs-col g">
+      <h5>Dense Search (Vector)</h5>
+      <ul>
+        <li>Semantic / conceptual queries</li>
+        <li>"Something about shipping delays" → finds "delivery postponed"</li>
+        <li>Paraphrases, synonyms, multilingual</li>
+        <li>Questions, long natural language queries</li>
+        <li>When exact terms don't matter</li>
+      </ul>
+    </div>
+    <div class="vs-col b">
+      <h5>Sparse Search (BM25)</h5>
+      <ul>
+        <li>Exact keyword / entity queries</li>
+        <li>"Invoice #INV-2024-9812" → exact match</li>
+        <li>Model names, product codes, IDs, names</li>
+        <li>Legal/medical jargon (dense may miss)</li>
+        <li>Short, keyword-style queries</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>Hybrid Search — Combining Both</h3>
+  <p>Run both BM25 and dense retrieval independently. Merge their ranked result lists. This is the <strong>gold standard</strong> for production RAG.</p>
+
+  <h4>Reciprocal Rank Fusion (RRF) — The Standard Merge Method</h4>
+  <div class="formula">RRF_score(d) = Σ over rankings:  1 / (k + rank(d))     [k = 60]</div>
+  <p>k=60 dampens the effect of very high ranks. A document ranked 1st in one list and 10th in another still scores much better than one ranked 50th in both.</p>
+  <pre><code><span class="kw">def</span> <span class="fn">reciprocal_rank_fusion</span>(rankings: list[list], k=<span class="num">60</span>):
+    <span class="str">"""rankings: list of ranked doc-id lists"""</span>
+    scores = {}
+    <span class="kw">for</span> ranked_list <span class="kw">in</span> rankings:
+        <span class="kw">for</span> rank, doc_id <span class="kw">in</span> enumerate(ranked_list, start=<span class="num">1</span>):
+            scores[doc_id] = scores.<span class="fn">get</span>(doc_id, <span class="num">0</span>) + <span class="num">1</span> / (k + rank)
+    <span class="kw">return sorted</span>(scores.items(), key=<span class="kw">lambda</span> x: x[<span class="num">1</span>], reverse=<span class="kw">True</span>)
+
+<span class="cm"># Dense results ranked list</span>
+dense_ids   = [<span class="str">"doc3"</span>, <span class="str">"doc1"</span>, <span class="str">"doc7"</span>, <span class="str">"doc2"</span>, ...]
+<span class="cm"># BM25 results ranked list</span>
+sparse_ids  = [<span class="str">"doc1"</span>, <span class="str">"doc5"</span>, <span class="str">"doc3"</span>, <span class="str">"doc9"</span>, ...]
+
+fused = <span class="fn">reciprocal_rank_fusion</span>([dense_ids, sparse_ids])</code></pre>
+
+  <h4>Weighted Score Fusion (Alternative)</h4>
+  <pre><code><span class="cm"># Normalize both scores to [0,1], then weight</span>
+alpha = <span class="num">0.7</span>   <span class="cm"># weight for dense</span>
+hybrid_score = alpha * dense_score + (<span class="num">1</span> - alpha) * bm25_score</code></pre>
+  <p>RRF is preferred because it's <em>parameter-free and robust</em>. Weighted fusion requires tuning alpha and careful normalization.</p>
+
+  <h3>BGE-M3 — Unified Dense + Sparse Model</h3>
+  <p>BGE-M3 is a single model that produces BOTH dense embeddings AND sparse BM25-like weights in one forward pass. No need to run two separate systems.</p>
+  <pre><code><span class="kw">from</span> FlagEmbedding <span class="kw">import</span> BGEM3FlagModel
+
+model = <span class="fn">BGEM3FlagModel</span>(<span class="str">"BAAI/bge-m3"</span>)
+output = model.<span class="fn">encode</span>(texts, return_dense=<span class="kw">True</span>, return_sparse=<span class="kw">True</span>)
+dense_vecs  = output[<span class="str">"dense_vecs"</span>]    <span class="cm"># for ANN search</span>
+sparse_vecs = output[<span class="str">"lexical_weights"</span>] <span class="cm"># for BM25-like scoring</span></code></pre>
+
+  <h3>Where to Run BM25 in Your Stack</h3>
+  <table>
+    <tr><th>Option</th><th>Tool</th><th>When to Use</th></tr>
+    <tr><td>Elasticsearch / OpenSearch</td><td>Built-in BM25</td><td>Already have ES in stack, large scale</td></tr>
+    <tr><td>Weaviate</td><td>Native hybrid search</td><td>Single system for both dense + sparse</td></tr>
+    <tr><td>rank_bm25 (Python)</td><td>In-memory library</td><td>Small scale, no extra infra</td></tr>
+    <tr><td>BGE-M3</td><td>Model output</td><td>Single model, no separate BM25 service</td></tr>
+  </table>
+
+  <div class="iq">
+    <div class="iq-q">💬 Interview Q</div>
+    <p>"User searches for 'ISO 27001 clause 6.1.2' and gets irrelevant results." → This is exactly the BM25 failure-to-have problem. Dense embeddings semantically match "security compliance" but miss the exact clause number. Add BM25 to the pipeline. Exact code/ID/number queries always need sparse retrieval.</p>
+  </div>
+</div>
+
+<!-- ===== S6: DETECTING LLM IGNORING CONTEXT ===== -->
+<div class="section" id="s6">
+  <div class="q-tag">Topic 07</div>
+  <h2>Detecting When LLM Ignores Context</h2>
+  <p>The model generates a plausible-sounding answer from its training data instead of the retrieved context. This is the most dangerous and <em>hardest-to-detect</em> failure in RAG.</p>
+
+  <h3>Why This Happens</h3>
+  <div class="cards">
+    <div class="card">
+      <div class="ct">Root Cause</div>
+      <h5>Weak System Prompt</h5>
+      <p>"Use the context below" is easy for the model to ignore. The LLM's prior knowledge is very strong and wins when instructions are soft.</p>
+    </div>
+    <div class="card">
+      <div class="ct">Root Cause</div>
+      <h5>Context Not Relevant</h5>
+      <p>Retrieved chunks don't contain the answer. The model has two choices: say "I don't know" or hallucinate. Most models choose to hallucinate.</p>
+    </div>
+    <div class="card">
+      <div class="ct">Root Cause</div>
+      <h5>Lost-in-the-Middle</h5>
+      <p>Answer is in a chunk buried in the middle of a long context. LLMs attend more to beginning and end. Middle content gets "ignored."</p>
+    </div>
+    <div class="card">
+      <div class="ct">Root Cause</div>
+      <h5>Conflicting Information</h5>
+      <p>Retrieved chunk says X, LLM's prior knowledge says Y. Model defaults to training knowledge rather than trusting the retrieved doc.</p>
+    </div>
+  </div>
+
+  <h3>Detection Methods</h3>
+
+  <h4>Method 1: Faithfulness Check via LLM-as-Judge</h4>
+  <p>After generation, run a second LLM call to verify each claim in the answer exists in the context.</p>
+  <pre><code>eval_prompt = <span class="str">f"""
+You are a faithfulness evaluator.
+
+Retrieved Context:
+{context}
+
+Generated Answer:
+{answer}
+
+Task: For each claim in the answer, check if it is SUPPORTED, 
+CONTRADICTED, or NOT_FOUND in the context.
+
+Return JSON:
+{{
+  "verdict": "faithful" | "hallucinated",
+  "score": 0.0-1.0,
+  "unsupported_claims": ["claim1", ...]
+}}
+"""</span>
+result = llm.<span class="fn">generate</span>(eval_prompt)  <span class="cm"># judge model</span></code></pre>
+
+  <h4>Method 2: Token-Level Attribution</h4>
+  <p>Check if key tokens/phrases in the answer appear verbatim or near-verbatim in the retrieved context. Simple, fast, deterministic.</p>
+  <pre><code><span class="kw">def</span> <span class="fn">attribution_check</span>(answer, context_chunks):
+    answer_sentences = <span class="fn">split_sentences</span>(answer)
+    unattributed = []
+    <span class="kw">for</span> sent <span class="kw">in</span> answer_sentences:
+        ngrams = <span class="fn">extract_ngrams</span>(sent, n=<span class="num">4</span>)
+        found = <span class="fn">any</span>(ng <span class="kw">in</span> chunk <span class="kw">for</span> ng <span class="kw">in</span> ngrams
+                    <span class="kw">for</span> chunk <span class="kw">in</span> context_chunks)
+        <span class="kw">if not</span> found:
+            unattributed.<span class="fn">append</span>(sent)
+    <span class="kw">return</span> unattributed  <span class="cm"># empty = fully attributed</span></code></pre>
+
+  <h4>Method 3: RAGAS Faithfulness Metric (Automated)</h4>
+  <p>RAGAS decomposes the answer into claims, then checks each claim against the context. Score = (claims supported by context) / (total claims in answer).</p>
+  <pre><code><span class="kw">from</span> ragas.metrics <span class="kw">import</span> faithfulness
+<span class="kw">from</span> datasets <span class="kw">import</span> Dataset
+
+data = Dataset.<span class="fn">from_dict</span>({
+    <span class="str">"question"</span>: [query],
+    <span class="str">"answer"</span>: [answer],
+    <span class="str">"contexts"</span>: [retrieved_chunks],
+})
+score = faithfulness.<span class="fn">score</span>(data)  <span class="cm"># 0.0 – 1.0</span></code></pre>
+
+  <h4>Method 4: Self-Consistency Check</h4>
+  <p>Ask the model: "Quote the exact sentence from the context that supports your answer." If it cannot produce a quote or produces a fake one, the answer was hallucinated.</p>
+  <pre><code>verification_prompt = <span class="str">f"""
+Context provided:
+{context}
+
+Your answer was: "{answer}"
+
+Now quote the EXACT sentence from the context (word for word) 
+that supports this answer. If no such sentence exists, say: 
+"NOT_IN_CONTEXT"
+"""</span></code></pre>
+
+  <h3>Prevention (Better than Detection)</h3>
+  <table>
+    <tr><th>Technique</th><th>How</th><th>Effectiveness</th></tr>
+    <tr><td><strong>Strong system prompt</strong></td><td>"Answer ONLY using the context. If the answer is not in the context, say 'I don't have this information.'"</td><td>Medium-High</td></tr>
+    <tr><td><strong>Spotlighting</strong></td><td>Wrap context in special tags: <code>&lt;grounding&gt;...&lt;/grounding&gt;</code>. Reference them explicitly.</td><td>Medium</td></tr>
+    <tr><td><strong>Citation enforcement</strong></td><td>Force structured output: answer must include [Source N] inline citation for every claim.</td><td>High</td></tr>
+    <tr><td><strong>Better retrieval</strong></td><td>If context actually contains the answer, model is less likely to drift. Fix retrieval first.</td><td>High</td></tr>
+    <tr><td><strong>Temperature = 0</strong></td><td>Deterministic output follows context more faithfully than creative/high-temp output.</td><td>Medium</td></tr>
+    <tr><td><strong>Model choice</strong></td><td>Claude and GPT-4o follow "only use context" instructions more reliably than smaller models.</td><td>High</td></tr>
+  </table>
+
+  <div class="iq">
+    <div class="iq-q">💬 Interview Q</div>
+    <p>"Faithfulness score is 0.65. How do you diagnose the root cause?" → Step 1: Look at which specific claims were unsupported. Step 2: Check if those facts exist in retrieved context — if yes, lost-in-middle or prompt issue. If no, retrieval failure — improve recall. Step 3: Check if it's a model issue by testing with explicit citation instruction. Each root cause has a different fix.</p>
+  </div>
+</div>
+
+<!-- ===== S7: DOMAIN EMBEDDING MODEL ===== -->
+<div class="section" id="s7">
+  <div class="q-tag">Topic 08</div>
+  <h2>Domain-Specific vs Generic Embedding Models</h2>
+  <p>Modern generic models (text-embedding-3-large, bge-m3) have gotten <em>very good</em> at domain understanding. But there are still cases where domain-specific models win — and cases where they don't.</p>
+
+  <h3>The Honest Comparison (2024–25)</h3>
+  <table>
+    <tr><th>Dimension</th><th>Generic (text-emb-3, bge-m3)</th><th>Domain-Specific</th></tr>
+    <tr><td><strong>Out-of-box quality</strong></td><td>Excellent on standard text</td><td>Excellent on domain text</td></tr>
+    <tr><td><strong>Specialized jargon</strong></td><td>OK — trained on diverse text</td><td>Best — trained on domain corpora</td></tr>
+    <tr><td><strong>Rare domain terms</strong></td><td>May embed weakly</td><td>Strong, seen in training</td></tr>
+    <tr><td><strong>Abbreviations</strong></td><td>"STEMI" ≈ general, not medical</td><td>"STEMI" = ST-elevation MI, precisely</td></tr>
+    <tr><td><strong>Maintenance cost</strong></td><td>Zero — provider maintains</td><td>You own it, you maintain it</td></tr>
+    <tr><td><strong>MTEB benchmark</strong></td><td>Top 5 overall</td><td>Top on domain-specific benchmarks</td></tr>
+  </table>
+
+  <h3>When Generic Models Are Enough (Most Cases)</h3>
+  <div class="note green">
+    <div class="note-title">✓ Use Generic If</div>
+    <p><strong>1.</strong> Your documents use standard English vocabulary, even if technical.<br>
+    <strong>2.</strong> You're doing general enterprise RAG (HR, finance, operations, product docs).<br>
+    <strong>3.</strong> You've evaluated on your data and generic performs well (&gt;0.85 Hit Rate@5).<br>
+    <strong>4.</strong> You can't afford the ops burden of maintaining a custom model.<br>
+    <strong>5.</strong> Newer generic models (bge-m3, text-emb-3-large) are post-2023 and trained on domain text too.</p>
+  </div>
+
+  <h3>When Domain-Specific Models Still Win</h3>
+  <div class="note red">
+    <div class="note-title">Domain Model Still Wins When</div>
+    <p><strong>1. Highly specialized abbreviations:</strong> Medical (STEMI, CABG, eGFR), Legal (res ipsa loquitur, mens rea), Financial (EBITDA, CAGR, repo rate in context).<br>
+    <strong>2. Cross-lingual domain:</strong> Indian legal documents mix English and regional language. Generic multilingual models lose nuance.<br>
+    <strong>3. Code embedding:</strong> Generic models are mediocre on code. Use CodeBERT, GraphCodeBERT, or fine-tuned models.<br>
+    <strong>4. You've measured a gap:</strong> If you benchmark and find Hit Rate@5 is 0.72 with generic vs 0.89 with domain — domain is worth the cost.</p>
+  </div>
+
+  <h3>The Right Decision Process</h3>
+  <div class="timeline">
+    <div class="tl-item">
+      <div class="tl-num">1</div>
+      <div class="tl-body">
+        <h5>Build an Eval Dataset First</h5>
+        <p>Create 50–100 (question, relevant_doc) pairs from your actual documents. Use RAGAS synthetic generation or human annotators.</p>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-num">2</div>
+      <div class="tl-body">
+        <h5>Benchmark 3–4 Candidate Models</h5>
+        <p>Measure Hit Rate@5, MRR@10 on your eval set. Include: text-embedding-3-small, bge-large-en-v1.5, bge-m3, and domain model (if one exists).</p>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-num">3</div>
+      <div class="tl-body">
+        <h5>If Gap Is Small (&lt;5%) — Use Generic</h5>
+        <p>The ops simplicity of a managed API embedding far outweighs a 3% recall improvement. Generic wins on total cost of ownership.</p>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-num">4</div>
+      <div class="tl-body">
+        <h5>If Gap Is Large (&gt;10%) — Fine-Tune Generic</h5>
+        <p>Before adopting a niche domain model, try fine-tuning bge-large-en-v1.5 on your domain pairs. Often achieves domain-model quality with better maintainability.</p>
+      </div>
+    </div>
+  </div>
+
+  <h3>Fine-Tuning Your Own Embedding (When Needed)</h3>
+  <pre><code><span class="cm"># sentence-transformers contrastive fine-tuning</span>
+<span class="kw">from</span> sentence_transformers <span class="kw">import</span> SentenceTransformer, InputExample, losses
+
+train_examples = [
+    <span class="fn">InputExample</span>(texts=[<span class="str">"What is STEMI?"</span>,
+                        <span class="str">"ST-elevation myocardial infarction (STEMI) is..."</span>],
+                 label=<span class="num">1.0</span>),   <span class="cm"># positive pair</span>
+    <span class="fn">InputExample</span>(texts=[<span class="str">"What is STEMI?"</span>,
+                        <span class="str">"Annual leave policy is 15 days..."</span>],
+                 label=<span class="num">0.0</span>),   <span class="cm"># negative pair</span>
+]
+<span class="cm"># Train with CosineSimilarityLoss or MultipleNegativesRankingLoss</span>
+<span class="cm"># Hard negatives are key — easy negatives teach nothing</span></code></pre>
+
+  <div class="iq">
+    <div class="iq-q">💬 Interview Q</div>
+    <p>"Should we use a medical embedding model for our hospital RAG system or is text-embedding-3-large fine?" → Benchmark first, don't assume. If your queries are natural language ("What are side effects of metformin?"), text-embedding-3-large may be 95% as good. If your queries are abbreviation-heavy ("What labs for AKI in CKD3?"), medical model or fine-tuned generic likely wins. The data decides, not intuition.</p>
+  </div>
+</div>
+
+<!-- ===== S8: WHAT IS AN INDEX ===== -->
+<div class="section" id="s8">
+  <div class="q-tag">Topic 09</div>
+  <h2>What Is an Index? When/How to Refresh It</h2>
+  <p>The word "index" gets overloaded in RAG. Let's be precise about what it means in different contexts.</p>
+
+  <h3>Three Meanings of "Index" in RAG</h3>
+  <div class="cards">
+    <div class="card">
+      <div class="ct">Meaning 1</div>
+      <h5>Vector Index (ANN Index)</h5>
+      <p>The data structure inside the vector DB (HNSW graph, IVF clusters) that enables fast similarity search. This is what makes search O(log n) instead of O(n).</p>
+    </div>
+    <div class="card">
+      <div class="ct">Meaning 2</div>
+      <h5>Search Index (BM25)</h5>
+      <p>An inverted index: maps each term → list of documents containing that term + positions. What Elasticsearch / Lucene maintains. Powers keyword search.</p>
+    </div>
+    <div class="card">
+      <div class="ct">Meaning 3</div>
+      <h5>LlamaIndex / LangChain Index</h5>
+      <p>A high-level abstraction in RAG frameworks representing "your indexed knowledge base" — the combination of embeddings + vector store + retriever config.</p>
+    </div>
+  </div>
+
+  <h3>Deep Dive: HNSW Vector Index</h3>
+  <p>HNSW (Hierarchical Navigable Small World) is a graph-based ANN index. Think of it as a multi-layer map:</p>
+  <div class="flow">
+    <div class="fb b">Layer 2 (sparse) — long-range "highways"</div>
+  </div>
+  <div class="flow">
+    <div class="fb y">Layer 1 (medium density) — regional connections</div>
+  </div>
+  <div class="flow">
+    <div class="fb g">Layer 0 (dense) — all nodes, local connections</div>
+  </div>
+  <p>Search starts at layer 2, greedily moves toward the query vector, drops to layer 1, refines, drops to layer 0, finds exact neighbors. Like navigation: highway → local road → street.</p>
+
+  <h3>What "New Docs Not Indexed" Actually Means</h3>
+  <p>When you add a document to the system but don't upsert its embeddings into the vector DB, those chunks are:</p>
+  <table>
+    <tr><th>Layer</th><th>State</th><th>Effect</th></tr>
+    <tr><td>S3 / file storage</td><td>✓ Stored</td><td>File is safe</td></tr>
+    <tr><td>PostgreSQL doc registry</td><td>status='pending'</td><td>Tracked but not queryable</td></tr>
+    <tr><td>Vector DB (HNSW index)</td><td>✗ Missing</td><td>ANN search won't find it</td></tr>
+    <tr><td>BM25 / Elasticsearch</td><td>✗ Missing</td><td>Keyword search won't find it</td></tr>
+  </table>
+  <p><strong>"New docs added but not indexed"</strong> = the ingestion pipeline stalled before the upsert step. The file exists but its embeddings were never inserted into the vector DB's HNSW graph.</p>
+
+  <h3>Does HNSW Need to Be "Rebuilt"?</h3>
+  <div class="vs">
+    <div class="vs-col g">
+      <h5>HNSW — Incremental (No Rebuild)</h5>
+      <ul>
+        <li>New vectors inserted incrementally</li>
+        <li>Each insert: O(log n) graph update</li>
+        <li>No full rebuild needed for additions</li>
+        <li>Qdrant, Weaviate, Chroma all support this</li>
+        <li>Quality degrades very slightly over millions of inserts</li>
+      </ul>
+    </div>
+    <div class="vs-col r">
+      <h5>IVF Flat — Requires Rebuild</h5>
+      <ul>
+        <li>Centroids computed at index-build time (k-means)</li>
+        <li>New vectors assigned to nearest centroid</li>
+        <li>If corpus grows a lot, centroid quality degrades</li>
+        <li>Recommend rebuilding every 10× data growth</li>
+        <li>FAISS IVF users must plan for periodic rebuilds</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>When to Refresh / Rebuild the Index</h3>
+  <table>
+    <tr><th>Scenario</th><th>Action</th><th>Urgency</th></tr>
+    <tr><td>New documents added</td><td>Incremental upsert (no rebuild)</td><td>Continuous</td></tr>
+    <tr><td>Embedding model changed</td><td>Full rebuild of new index</td><td>Planned migration</td></tr>
+    <tr><td>Chunk strategy changed</td><td>Full rebuild</td><td>Planned migration</td></tr>
+    <tr><td>IVF index, corpus grew 5–10×</td><td>Rebuild with new centroids</td><td>Periodic</td></tr>
+    <tr><td>HNSW degraded recall (measure it)</td><td>Re-optimize M / ef_construction</td><td>Rare</td></tr>
+    <tr><td>Many deletions (&gt;20% of corpus)</td><td>Compact / rebuild to reclaim space</td><td>Periodic</td></tr>
+  </table>
+
+  <h3>Monitoring Index Health</h3>
+  <pre><code><span class="cm"># Track these metrics</span>
+index_metrics = {
+  <span class="str">"total_vectors"</span>: qdrant.<span class="fn">get_collection_info</span>().vectors_count,
+  <span class="str">"pending_docs"</span>: db.<span class="fn">count</span>(<span class="str">"SELECT COUNT(*) FROM docs WHERE status='pending'"</span>),
+  <span class="str">"search_latency_p95"</span>: prometheus.<span class="fn">query</span>(<span class="str">"p95(vector_search_ms)"</span>),
+  <span class="str">"recall_at_5"</span>: <span class="fn">run_eval_set</span>(test_queries),  <span class="cm"># weekly eval</span>
+}
+<span class="cm"># Alert if pending_docs > 0 for more than 15 minutes</span></code></pre>
+
+  <div class="iq">
+    <div class="iq-q">💬 Interview Q</div>
+    <p>"User says 'The system doesn't know about the document I uploaded 10 minutes ago.' How do you investigate?" → Check document registry: is status='indexed' or 'pending'? If pending, ingestion pipeline stalled — check Celery/SQS queue for errors. If indexed, check vector count in DB — was the upsert confirmed? Also verify the doc's chunks aren't being filtered out by metadata filters at query time.</p>
+  </div>
+</div>
+
+<!-- ===== S9: FINDING RIGHT K ===== -->
+<div class="section" id="s9">
+  <div class="q-tag">Topic 10</div>
+  <h2>How to Find the Right K Value</h2>
+  <p>K is the number of chunks you retrieve from the vector DB. It's one of the most impactful hyperparameters in RAG — and almost everyone picks it arbitrarily.</p>
+
+  <h3>Why K Matters So Much</h3>
+  <div class="vs">
+    <div class="vs-col r">
+      <h5>K Too Small (e.g., K=2)</h5>
+      <ul>
+        <li>Miss the relevant chunk</li>
+        <li>Low recall → incomplete answers</li>
+        <li>"I don't have information about that"</li>
+        <li>Fails on multi-hop questions</li>
+        <li>Fast, cheap</li>
+      </ul>
+    </div>
+    <div class="vs-col b">
+      <h5>K Too Large (e.g., K=100)</h5>
+      <ul>
+        <li>Lots of irrelevant noise in context</li>
+        <li>LLM gets confused, loses focus</li>
+        <li>Exceeds context window</li>
+        <li>Higher latency and cost</li>
+        <li>Lost-in-the-middle effect worsens</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>The Measurement Approach — Hit Rate@K Curve</h3>
+  <p>This is the correct, data-driven way to find K. Build an eval set, measure recall at each K value, find the elbow.</p>
+  <pre><code><span class="kw">def</span> <span class="fn">hit_rate_at_k</span>(eval_set, k_values=[<span class="num">1</span>,<span class="num">3</span>,<span class="num">5</span>,<span class="num">10</span>,<span class="num">20</span>,<span class="num">50</span>]):
+    <span class="str">"""eval_set: list of {query, relevant_chunk_ids}"""</span>
+    results = {}
+    <span class="kw">for</span> k <span class="kw">in</span> k_values:
+        hits = <span class="num">0</span>
+        <span class="kw">for</span> item <span class="kw">in</span> eval_set:
+            retrieved = vector_search(item[<span class="str">"query"</span>], top_k=k)
+            retrieved_ids = {r.id <span class="kw">for</span> r <span class="kw">in</span> retrieved}
+            <span class="kw">if</span> retrieved_ids & <span class="fn">set</span>(item[<span class="str">"relevant_chunk_ids"</span>]):
+                hits += <span class="num">1</span>
+        results[k] = hits / len(eval_set)
+    <span class="kw">return</span> results
+
+<span class="cm"># Example output:</span>
+<span class="cm"># K=1: 0.42 | K=3: 0.67 | K=5: 0.79 | K=10: 0.86 | K=20: 0.90 | K=50: 0.91</span>
+<span class="cm">#                                 ↑                                         ↑</span>
+<span class="cm">#                           big jump here                        diminishing return</span>
+<span class="cm"># → Elbow is at K=5 to K=10. Choose K=10 for retrieval, rerank to top-5.</span></code></pre>
+
+  <h3>The Two-Stage K Strategy</h3>
+  <p>The modern best practice: use a LARGE K for retrieval (high recall), then rerank down to a SMALL K for the LLM context (high precision).</p>
+  <div class="flow">
+    <div class="fb b">K_retrieve = 50</div><div class="fa">→</div>
+    <div class="fb">Cross-encoder rerank</div><div class="fa">→</div>
+    <div class="fb r">K_context = 5</div><div class="fa">→</div>
+    <div class="fb g">LLM</div>
+  </div>
+  <table>
+    <tr><th>K Type</th><th>Purpose</th><th>Typical Value</th><th>Constraint</th></tr>
+    <tr><td><strong>K_retrieve</strong></td><td>Ensure recall — get enough candidates</td><td>20–100</td><td>Reranker capacity</td></tr>
+    <tr><td><strong>K_context</strong></td><td>Precision — only best go to LLM</td><td>3–10</td><td>Context window budget</td></tr>
+  </table>
+
+  <h3>Factors That Change the Right K</h3>
+  <table>
+    <tr><th>Factor</th><th>Effect on K</th></tr>
+    <tr><td>Small chunks (128 tokens)</td><td>Need higher K — answer spans multiple small chunks</td></tr>
+    <tr><td>Large chunks (1024 tokens)</td><td>Can use lower K — each chunk is more complete</td></tr>
+    <tr><td>High document diversity</td><td>Need higher K — relevant info spread across many docs</td></tr>
+    <tr><td>Narrow, focused corpus</td><td>Lower K sufficient — less noise</td></tr>
+    <tr><td>Multi-hop questions</td><td>Need higher K — must retrieve multiple reasoning steps</td></tr>
+    <tr><td>Single-fact lookup</td><td>K=3 is often enough</td></tr>
+    <tr><td>Using reranker</td><td>Retrieve more (K=50), final context still small</td></tr>
+    <tr><td>No reranker</td><td>Smaller K — every chunk goes to LLM, precision matters</td></tr>
+  </table>
+
+  <h3>Context Window Math</h3>
+  <pre><code><span class="cm"># Context budget calculation</span>
+model_context = <span class="num">8192</span>   <span class="cm"># tokens (e.g., gpt-4o-mini)</span>
+system_prompt = <span class="num">400</span>
+user_query    = <span class="num">100</span>
+output_budget = <span class="num">800</span>
+chunk_size    = <span class="num">512</span>
+
+available_for_context = model_context - system_prompt - user_query - output_budget
+<span class="cm"># = 8192 - 400 - 100 - 800 = 6892 tokens</span>
+
+max_k = available_for_context // chunk_size
+<span class="cm"># = 6892 // 512 = 13 chunks maximum</span>
+
+<span class="cm"># Practical K: 8–10 (leave buffer)</span>
+<span class="cm"># With 128k context: K can be 50–100</span></code></pre>
+
+  <h3>Dynamic K — Adapting at Query Time</h3>
+  <p>Don't use a fixed K for all queries. Use <em>confidence-based dynamic K</em>: retrieve more if early results have low similarity scores.</p>
+  <pre><code><span class="kw">def</span> <span class="fn">dynamic_k_retrieve</span>(query, base_k=<span class="num">5</span>, max_k=<span class="num">20</span>):
+    results = vector_search(query, top_k=base_k)
+    avg_score = <span class="fn">mean</span>([r.score <span class="kw">for</span> r <span class="kw">in</span> results])
+    <span class="kw">if</span> avg_score < <span class="num">0.75</span>:    <span class="cm"># low confidence, get more</span>
+        results = vector_search(query, top_k=max_k)
+    <span class="kw">return</span> results</code></pre>
+
+  <div class="note green">
+    <div class="note-title">✓ Practical K Defaults (No Reranker)</div>
+    <p><strong>Small corpus (&lt;1k chunks), 512-token chunks → K=5.</strong><br>
+    <strong>Medium corpus (1k–50k chunks), 512-token chunks → K=8–10.</strong><br>
+    <strong>Large corpus + small chunks (128 tokens) → K=15–20.</strong></p>
+  </div>
+
+  <div class="note blue">
+    <div class="note-title">✓ Practical K Defaults (With Reranker)</div>
+    <p><strong>K_retrieve = 50 (always), K_context = 5–8 after reranking.</strong> This gives you the best of both worlds: high recall in retrieval, high precision in context.</p>
+  </div>
+
+  <div class="iq">
+    <div class="iq-q">💬 Interview Q</div>
+    <p>"We went from K=5 to K=20 and answer quality went DOWN. Why?" → More noise. With K=20 and no reranker, chunks 6–20 are probably not relevant and they're diluting the LLM's focus. The LLM is confused by conflicting/off-topic information. Fix: add a reranker. Or raise K for retrieval but only pass top 5 to the LLM.</p>
+  </div>
+</div>
+
+</div><!-- /content -->
+</main>
+
+</div><!-- /shell -->
+
+<script>
+const sections = [
+  { id: "s0", label: "Semantic Cache — How It Works" },
+  { id: "s1", label: "Other Caching Methods" },
+  { id: "s2", label: "Chunking Methods Deep Dive" },
+  { id: "s3", label: "Document Ingestion Pipeline" },
+  { id: "s4", label: "Keeping Vector DB Updated" },
+  { id: "s5", label: "BM25 & Hybrid Search" },
+  { id: "s6", label: "Detecting LLM Ignoring Context" },
+  { id: "s7", label: "Domain vs Generic Embedding" },
+  { id: "s8", label: "What Is an Index?" },
+  { id: "s9", label: "Finding the Right K Value" },
+];
+
+let visited = new Set(["s0"]);
+
+function buildNav() {
+  const nav = document.getElementById("nav");
+  sections.forEach((s, i) => {
+    const item = document.createElement("div");
+    item.className = "nav-item" + (s.id === "s0" ? " active" : "");
+    item.dataset.id = s.id;
+    item.innerHTML = `<span class="nav-num">${String(i+1).padStart(2,"0")}</span>${s.label}`;
+    item.addEventListener("click", () => showSection(s.id));
+    nav.appendChild(item);
+  });
+}
+
+function showSection(id) {
+  document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+  document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+  document.querySelector(`.nav-item[data-id="${id}"]`).classList.add("active");
+  document.getElementById("main").scrollTo({ top: 0, behavior: "smooth" });
+  visited.add(id);
+  updateProgress();
+}
+
+function updateProgress() {
+  const pct = Math.round((visited.size / sections.length) * 100);
+  document.getElementById("progress-fill").style.width = pct + "%";
+  document.getElementById("progress-label").textContent = `${visited.size} / ${sections.length} read`;
+}
+
+buildNav();
+updateProgress();
+</script>
+</body>
+</html>

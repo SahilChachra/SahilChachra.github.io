@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const dynamic = "force-static";
-export const alt = "Sahil Chachra — Founding AI Engineer";
+export const alt = "Sahil Chachra — AI Architect";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -80,7 +80,7 @@ export default function Image() {
               textTransform: "uppercase",
             }}
           >
-            Founding AI Engineer · Available for AI Consulting
+            AI Architect · Available for AI Consulting
           </div>
         </div>
       </div>

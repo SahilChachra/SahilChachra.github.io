@@ -2,6 +2,7 @@ export interface Experience {
   id: string;
   role: string;
   company: string;
+  companyUrl?: string;
   companyDesc: string;
   location: string;
   startDate: string;
@@ -13,17 +14,33 @@ export interface Experience {
 
 export const experiences: Experience[] = [
   {
+    id: "blue",
+    role: "AI Architect",
+    company: "BLUE",
+    companyUrl: "https://myblue.ai/",
+    companyDesc: "Vision Analytics for Warehouses and Retail · Pre-Seed Stage",
+    location: "Bangalore, India",
+    startDate: "Apr 2026",
+    endDate: "",
+    current: true,
+    bullets: [
+      "Architecting a Visual Analytics Pipeline for retail customers using state-of-the-art VLMs — delivering granular insights on store layout, customer behavior, and staff interactions by combining VLMs and LLMs in a unified inference stack.",
+      "Working on a patented video compression algorithm and exploring hardware-accelerated execution across edge devices including Intel and NVIDIA platforms.",
+    ],
+    tags: ["LLMs", "VLMs", "Video Compression", "Inference Engineering", "VLM Benchmarking", "Python", "Claude Code", "Local AI Inferencing"],
+  },
+  {
     id: "stealth",
     role: "Founding AI Engineer",
     company: "Stealth Startup",
     companyDesc: "AI Platform for Factories · Pre-Seed Stage",
     location: "Bangalore, India",
     startDate: "Sep 2025",
-    endDate: "",
-    current: true,
+    endDate: "Apr 2026",
+    current: false,
     bullets: [
-      "Architecting and building an AI-native factory intelligence platform enabling end-to-end manufacturing design and optimization — combining LLM orchestration, structured RAG pipelines, semantic search, and real-time inference infrastructure.",
-      "Designed a production-grade multi-agent framework capable of long-horizon reasoning across CAD metadata, workflow steps, machine catalogs, and line constraints — with reliable tool invocation, memory management, and multi-step verification."
+      "Architected and built an AI-native factory intelligence platform enabling end-to-end manufacturing design and optimization — combining LLM orchestration, structured RAG pipelines, semantic search, and real-time inference infrastructure.",
+      "Designed a production-grade multi-agent framework capable of long-horizon reasoning across CAD metadata, workflow steps, machine catalogs, and line constraints — with reliable tool invocation, memory management, and multi-step verification.",
     ],
     tags: ["LLMs", "RAG", "Multi-Agent Systems", "Python", "FastAPI", "GCloud"],
   },
