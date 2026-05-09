@@ -25,7 +25,9 @@ export const experiences: Experience[] = [
     current: true,
     bullets: [
       "Architecting a Visual Analytics Pipeline for retail customers using state-of-the-art VLMs — delivering granular insights on store layout, customer behavior, and staff interactions by combining VLMs and LLMs in a unified inference stack.",
-      "Working on a patented video compression algorithm and exploring hardware-accelerated execution across edge devices including Intel and NVIDIA platforms.",
+      "Deploying VLMs across NVIDIA GPU servers and edge devices, optimizing the full inference stack for real-time throughput under hardware constraints.",
+      "Researching quantization strategies (INT4/INT8/FP16), benchmarking model speed and accuracy trade-offs, and profiling latency to identify and eliminate bottlenecks in the VLM pipeline.",
+      "Working on a patented video compression algorithm with hardware-accelerated execution via Intel VAAPI on edge devices.",
     ],
     tags: ["LLMs", "VLMs", "Video Compression", "Inference Engineering", "VLM Benchmarking", "Python", "Claude Code", "Local AI Inferencing"],
   },

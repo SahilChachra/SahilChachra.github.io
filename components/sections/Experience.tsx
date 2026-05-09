@@ -46,7 +46,18 @@ export function Experience() {
                           </span>
                         )}
                       </div>
-                      <p className="text-zinc-400 font-medium">{exp.company}</p>
+                      {exp.companyUrl ? (
+                        <a
+                          href={exp.companyUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-zinc-400 font-medium hover:text-white transition-colors"
+                        >
+                          {exp.company}
+                        </a>
+                      ) : (
+                        <p className="text-zinc-400 font-medium">{exp.company}</p>
+                      )}
                       <p className="text-zinc-500 text-sm">{exp.companyDesc}</p>
                     </div>
 

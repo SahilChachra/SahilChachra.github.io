@@ -38,11 +38,11 @@ export const projects: Project[] = [
   },
   {
     id: "open-vlm-eval",
-    title: "Open VLM Eval",
+    title: "VLM-Bench",
     description:
-      "[In Progress] Product teams building Computer Vision pipelines are now using VLMs. The rate at which VLMs are being released, its difficult to manually benchmark them for their usecase. This solves the problem!",
-    tags: ["Python", "PyTorch", "LoRA", "Hugging Face", "Weights & Biases"],
-    githubUrl: "https://github.com/SahilChachra/openvlm-eval",
-    featured: false,
+      "Self-hosted benchmarking dashboard for Vision Language Models. Upload image datasets, register HuggingFace or local models, run GPU-accelerated evaluation jobs via vLLM, and compare accuracy, throughput, and latency on a live leaderboard.",
+    tags: ["Python", "FastAPI", "React", "TypeScript", "vLLM", "Docker", "BERT Score", "SQLAlchemy"],
+    githubUrl: "https://github.com/SahilChachra/VLM-Bench",
+    featured: true,
   },
 ];
