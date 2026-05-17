@@ -11,38 +11,38 @@ export interface Project {
 export const projects: Project[] = [
   {
     id: "llm-safety-middleware",
-    title: "LLM Safety Middlware",
+    title: "LLM Safety Middleware",
     description:
-      "An open-source and production-grade proxy that puts safety checks between your users and any LLM backend.",
-    tags: ["LLMs", "Python", "Flask", "Safety", "Custom Deployment", "Local LLM"],
+      "Most teams bolt safety on after deployment. This is a drop-in proxy that intercepts every LLM call — running configurable safety checks, content filters, and policy guardrails before the request reaches the model. Open-source, production-grade, zero changes to your existing LLM integration.",
+    tags: ["LLMs", "Python", "Flask", "Safety", "Proxy", "Local LLM"],
     githubUrl: "https://github.com/SahilChachra/LLM-Safety-Middleware",
     featured: true,
-  },
-  {
-    id: "llm-refusal-finetuning",
-    title: "Refusal Finetuning",
-    description:
-      "Let's re-adapt the decision boundary of LLMs!",
-    tags: ["Python", "Evaluation", "RAG", "Vector DBs", "Hugging Face"],
-    githubUrl: "https://github.com/SahilChachra/Refusal-Finetuning",
-    featured: true,
-  },
-  {
-    id: "llm-mering",
-    title: "LLM Merging",
-    description:
-      "What happens if we merge LLMs finetuned on different dataset? Lets find out!",
-    tags: ["Python", "TypeScript", "Embeddings", "Redis", "FastAPI"],
-    githubUrl: "https://github.com/SahilChachra/LLM-Merging",
-    featured: false,
   },
   {
     id: "open-vlm-eval",
     title: "VLM-Bench",
     description:
-      "Self-hosted benchmarking dashboard for Vision Language Models. Upload image datasets, register HuggingFace or local models, run GPU-accelerated evaluation jobs via vLLM, and compare accuracy, throughput, and latency on a live leaderboard.",
+      "Evaluating VLMs in production requires more than accuracy scores — you need throughput, latency, and cost curves too. Self-hosted benchmarking platform: upload image datasets, register HuggingFace or local models, run GPU-accelerated evaluation via vLLM, and compare the full performance profile on a live leaderboard.",
     tags: ["Python", "FastAPI", "React", "TypeScript", "vLLM", "Docker", "BERT Score", "SQLAlchemy"],
     githubUrl: "https://github.com/SahilChachra/VLM-Bench",
     featured: true,
+  },
+  {
+    id: "llm-refusal-finetuning",
+    title: "Refusal Fine-tuning",
+    description:
+      "LLMs have a refusal problem — they refuse too much or not enough. This project maps the refusal decision boundary, then reshapes it through targeted fine-tuning. The goal: principled control over refusal behavior without degrading general capability.",
+    tags: ["Python", "Fine-tuning", "Evaluation", "Hugging Face", "Alignment"],
+    githubUrl: "https://github.com/SahilChachra/Refusal-Finetuning",
+    featured: true,
+  },
+  {
+    id: "llm-merging",
+    title: "LLM Merging",
+    description:
+      "When you merge two models each fine-tuned on a different domain, do you get a smarter generalist or a confused compromise? This project maps the answer empirically — testing weight interpolation, SLERP, and task vectors across domain-specialized checkpoints.",
+    tags: ["Python", "Model Merging", "SLERP", "Embeddings", "Research"],
+    githubUrl: "https://github.com/SahilChachra/LLM-Merging",
+    featured: false,
   },
 ];

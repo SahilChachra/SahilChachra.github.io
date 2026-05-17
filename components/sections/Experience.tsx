@@ -45,6 +45,11 @@ export function Experience() {
                             Current
                           </span>
                         )}
+                        {exp.type === "freelance" && (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 text-xs font-medium text-amber-400">
+                            Freelance
+                          </span>
+                        )}
                       </div>
                       {exp.companyUrl ? (
                         <a
@@ -72,6 +77,11 @@ export function Experience() {
                       </span>
                     </div>
                   </div>
+
+                  {/* Narrative */}
+                  <p className="text-sm text-zinc-400 leading-relaxed italic mb-5 border-l-2 border-zinc-700 pl-4">
+                    {exp.narrative}
+                  </p>
 
                   {/* Bullets */}
                   <ul className="space-y-2.5 mb-6">
