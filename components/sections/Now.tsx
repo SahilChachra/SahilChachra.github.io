@@ -53,9 +53,6 @@ export function Now() {
                 What I&apos;m building, thinking about, and poking at right now.
               </p>
             </div>
-            <p className="text-xs text-zinc-600 font-mono shrink-0 pb-1">
-              Last updated: {nowUpdatedDate}
-            </p>
           </div>
         </FadeIn>
 
