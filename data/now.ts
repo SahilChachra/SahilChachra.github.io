@@ -19,8 +19,8 @@ export const nowStreams: NowStream[] = [
         body: "Multi-camera asyncio system where raw model events pass through a sliding-window persistence gate before they touch the backend — temporal confidence filtering as the anti-hallucination layer.",
       },
       {
-        label: "Patented video compression",
-        body: "Hardware-accelerated compression on Intel VAAPI at the edge. The constraint: reduce bandwidth without degrading the visual quality that downstream VLM inference depends on.",
+        label: "Cross-platform utility apps",
+        body: "Building Windows, macOS, and Linux desktop apps that onboard customers into the BLUE ecosystem — paired with contributions to a patented Intel VAAPI video compression pipeline.",
       },
     ],
   },

@@ -26,10 +26,10 @@ export const experiences: Experience[] = [
     endDate: "",
     current: true,
     narrative:
-      "Joined a pre-seed startup building vision analytics for physical retail spaces. No existing AI stack, no handoff — I design the architecture, build the pipeline, and ship to production, all at once.",
+      "Joined a pre-seed startup building vision analytics for physical retail spaces. An AI stack existed — but it was expensive to run and didn't scale economically. My job: rebuild the pipeline to run on cheaper infrastructure while supporting far more cameras, inference throughput, and VLM API calls simultaneously.",
     bullets: [
       "Built a real-time multi-camera VLM pipeline from scratch — asyncio-native, with a sliding-window persistence gate that filters hallucinations before they reach the backend, cutting false alert rates without adding latency.",
-      "Developed a patented hardware-accelerated video compression algorithm running on Intel VAAPI at the edge, maintaining the visual fidelity VLM inference requires while reducing bandwidth consumption.",
+      "Contributing to a patented hardware-accelerated video compression algorithm (Intel VAAPI) and building cross-platform utility applications (Windows, macOS, Linux) that onboard customers into the BLUE ecosystem.",
       "Profiled the full inference stack across INT4/INT8/FP16 quantization levels and GPU/edge targets — found and eliminated the bottlenecks preventing real-time SLA compliance.",
     ],
     tags: ["VLMs", "Video Compression", "Edge AI", "asyncio", "Intel VAAPI", "vLLM", "LiteLLM", "Python"],
