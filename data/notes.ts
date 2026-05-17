@@ -84,6 +84,12 @@ export const notes: Note[] = [
     category: "Models",
     description: "Deep notes on Claude's architecture, training approach, and constitutional AI.",
   },
+  {
+    title: "Self-Hosting LLMs on Edge Hardware",
+    filename: "thor-llm-setup-guide.html",
+    category: "Inference",
+    description: "Complete infrastructure guide for self-hosting LLMs on edge hardware — LiteLLM, vLLM, and local deployment patterns.",
+  },
 ];
 
 export const noteCategories = ["All", ...Array.from(new Set(notes.map((n) => n.category)))];

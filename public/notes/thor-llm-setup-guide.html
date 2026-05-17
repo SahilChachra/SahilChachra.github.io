@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Self-Hosting LLMs on Edge Hardware — A Complete Company Infrastructure Guide</title>
+  <style>
+    :root {
+      --bg:        #0d1117;
+      --surface:   #161b22;
+      --surface2:  #1c2128;
+      --border:    #30363d;
+      --text:      #c9d1d9;
+      --text-muted:#8b949e;
+      --heading:   #f0f6fc;
+      --accent:    #3fb950;
+      --accent2:   #58d68d;
+      --tag:       #388e3c;
+      --code-bg:   #0d1117;
+      --code-text: #79c0ff;
+      --inline-code-bg: #1c2128;
+      --warn:      #d29922;
+      --warn-bg:   #2d2208;
+      --tip-bg:    #0d2818;
+      --tip-border:#238636;
+      --link:      #58a6ff;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-size: 16px;
+      line-height: 1.7;
+    }
+
+    /* ── Layout ── */
+    .layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 260px;
+      flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      padding: 24px 0;
+    }
+
+    .sidebar-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      padding: 0 20px 12px;
+    }
+
+    .sidebar nav a {
+      display: block;
+      padding: 6px 20px;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 13.5px;
+      border-left: 2px solid transparent;
+      transition: all 0.15s;
+    }
+
+    .sidebar nav a:hover {
+      color: var(--heading);
+      border-left-color: var(--accent);
+      background: var(--surface2);
+    }
+
+    .sidebar nav a.section {
+      color: var(--text);
+      font-weight: 600;
+      margin-top: 8px;
+    }
+
+    .sidebar nav a.sub {
+      padding-left: 32px;
+      font-size: 12.5px;
+    }
+
+    /* ── Main content ── */
+    .content {
+      flex: 1;
+      max-width: 900px;
+      padding: 48px 56px 96px;
+      min-width: 0;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      margin-bottom: 56px;
+      padding-bottom: 40px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .hero-tag {
+      display: inline-block;
+      background: var(--tag);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 3px 10px;
+      border-radius: 20px;
+      margin-bottom: 16px;
+    }
+
+    .hero h1 {
+      font-size: 36px;
+      font-weight: 800;
+      color: var(--heading);
+      line-height: 1.2;
+      margin-bottom: 16px;
+    }
+
+    .hero p {
+      font-size: 18px;
+      color: var(--text-muted);
+      max-width: 680px;
+    }
+
+    .meta {
+      display: flex;
+      gap: 20px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .meta-item span.dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      display: inline-block;
+    }
+
+    /* ── Section headings ── */
+    h2 {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--heading);
+      margin: 56px 0 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+      scroll-margin-top: 24px;
+    }
+
+    h3 {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--heading);
+      margin: 32px 0 12px;
+      scroll-margin-top: 24px;
+    }
+
+    h4 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--accent2);
+      margin: 20px 0 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-size: 12px;
+    }
+
+    p { margin-bottom: 14px; }
+
+    a { color: var(--link); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    ul, ol {
+      padding-left: 24px;
+      margin-bottom: 14px;
+    }
+
+    li { margin-bottom: 6px; }
+
+    /* ── Code blocks ── */
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px 24px;
+      overflow-x: auto;
+      margin: 16px 0 24px;
+      position: relative;
+    }
+
+    pre code {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 13.5px;
+      line-height: 1.6;
+      color: var(--code-text);
+      background: none;
+      padding: 0;
+    }
+
+    code {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 13px;
+      background: var(--inline-code-bg);
+      color: #e3b341;
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+    }
+
+    .comment { color: #8b949e; }
+    .cmd     { color: #79c0ff; }
+    .flag    { color: #d2a8ff; }
+    .val     { color: #a5d6ff; }
+    .str     { color: #a5d6ff; }
+    .key     { color: #3fb950; }
+
+    /* ── Callout boxes ── */
+    .callout {
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin: 20px 0;
+      display: flex;
+      gap: 12px;
+    }
+
+    .callout-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+
+    .callout.tip {
+      background: var(--tip-bg);
+      border: 1px solid var(--tip-border);
+    }
+
+    .callout.warn {
+      background: var(--warn-bg);
+      border: 1px solid var(--warn);
+    }
+
+    .callout p { margin: 0; font-size: 14.5px; }
+
+    /* ── Architecture diagram ── */
+    .arch {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px;
+      margin: 24px 0;
+      text-align: center;
+    }
+
+    .arch-row {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0;
+      flex-wrap: wrap;
+      margin: 8px 0;
+    }
+
+    .arch-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 20px;
+      min-width: 140px;
+      text-align: center;
+    }
+
+    .arch-box.accent {
+      border-color: var(--accent);
+      background: #0d2818;
+    }
+
+    .arch-box.dim {
+      border-color: #30363d;
+      opacity: 0.7;
+    }
+
+    .arch-box-title {
+      font-weight: 700;
+      color: var(--heading);
+      font-size: 14px;
+    }
+
+    .arch-box-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    .arch-arrow {
+      font-size: 20px;
+      color: var(--accent);
+      padding: 0 12px;
+      font-weight: 300;
+    }
+
+    .arch-down {
+      color: var(--accent);
+      font-size: 20px;
+      margin: 4px 0;
+    }
+
+    .arch-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin: 12px 0 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    /* ── Spec table ── */
+    .spec-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 24px;
+      font-size: 14px;
+    }
+
+    .spec-table th {
+      background: var(--surface2);
+      color: var(--text-muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 10px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .spec-table td {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    .spec-table tr:last-child td { border-bottom: none; }
+
+    .spec-table td:first-child {
+      color: var(--text-muted);
+      width: 180px;
+      font-size: 13px;
+    }
+
+    .spec-table td:last-child {
+      color: var(--heading);
+      font-weight: 500;
+    }
+
+    /* ── Step indicator ── */
+    .steps { counter-reset: step; }
+
+    .step {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 40px;
+      counter-increment: step;
+    }
+
+    .step-num {
+      flex-shrink: 0;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--tag);
+      color: #fff;
+      font-weight: 700;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 2px;
+    }
+
+    .step-body { flex: 1; }
+
+    .step-body h3 {
+      margin-top: 4px;
+      margin-bottom: 10px;
+    }
+
+    /* ── Reference table ── */
+    .ref-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      margin: 16px 0;
+    }
+
+    .ref-table th {
+      background: var(--surface2);
+      color: var(--text-muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 8px 14px;
+      text-align: left;
+      border: 1px solid var(--border);
+    }
+
+    .ref-table td {
+      padding: 8px 14px;
+      border: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    .ref-table td:first-child { color: #e3b341; font-family: monospace; }
+    .ref-table td:nth-child(2) { color: var(--text-muted); font-size: 13px; }
+
+    /* ── Footer ── */
+    .footer {
+      margin-top: 80px;
+      padding-top: 32px;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .sidebar { display: none; }
+      .content { padding: 32px 24px 64px; }
+      .hero h1 { font-size: 26px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="sidebar-title">On This Page</div>
+    <nav>
+      <a href="#intro"       class="section">Introduction</a>
+      <a href="#why"         class="sub">Why Self-Host?</a>
+      <a href="#architecture" class="section">Architecture</a>
+      <a href="#vllm-role"   class="sub">vLLM</a>
+      <a href="#litellm-role" class="sub">LiteLLM</a>
+      <a href="#postgres-role" class="sub">PostgreSQL</a>
+      <a href="#hardware"    class="section">Hardware</a>
+      <a href="#prerequisites" class="section">Prerequisites</a>
+      <a href="#setup"       class="section">Setup Guide</a>
+      <a href="#step-network" class="sub">1. Docker Network</a>
+      <a href="#step-postgres" class="sub">2. PostgreSQL</a>
+      <a href="#step-vllm"   class="sub">3. vLLM</a>
+      <a href="#step-litellm-config" class="sub">4. LiteLLM Config</a>
+      <a href="#step-litellm" class="sub">5. LiteLLM Proxy</a>
+      <a href="#step-test"   class="sub">6. Test</a>
+      <a href="#key-mgmt"    class="section">Key Management</a>
+      <a href="#cost"        class="section">Cost Tracking</a>
+      <a href="#cost-why"    class="sub">Why set a price?</a>
+      <a href="#cost-ref"    class="sub">Reference prices</a>
+      <a href="#cost-config" class="sub">Update config</a>
+      <a href="#cost-view"   class="sub">View spend</a>
+      <a href="#daily-ops"   class="section">Daily Operations</a>
+      <a href="#troubleshoot" class="section">Troubleshooting</a>
+      <a href="#reference"   class="section">Quick Reference</a>
+    </nav>
+  </aside>
+
+  <!-- ── Main ── -->
+  <main class="content">
+
+    <!-- Hero -->
+    <div class="hero">
+      <div class="hero-tag">Go-To Guide</div>
+      <h1>Self-Hosting LLMs on Edge Hardware</h1>
+      <p>A complete, battle-tested guide to running a production-ready LLM inference server on an NVIDIA Jetson AGX Thor — with team access control, cost tracking, and zero cloud dependency.</p>
+      <div class="meta">
+        <div class="meta-item"><span class="dot"></span> Jetson AGX Thor</div>
+        <div class="meta-item"><span class="dot"></span> vLLM + LiteLLM + PostgreSQL</div>
+        <div class="meta-item"><span class="dot"></span> Qwen3-VL-30B-A3B</div>
+        <div class="meta-item"><span class="dot"></span> Docker</div>
+      </div>
+    </div>
+
+    <!-- ── 1. Introduction ── -->
+    <h2 id="intro">Introduction</h2>
+
+    <p>
+      Running large language models (LLMs) in-house gives your organisation complete control over your data, latency, and cost.
+      This guide walks through deploying a <strong>production-grade, multi-user LLM inference stack</strong> on an
+      NVIDIA Jetson AGX Thor — a powerful edge AI device with 128 GB of unified memory.
+    </p>
+
+    <p>
+      By the end of this guide you will have:
+    </p>
+
+    <ul>
+      <li>A running <strong>Qwen3-VL-30B-A3B</strong> vision-language model (AWQ 4-bit quantised)</li>
+      <li>An OpenAI-compatible API endpoint your team can point any client to</li>
+      <li>Per-user API keys with rate limits and budget caps</li>
+      <li>Token and spend tracking via a dashboard</li>
+      <li>Everything running on local hardware — no cloud, no data leaving your network</li>
+    </ul>
+
+    <h3 id="why">Why Self-Host?</h3>
+
+    <ul>
+      <li><strong>Data privacy</strong> — prompts never leave your premises</li>
+      <li><strong>Cost predictability</strong> — no per-token cloud bills; your cost is electricity</li>
+      <li><strong>Latency</strong> — local inference is faster for sustained workloads</li>
+      <li><strong>Control</strong> — you choose the model, quantisation, and parameters</li>
+      <li><strong>Compliance</strong> — easier to satisfy data residency requirements</li>
+    </ul>
+
+    <!-- ── 2. Architecture ── -->
+    <h2 id="architecture">Architecture</h2>
+
+    <p>
+      The stack has three layers. Each layer has a single responsibility.
+    </p>
+
+    <!-- Diagram -->
+    <div class="arch">
+      <div class="arch-label">External clients (curl, Python, any OpenAI SDK)</div>
+      <div class="arch-row">
+        <div class="arch-box dim">
+          <div class="arch-box-title">Your App / curl</div>
+          <div class="arch-box-sub">any OpenAI-compatible client</div>
+        </div>
+      </div>
+      <div class="arch-down">↓ port 12434</div>
+      <div class="arch-row">
+        <div class="arch-box accent">
+          <div class="arch-box-title">LiteLLM Proxy</div>
+          <div class="arch-box-sub">auth · routing · usage tracking</div>
+        </div>
+      </div>
+      <div class="arch-down">↓ port 8000 (internal Docker network)</div>
+      <div class="arch-row">
+        <div class="arch-box accent">
+          <div class="arch-box-title">vLLM Server</div>
+          <div class="arch-box-sub">model inference · GPU · KV cache</div>
+        </div>
+      </div>
+      <div class="arch-down">↓</div>
+      <div class="arch-row">
+        <div class="arch-box">
+          <div class="arch-box-title">PostgreSQL</div>
+          <div class="arch-box-sub">keys · spend · logs</div>
+        </div>
+      </div>
+    </div>
+
+    <h3 id="vllm-role">vLLM — The Model Server</h3>
+    <p>
+      <strong>vLLM</strong> loads the AI model weights into GPU memory and handles all inference. It exposes an
+      OpenAI-compatible HTTP API on port <code>8000</code> (internal only — never exposed outside Docker).
+      It manages GPU memory, batching, KV caching, and tokenisation. It has no authentication — that is
+      intentionally handled by LiteLLM.
+    </p>
+
+    <h3 id="litellm-role">LiteLLM — The Proxy Gateway</h3>
+    <p>
+      <strong>LiteLLM</strong> sits in front of vLLM and is the only component exposed to the outside world (port <code>12434</code>).
+      It handles:
+    </p>
+    <ul>
+      <li>API key validation — every request must carry a valid <code>Bearer</code> key</li>
+      <li>Model name routing — maps a friendly name like <code>Qwen3-VL-30B-A3B</code> to the vLLM endpoint</li>
+      <li>Per-key rate limiting, budget caps, and expiry</li>
+      <li>Usage and spend logging to PostgreSQL</li>
+    </ul>
+
+    <h3 id="postgres-role">PostgreSQL — The State Store</h3>
+    <p>
+      <strong>PostgreSQL</strong> stores all persistent state: API keys, per-key spend, request logs, and user metadata.
+      Without it, LiteLLM runs statelessly (no key management or spend tracking). With it, you get a full
+      multi-user control plane.
+    </p>
+
+    <!-- ── 3. Hardware ── -->
+    <h2 id="hardware">Hardware — NVIDIA Jetson AGX Thor</h2>
+
+    <p>
+      The Jetson AGX Thor is NVIDIA's flagship edge AI module, built on the Thor SoC with a Hopper-class GPU.
+      It is the only edge device capable of running a 30B-parameter model with reasonable performance.
+    </p>
+
+    <table class="spec-table">
+      <thead>
+        <tr><th>Component</th><th>Specification</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>GPU Architecture</td><td>NVIDIA Thor (Hopper-class)</td></tr>
+        <tr><td>Unified Memory</td><td>128 GB LPDDR5X (shared CPU + GPU)</td></tr>
+        <tr><td>Memory Bandwidth</td><td>~900 GB/s</td></tr>
+        <tr><td>CPU</td><td>ARM64 (Cortex-X architecture)</td></tr>
+        <tr><td>OS</td><td>JetPack / Ubuntu ARM64</td></tr>
+        <tr><td>Docker Image</td><td><code>ghcr.io/nvidia-ai-iot/vllm:latest-jetson-thor</code></td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout tip">
+      <div class="callout-icon">💡</div>
+      <div>
+        <p><strong>Why 128 GB matters:</strong> The Qwen3-VL-30B-A3B model at AWQ 4-bit quantisation occupies roughly
+        15–18 GB. The remaining memory is available for the KV cache (context), which directly determines
+        how long a conversation or document you can process in one shot.</p>
+      </div>
+    </div>
+
+    <!-- ── 4. Prerequisites ── -->
+    <h2 id="prerequisites">Prerequisites</h2>
+
+    <ul>
+      <li>NVIDIA Jetson AGX Thor with JetPack installed</li>
+      <li>Docker installed (<code>docker</code> CLI — compose is not required)</li>
+      <li>NVIDIA Container Runtime configured (<code>--runtime nvidia</code> must work)</li>
+      <li>Model weights downloaded to <code>~/.cache/huggingface/</code>
+        (<code>cyankiwi/Qwen3-VL-30B-A3B-Instruct-AWQ-4bit</code>)</li>
+      <li>The three Docker images pulled (or internet access to pull them):
+        <ul>
+          <li><code>ghcr.io/nvidia-ai-iot/vllm:latest-jetson-thor</code></li>
+          <li><code>ghcr.io/berriai/litellm:main-latest</code></li>
+          <li><code>postgres:17</code></li>
+        </ul>
+      </li>
+    </ul>
+
+    <div class="callout warn">
+      <div class="callout-icon">⚠️</div>
+      <div>
+        <p><strong>Docker Compose is not available on Jetson Thor.</strong> All commands in this guide use
+        plain <code>docker run</code>. This also means there is no <code>docker compose</code> (with a space) or
+        <code>docker-compose</code> (with a hyphen) command.</p>
+      </div>
+    </div>
+
+    <!-- ── 5. Setup ── -->
+    <h2 id="setup">Step-by-Step Setup</h2>
+
+    <div class="steps">
+
+      <!-- Step 1 -->
+      <div class="step" id="step-network">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h3>Create a Docker Network</h3>
+          <p>
+            All three containers need to communicate with each other. Docker's bridge networking lets containers
+            reach each other by <strong>container name</strong> (e.g. <code>ai-postgres</code>) rather than IP address.
+            This is how LiteLLM finds vLLM and PostgreSQL without hardcoded IPs.
+          </p>
+<pre><code><span class="cmd">sudo docker network create</span> <span class="val">infra-thor</span></code></pre>
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="step" id="step-postgres">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h3>Start PostgreSQL</h3>
+          <p>
+            PostgreSQL stores all API keys, spend data, and request logs. We mount a volume on the host so the
+            database survives container restarts and upgrades.
+          </p>
+<pre><code><span class="cmd">sudo docker run</span> <span class="flag">-d</span> \
+  <span class="flag">--name</span> <span class="val">ai-postgres</span> \
+  <span class="flag">--network</span> <span class="val">infra-thor</span> \
+  <span class="flag">--restart</span> <span class="val">unless-stopped</span> \
+  <span class="flag">-e</span> <span class="key">POSTGRES_USER</span>=<span class="val">litellm</span> \
+  <span class="flag">-e</span> <span class="key">POSTGRES_PASSWORD</span>=<span class="val">your-strong-db-password</span> \
+  <span class="flag">-e</span> <span class="key">POSTGRES_DB</span>=<span class="val">litellmdb</span> \
+  <span class="flag">-v</span> <span class="val">/home/user/postgres_data:/var/lib/postgresql/data</span> \
+  <span class="val">postgres:17</span></code></pre>
+
+          <p>Verify it started:</p>
+<pre><code><span class="cmd">sudo docker ps</span> | grep ai-postgres
+<span class="comment"># Should show: Up X seconds</span></code></pre>
+        </div>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="step" id="step-vllm">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h3>Start vLLM</h3>
+          <p>
+            This is the model inference server. On the Jetson Thor we use the NVIDIA-provided image
+            (<code>ghcr.io/nvidia-ai-iot/vllm:latest-jetson-thor</code>) which is compiled specifically for the
+            Thor SoC — the standard <code>vllm/vllm-openai:latest</code> image is x86-only and will not run on ARM64.
+          </p>
+          <p>
+            All model parameters are passed as CLI arguments (not a config file) because the image has a
+            conflicting directory at <code>/app/config.yaml</code>.
+          </p>
+
+<pre><code><span class="cmd">sudo docker run</span> <span class="flag">-d</span> \
+  <span class="flag">--name</span> <span class="val">vllm-qwen3-vl-30b-a3b</span> \
+  <span class="flag">--network</span> <span class="val">infra-thor</span> \
+  <span class="flag">--runtime</span> <span class="val">nvidia</span> \       <span class="comment"># required for GPU access</span>
+  <span class="flag">--ipc</span> <span class="val">host</span> \           <span class="comment"># shared memory between processes</span>
+  <span class="flag">--restart</span> <span class="val">unless-stopped</span> \
+  <span class="flag">-e</span> <span class="key">VLLM_NO_USAGE_STATS</span>=<span class="val">1</span> \
+  <span class="flag">-e</span> <span class="key">VLLM_WORKER_MULTIPROC_METHOD</span>=<span class="val">spawn</span> \
+  <span class="flag">-v</span> <span class="val">~/.cache/huggingface:/root/.cache/huggingface</span> \
+  <span class="val">ghcr.io/nvidia-ai-iot/vllm:latest-jetson-thor</span> \
+  <span class="val">python3 -m vllm.entrypoints.openai.api_server</span> \
+    <span class="flag">--model</span> <span class="val">cyankiwi/Qwen3-VL-30B-A3B-Instruct-AWQ-4bit</span> \
+    <span class="flag">--served-model-name</span> <span class="val">Qwen3-VL-30B-A3B</span> \    <span class="comment"># friendly name clients use</span>
+    <span class="flag">--max-model-len</span> <span class="val">32768</span> \            <span class="comment"># max context window (tokens)</span>
+    <span class="flag">--tensor-parallel-size</span> <span class="val">1</span> \          <span class="comment"># single GPU</span>
+    <span class="flag">--gpu-memory-utilization</span> <span class="val">0.85</span> \     <span class="comment"># use 85% of GPU memory</span>
+    <span class="flag">--dtype</span> <span class="val">bfloat16</span> \                  <span class="comment"># native on Hopper-class GPU</span>
+    <span class="flag">--kv-cache-dtype</span> <span class="val">fp8</span> \              <span class="comment"># fp8 KV cache (Hopper feature)</span>
+    <span class="flag">--max-num-seqs</span> <span class="val">32</span> \                 <span class="comment"># max concurrent requests</span>
+    <span class="flag">--max-num-batched-tokens</span> <span class="val">32768</span> \    <span class="comment"># max tokens in a batch</span>
+    <span class="flag">--limit-mm-per-prompt</span> <span class="val">'{"image": 32, "video": 0}'</span> \
+    <span class="flag">--mm-processor-kwargs</span> <span class="val">'{"max_pixels": 262144}'</span> \
+    <span class="flag">--compilation-config</span> <span class="val">'{"compile_mm_encoder": true}'</span> \
+    <span class="flag">--enable-chunked-prefill</span> \
+    <span class="flag">--enable-prefix-caching</span> \           <span class="comment"># cache common prefixes (system prompts)</span>
+    <span class="flag">--async-scheduling</span> \
+    <span class="flag">--enable-auto-tool-choice</span> \
+    <span class="flag">--tool-call-parser</span> <span class="val">qwen3_xml</span> \
+    <span class="flag">--generation-config</span> <span class="val">vllm</span></code></pre>
+
+          <h4>Wait for the model to load</h4>
+          <p>
+            The model takes <strong>~3 minutes</strong> to load from disk into GPU memory. Watch the logs:
+          </p>
+<pre><code><span class="cmd">sudo docker logs</span> <span class="flag">-f</span> vllm-qwen3-vl-30b-a3b</code></pre>
+          <p>Wait until you see:</p>
+<pre><code><span class="comment">INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000</span></code></pre>
+          <p>Then press <code>Ctrl+C</code> to stop following the logs. vLLM keeps running in the background.</p>
+        </div>
+      </div>
+
+      <!-- Step 4 -->
+      <div class="step" id="step-litellm-config">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <h3>Create the LiteLLM Config File</h3>
+          <p>
+            LiteLLM reads a YAML config file that tells it which models exist and how to reach them.
+            Create this file at a known absolute path on the host — we use this path in the next step.
+          </p>
+          <p>Create <code>/home/user/litellm/config.yaml</code> with this content:</p>
+<pre><code><span class="key">model_list</span>:
+  - <span class="key">model_name</span>: <span class="val">Qwen3-VL-30B-A3B</span>         <span class="comment"># name clients call</span>
+    <span class="key">litellm_params</span>:
+      <span class="key">model</span>: <span class="val">openai/Qwen3-VL-30B-A3B</span>
+      <span class="key">api_base</span>: <span class="val">http://vllm-qwen3-vl-30b-a3b:8000/v1</span>  <span class="comment"># vLLM container name</span>
+      <span class="key">api_key</span>: <span class="val">os.environ/LITELLM_MASTER_KEY</span>
+      <span class="key">input_cost_per_token</span>: <span class="val">0.0000002</span>    <span class="comment"># $0.20 per 1M input tokens</span>
+      <span class="key">output_cost_per_token</span>: <span class="val">0.000001</span>    <span class="comment"># $1.00 per 1M output tokens</span>
+
+<span class="key">general_settings</span>:
+  <span class="key">master_key</span>: <span class="val">os.environ/LITELLM_MASTER_KEY</span>      <span class="comment"># passed via -e at runtime</span>
+  <span class="key">database_url</span>: <span class="val">os.environ/DATABASE_URL</span>           <span class="comment"># passed via -e at runtime</span>
+  <span class="key">store_model_in_db</span>: <span class="val">true</span>
+
+<span class="key">litellm_settings</span>:
+  <span class="key">request_timeout</span>: <span class="val">600</span></code></pre>
+
+          <div class="callout tip">
+            <div class="callout-icon">💡</div>
+            <div>
+              <p>The <code>input_cost_per_token</code> and <code>output_cost_per_token</code> values are
+              <strong>virtual costs</strong> — the model is free to run locally, but LiteLLM uses these numbers to
+              calculate per-key spend. Set them to whatever internal chargeback rate makes sense for your team,
+              or set both to <code>0</code> to disable cost tracking entirely.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 5 -->
+      <div class="step" id="step-litellm">
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <h3>Start LiteLLM</h3>
+          <p>
+            Note that we mount the config file to <code>/litellm-config.yaml</code> (not <code>/app/config.yaml</code>)
+            to avoid a directory conflict inside the image. The <code>--config</code> flag tells LiteLLM where to find it.
+          </p>
+<pre><code><span class="cmd">sudo docker run</span> <span class="flag">-d</span> \
+  <span class="flag">--name</span> <span class="val">ai-litellm</span> \
+  <span class="flag">--network</span> <span class="val">infra-thor</span> \
+  <span class="flag">-p</span> <span class="val">12434:12434</span> \             <span class="comment"># the only container exposed externally</span>
+  <span class="flag">--restart</span> <span class="val">unless-stopped</span> \
+  <span class="flag">-e</span> <span class="key">LITELLM_MASTER_KEY</span>=<span class="val">sk-your-master-key-here</span> \
+  <span class="flag">-e</span> <span class="key">DATABASE_URL</span>=<span class="val">postgresql://litellm:your-strong-db-password@ai-postgres:5432/litellmdb</span> \
+  <span class="flag">-v</span> <span class="val">/home/user/litellm/config.yaml:/litellm-config.yaml:ro</span> \
+  <span class="val">ghcr.io/berriai/litellm:main-latest</span> \
+  <span class="flag">--config</span> <span class="val">/litellm-config.yaml</span> <span class="flag">--port</span> <span class="val">12434</span> <span class="flag">--num_workers</span> <span class="val">4</span></code></pre>
+
+          <div class="callout warn">
+            <div class="callout-icon">⚠️</div>
+            <div>
+              <p><strong>Master key format:</strong> The key must start with <code>sk-</code>.
+              Generate a strong one with:<br/>
+              <code>python3 -c "import secrets; print('sk-' + secrets.token_hex(16))"</code></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 6 -->
+      <div class="step" id="step-test">
+        <div class="step-num">6</div>
+        <div class="step-body">
+          <h3>Test the Stack</h3>
+          <p>Verify all three containers are running:</p>
+<pre><code><span class="cmd">sudo docker ps</span>
+<span class="comment"># Expected: ai-postgres, vllm-qwen3-vl-30b-a3b, ai-litellm all showing "Up"</span></code></pre>
+
+          <p>Send a test request:</p>
+<pre><code><span class="cmd">curl</span> http://localhost:12434/v1/chat/completions \
+  <span class="flag">-H</span> <span class="str">"Authorization: Bearer sk-your-master-key-here"</span> \
+  <span class="flag">-H</span> <span class="str">"Content-Type: application/json"</span> \
+  <span class="flag">-d</span> <span class="str">'{
+    "model": "Qwen3-VL-30B-A3B",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'</span></code></pre>
+
+          <p>You should receive a JSON response with the model's reply. The server is live.</p>
+
+          <p>Test with an image (vision capability):</p>
+<pre><code><span class="cmd">curl</span> http://localhost:12434/v1/chat/completions \
+  <span class="flag">-H</span> <span class="str">"Authorization: Bearer sk-your-master-key-here"</span> \
+  <span class="flag">-H</span> <span class="str">"Content-Type: application/json"</span> \
+  <span class="flag">-d</span> <span class="str">'{
+    "model": "Qwen3-VL-30B-A3B",
+    "messages": [{
+      "role": "user",
+      "content": [
+        {"type": "text", "text": "What is in this image?"},
+        {"type": "image_url", "image_url": {"url": "https://example.com/image.jpg"}}
+      ]
+    }]
+  }'</span></code></pre>
+        </div>
+      </div>
+
+    </div><!-- /steps -->
+
+
+    <!-- ── 6. Key Management ── -->
+    <h2 id="key-mgmt">Key Management</h2>
+
+    <p>
+      Your <strong>master key</strong> is the admin key — keep it private. Share individual generated keys with
+      team members. Each person gets their own key with independent limits.
+    </p>
+
+    <h3>Generate a key for a team member</h3>
+<pre><code><span class="cmd">curl</span> <span class="flag">-X POST</span> http://localhost:12434/key/generate \
+  <span class="flag">-H</span> <span class="str">"Authorization: Bearer sk-your-master-key-here"</span> \
+  <span class="flag">-H</span> <span class="str">"Content-Type: application/json"</span> \
+  <span class="flag">-d</span> <span class="str">'{
+    "key_alias": "alice",                  </span><span class="comment"># identifier — who owns this key</span><span class="str">
+    "models": ["Qwen3-VL-30B-A3B"],        </span><span class="comment"># [] means access to all models</span><span class="str">
+    "rpm_limit": 10,                       </span><span class="comment"># max requests per minute</span><span class="str">
+    "tpm_limit": 50000,                    </span><span class="comment"># max tokens per minute</span><span class="str">
+    "max_parallel_requests": 2,            </span><span class="comment"># max simultaneous requests</span><span class="str">
+    "max_budget": 5.0,                     </span><span class="comment"># key stops working after $5 virtual spend</span><span class="str">
+    "budget_duration": "30d",             </span><span class="comment"># reset budget every 30 days</span><span class="str">
+    "duration": "30d",                     </span><span class="comment"># key expires in 30 days (null = never)</span><span class="str">
+    "metadata": {
+      "team": "engineering",               </span><span class="comment"># custom info for your records</span><span class="str">
+      "email": "alice@yourcompany.com"
+    }
+  }'</span></code></pre>
+
+    <p>The response includes the generated key (e.g. <code>sk-abc123...</code>). Send that key to Alice — it's shown only once.</p>
+
+    <h3>Update a key</h3>
+<pre><code><span class="cmd">curl</span> <span class="flag">-X POST</span> http://localhost:12434/key/update \
+  <span class="flag">-H</span> <span class="str">"Authorization: Bearer sk-your-master-key-here"</span> \
+  <span class="flag">-H</span> <span class="str">"Content-Type: application/json"</span> \
+  <span class="flag">-d</span> <span class="str">'{"key": "sk-alice-key", "rpm_limit": 20}'</span></code></pre>
+
+    <h3>List all keys</h3>
+<pre><code><span class="cmd">curl</span> http://localhost:12434/key/list \
+  <span class="flag">-H</span> <span class="str">"Authorization: Bearer sk-your-master-key-here"</span></code></pre>
+
+    <h3>Revoke a key</h3>
+<pre><code><span class="cmd">curl</span> <span class="flag">-X POST</span> http://localhost:12434/key/delete \
+  <span class="flag">-H</span> <span class="str">"Authorization: Bearer sk-your-master-key-here"</span> \
+  <span class="flag">-H</span> <span class="str">"Content-Type: application/json"</span> \
+  <span class="flag">-d</span> <span class="str">'{"keys": ["sk-alice-key"]}'</span></code></pre>
+
+
+    <!-- ── 7. Cost Tracking ── -->
+    <h2 id="cost">Cost & Usage Tracking</h2>
+
+    <p>
+      Because PostgreSQL is running, LiteLLM logs every request with token counts and a calculated virtual cost.
+      Even though you are hosting the model yourself, assigning a price per token lets you:
+    </p>
+    <ul>
+      <li>Track which teams or individuals are the heaviest users</li>
+      <li>Enforce per-key budget caps that automatically cut off a key when it is exceeded</li>
+      <li>Do internal chargeback — bill departments based on actual consumption</li>
+      <li>Understand the equivalent cloud cost you are saving by self-hosting</li>
+    </ul>
+
+    <h3 id="cost-why">Why Set a Price for a Free Local Model?</h3>
+
+    <p>
+      The model costs nothing per token to run — your cost is electricity and hardware amortisation.
+      But setting a <em>reference price</em> that mirrors what you would pay a cloud provider gives your
+      spend numbers real meaning. It answers: <strong>"How much would this have cost us on the cloud?"</strong>
+    </p>
+
+    <p>
+      It also makes the budget cap on keys genuinely useful. If Alice's key has a
+      <code>max_budget</code> of <code>$10</code> and you use cloud-equivalent pricing, you know she has used
+      roughly $10 worth of compute — a concrete limit regardless of token volume.
+    </p>
+
+    <h3 id="cost-ref">Where to Find Reference Prices for Open-Source Models</h3>
+
+    <p>
+      There is no single authoritative source. The strategy is to look at what commercial API providers charge
+      for the <em>same or similar model</em> and use that as your reference rate.
+      Below are the best sources, in order of usefulness:
+    </p>
+
+    <h4>1. OpenRouter — openrouter.ai/models</h4>
+    <p>
+      OpenRouter is the most comprehensive price directory for open-source models. Search for the model name and
+      you will see per-token prices from multiple providers side by side. It lists hundreds of open-source models
+      including Qwen, LLaMA, Mistral, Gemma, and more.
+      <strong>Use the median price across providers</strong> as your reference.
+    </p>
+
+    <h4>2. Together AI — api.together.ai</h4>
+    <p>
+      Together AI hosts many open-source models. Their pricing page shows per-token rates for the exact
+      model families you are likely running. Qwen and LLaMA variants are well represented.
+    </p>
+
+    <h4>3. Fireworks AI — fireworks.ai/pricing</h4>
+    <p>
+      Another reliable source for open-source model pricing. Particularly good for MoE (Mixture of Experts)
+      models like the Qwen3-30B-A3B series, which are priced lower than dense models of similar quality.
+    </p>
+
+    <h4>4. Artificial Analysis — artificialanalysis.ai</h4>
+    <p>
+      Benchmarks quality, speed, and price across providers for the same model.
+      Useful for cross-checking that your reference price is in a reasonable range.
+    </p>
+
+    <h4>Reference prices for this guide's model</h4>
+    <p>
+      The following are <strong>approximate market rates</strong> as of mid-2025 for the
+      Qwen3-VL-30B-A3B class of model. Use these as your starting point — verify against the sources above
+      for the latest figures.
+    </p>
+
+    <table class="ref-table">
+      <thead>
+        <tr><th>Model tier</th><th>Input (per 1M tokens)</th><th>Output (per 1M tokens)</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Qwen3-VL-30B-A3B<br/>(this guide)</td>
+          <td>~$0.20</td>
+          <td>~$0.60 – $1.00</td>
+          <td>MoE model, priced below equivalent dense 30B. Vision-language capable.</td>
+        </tr>
+        <tr>
+          <td>Qwen3-8B class</td>
+          <td>~$0.05 – $0.10</td>
+          <td>~$0.10 – $0.20</td>
+          <td>Smaller, faster, lower cost</td>
+        </tr>
+        <tr>
+          <td>LLaMA 3.1 70B class</td>
+          <td>~$0.40 – $0.60</td>
+          <td>~$0.80 – $1.20</td>
+          <td>Dense 70B, higher cost than MoE 30B</td>
+        </tr>
+        <tr>
+          <td>Embedding models</td>
+          <td>~$0.01 – $0.02</td>
+          <td>$0.00</td>
+          <td>Output cost is always zero for embeddings</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout tip">
+      <div class="callout-icon">💡</div>
+      <div>
+        <p>
+          <strong>Per-token math:</strong> divide the per-million price by 1,000,000 to get the per-token value
+          for the config file. For example, $0.20 per 1M input tokens =
+          <code>0.20 / 1_000_000 = 0.0000002</code>.
+          Output at $1.00 per 1M = <code>1.00 / 1_000_000 = 0.000001</code>.
+        </p>
+      </div>
+    </div>
+
+    <h3 id="cost-config">Updating the Config to Track Costs</h3>
+
+    <p>
+      Open <code>/home/user/litellm/config.yaml</code> in a text editor and add (or update)
+      the two cost lines under your model's <code>litellm_params</code>:
+    </p>
+
+<pre><code><span class="key">model_list</span>:
+  - <span class="key">model_name</span>: <span class="val">Qwen3-VL-30B-A3B</span>
+    <span class="key">litellm_params</span>:
+      <span class="key">model</span>: <span class="val">openai/Qwen3-VL-30B-A3B</span>
+      <span class="key">api_base</span>: <span class="val">http://vllm-qwen3-vl-30b-a3b:8000/v1</span>
+      <span class="key">api_key</span>: <span class="val">os.environ/LITELLM_MASTER_KEY</span>
+      <span class="key">input_cost_per_token</span>: <span class="val">0.0000002</span>   <span class="comment"># $0.20 per 1M input tokens</span>
+      <span class="key">output_cost_per_token</span>: <span class="val">0.000001</span>    <span class="comment"># $1.00 per 1M output tokens</span></code></pre>
+
+    <p>After saving the file, restart LiteLLM to apply the change:</p>
+
+<pre><code><span class="cmd">sudo docker restart</span> ai-litellm</code></pre>
+
+    <div class="callout warn">
+      <div class="callout-icon">⚠️</div>
+      <div>
+        <p>
+          <strong>Existing spend is not recalculated.</strong> Changing the price only affects requests made
+          <em>after</em> the restart. Historical logs keep the cost they were recorded with.
+          If you want a clean slate, truncate the spend tables in PostgreSQL before restarting.
+        </p>
+      </div>
+    </div>
+
+    <h3 id="cost-view">Viewing Spend & Usage</h3>
+
+    <h4>Web Dashboard (recommended)</h4>
+    <p>Open in any browser on your network:</p>
+<pre><code>http://&lt;thor-device-ip&gt;:12434/ui</code></pre>
+    <p>
+      Log in with your master key. The dashboard shows:
+      spend per key over time, total token consumption, request counts, model breakdown, and a live request log.
+      This is the easiest way to share usage data with managers or finance.
+    </p>
+
+    <h4>API — Total spend across all keys</h4>
+<pre><code><span class="cmd">curl</span> http://localhost:12434/global/spend \
+  <span class="flag">-H</span> <span class="str">"Authorization: Bearer sk-your-master-key-here"</span></code></pre>
+
+    <h4>API — Spend broken down by key</h4>
+<pre><code><span class="cmd">curl</span> http://localhost:12434/global/spend/keys \
+  <span class="flag">-H</span> <span class="str">"Authorization: Bearer sk-your-master-key-here"</span></code></pre>
+
+    <h4>API — Info and cumulative spend for one specific key</h4>
+<pre><code><span class="cmd">curl</span> <span class="str">"http://localhost:12434/key/info?key=sk-alice-key"</span> \
+  <span class="flag">-H</span> <span class="str">"Authorization: Bearer sk-your-master-key-here"</span></code></pre>
+
+    <h4>API — Detailed per-request logs</h4>
+<pre><code><span class="cmd">curl</span> http://localhost:12434/spend/logs \
+  <span class="flag">-H</span> <span class="str">"Authorization: Bearer sk-your-master-key-here"</span></code></pre>
+
+
+    <!-- ── 8. Daily Ops ── -->
+    <h2 id="daily-ops">Daily Operations</h2>
+
+    <h3>Check container status</h3>
+<pre><code><span class="cmd">sudo docker ps</span></code></pre>
+
+    <h3>View logs</h3>
+<pre><code><span class="comment"># vLLM (model loading, inference errors)</span>
+<span class="cmd">sudo docker logs</span> <span class="flag">-f</span> vllm-qwen3-vl-30b-a3b
+
+<span class="comment"># LiteLLM (API requests, auth errors)</span>
+<span class="cmd">sudo docker logs</span> <span class="flag">-f</span> ai-litellm
+
+<span class="comment"># PostgreSQL</span>
+<span class="cmd">sudo docker logs</span> <span class="flag">-f</span> ai-postgres</code></pre>
+
+    <h3>Stop everything</h3>
+<pre><code><span class="cmd">sudo docker stop</span> ai-litellm vllm-qwen3-vl-30b-a3b ai-postgres</code></pre>
+
+    <h3>Start everything (after a stop or reboot)</h3>
+    <p>
+      All containers are started with <code>--restart unless-stopped</code>, so they automatically restart
+      after a device reboot. If you manually stopped them:
+    </p>
+<pre><code><span class="comment"># Start in this order — postgres first, vLLM second, LiteLLM last</span>
+<span class="cmd">sudo docker start</span> ai-postgres
+<span class="cmd">sudo docker start</span> vllm-qwen3-vl-30b-a3b
+<span class="cmd">sudo docker start</span> ai-litellm</code></pre>
+
+    <h3>Restart LiteLLM after config change</h3>
+<pre><code><span class="cmd">sudo docker restart</span> ai-litellm</code></pre>
+
+    <h3>Update the LiteLLM image</h3>
+<pre><code><span class="cmd">sudo docker pull</span> ghcr.io/berriai/litellm:main-latest
+<span class="cmd">sudo docker stop</span> ai-litellm
+<span class="cmd">sudo docker rm</span> ai-litellm
+<span class="comment"># Then re-run the docker run command from Step 5</span></code></pre>
+
+
+    <!-- ── 9. Troubleshooting ── -->
+    <h2 id="troubleshoot">Troubleshooting</h2>
+
+    <h3>IsADirectoryError: /app/config.yaml</h3>
+    <p>
+      The NVIDIA Jetson vLLM image has a directory at <code>/app/config.yaml</code> which conflicts with
+      Docker file mounts. <strong>Solution:</strong> pass all model arguments as CLI flags (as shown in Step 3)
+      instead of mounting a config file. For LiteLLM, mount to <code>/litellm-config.yaml</code> instead of
+      <code>/app/config.yaml</code>.
+    </p>
+
+    <h3>Container name already in use</h3>
+<pre><code><span class="cmd">sudo docker rm -f</span> &lt;container-name&gt;
+<span class="comment"># Then re-run the docker run command</span></code></pre>
+
+    <h3>Network not found</h3>
+<pre><code><span class="cmd">sudo docker network create</span> infra-thor
+<span class="comment"># Then re-run the docker run command</span></code></pre>
+
+    <h3>LiteLLM returns 401 Unauthorized</h3>
+    <p>The key is wrong or was not passed correctly. Verify:</p>
+    <ul>
+      <li>The <code>Authorization</code> header is exactly <code>Bearer sk-your-key</code> (with the space)</li>
+      <li>The key exists — check via <code>/key/list</code></li>
+      <li>The key has not expired and has not exceeded its budget</li>
+    </ul>
+
+    <h3>curl: Failed to connect to port 12434</h3>
+    <p>LiteLLM is not running or crashed. Check:</p>
+<pre><code><span class="cmd">sudo docker ps -a</span> | grep ai-litellm
+<span class="comment"># If status is "Exited", check why:</span>
+<span class="cmd">sudo docker logs</span> ai-litellm</code></pre>
+
+    <h3>vLLM is slow to start</h3>
+    <p>
+      The first startup compiles CUDA kernels. This can take 5–10 minutes on the first run.
+      Subsequent starts are faster because the compilation cache is reused.
+    </p>
+
+    <h3>Out of memory on vLLM</h3>
+    <p>Reduce <code>--gpu-memory-utilization</code> from <code>0.85</code> to <code>0.75</code>,
+    or reduce <code>--max-model-len</code> from <code>32768</code> to <code>16384</code>.</p>
+
+
+    <!-- ── 10. Quick Reference ── -->
+    <h2 id="reference">Quick Reference</h2>
+
+    <h3>Stack summary</h3>
+    <table class="ref-table">
+      <thead>
+        <tr><th>Component</th><th>Container name</th><th>Port</th><th>Image</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>PostgreSQL</td>
+          <td>ai-postgres</td>
+          <td>5432 (internal)</td>
+          <td>postgres:17</td>
+        </tr>
+        <tr>
+          <td>vLLM</td>
+          <td>vllm-qwen3-vl-30b-a3b</td>
+          <td>8000 (internal)</td>
+          <td>ghcr.io/nvidia-ai-iot/vllm:latest-jetson-thor</td>
+        </tr>
+        <tr>
+          <td>LiteLLM</td>
+          <td>ai-litellm</td>
+          <td>12434 (external)</td>
+          <td>ghcr.io/berriai/litellm:main-latest</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Model parameters explained</h3>
+    <table class="ref-table">
+      <thead>
+        <tr><th>Parameter</th><th>Value</th><th>Why</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>--dtype</td><td>bfloat16</td><td>Native precision on Hopper-class GPU</td></tr>
+        <tr><td>--kv-cache-dtype</td><td>fp8</td><td>Halves KV cache memory; supported on Hopper</td></tr>
+        <tr><td>--gpu-memory-utilization</td><td>0.85</td><td>Leaves 15% headroom for system</td></tr>
+        <tr><td>--max-model-len</td><td>32768</td><td>32K token context window</td></tr>
+        <tr><td>--max-num-seqs</td><td>32</td><td>Max concurrent users being served</td></tr>
+        <tr><td>--enable-prefix-caching</td><td>—</td><td>Reuses KV cache for repeated system prompts</td></tr>
+        <tr><td>--enable-chunked-prefill</td><td>—</td><td>Better latency for long prompts</td></tr>
+        <tr><td>--tool-call-parser</td><td>qwen3_xml</td><td>Enables function calling for Qwen3 models</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Key duration shortcuts</h3>
+    <table class="ref-table">
+      <thead>
+        <tr><th>Value</th><th>Meaning</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>"1h"</td><td>1 hour</td></tr>
+        <tr><td>"24h"</td><td>1 day</td></tr>
+        <tr><td>"7d"</td><td>1 week</td></tr>
+        <tr><td>"30d"</td><td>1 month</td></tr>
+        <tr><td>"90d"</td><td>3 months</td></tr>
+        <tr><td>null</td><td>Never expires</td></tr>
+      </tbody>
+    </table>
+
+    <div class="footer">
+      <p>
+        Stack: <strong>Jetson AGX Thor</strong> · <strong>vLLM</strong> · <strong>LiteLLM</strong> · <strong>PostgreSQL</strong> · <strong>Qwen3-VL-30B-A3B-AWQ-4bit</strong>
+      </p>
+    </div>
+
+  </main>
+</div>
+
+</body>
+</html>
