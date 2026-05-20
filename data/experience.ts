@@ -30,7 +30,7 @@ export const experiences: Experience[] = [
     bullets: [
       "Built a real-time multi-camera VLM pipeline from scratch — asyncio-native, with a sliding-window persistence gate that filters hallucinations before they reach the backend, cutting false alert rates without adding latency.",
       "Contributing to a patented hardware-accelerated video compression algorithm (Intel VAAPI) and building cross-platform utility applications (Windows, macOS, Linux) that onboard customers into the BLUE ecosystem.",
-      "Profiled the full inference stack across INT4/INT8/FP16 quantization levels and GPU/edge targets — found and eliminated the bottlenecks preventing real-time SLA compliance.",
+      "Profiled the full inference stack across quantization levels and GPU/edge targets — found and eliminated the bottlenecks preventing real-time SLA compliance.",
     ],
     tags: ["VLMs", "Video Compression", "Edge AI", "asyncio", "Intel VAAPI", "vLLM", "LiteLLM", "Python"],
   },
