@@ -6,11 +6,11 @@ import { cn } from "@/lib/utils";
 import { Menu, X } from "lucide-react";
 
 const navLinks = [
+  { label: "Projects", href: "#projects" },
   { label: "Experience", href: "#experience" },
   { label: "Open Models", href: "#open-models" },
   { label: "Skills", href: "#skills" },
   { label: "Writing", href: "#writing" },
-  { label: "Projects", href: "#projects" },
   { label: "Contact", href: "#contact" },
 ];
 
