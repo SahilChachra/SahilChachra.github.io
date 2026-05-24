@@ -22,6 +22,10 @@ export const nowStreams: NowStream[] = [
         label: "Cross-platform utility apps",
         body: "Building Windows, macOS, and Linux desktop apps that onboard customers into the BLUE ecosystem — paired with contributions to a patented Intel VAAPI video compression pipeline.",
       },
+      {
+        label: "MLX-quantized models for Apple Silicon",
+        body: "Publishing every quantization variant (affine 4/5/6/8-bit, mixed-bit, MX FP4/FP8) of Granite 4.1 8B and Hy-MT2 to HuggingFace — with benchmark reports comparing quality and throughput against FP16 baselines on M5 Pro.",
+      },
     ],
   },
   {
@@ -41,12 +45,12 @@ export const nowStreams: NowStream[] = [
     heading: "Exploring",
     items: [
       {
-        label: "INT4 / INT8 / FP16 quantization curves",
-        body: "Benchmarking accuracy degradation vs. throughput gains for VLMs on constrained hardware. The sweet spot isn't where the papers say it is.",
-      },
-      {
         label: "Temporal reasoning across frames",
         body: "Single-frame inference misses context that spans seconds. Exploring how to pass temporal state to models that weren't designed for it.",
+      },
+      {
+        label: "Where mixed-bit beats uniform quantization",
+        body: "For translation vs. reasoning workloads, the optimal bit-width allocation differs significantly. Mapping when mixed4_6 is worth the complexity over straight 4-bit.",
       },
     ],
   },

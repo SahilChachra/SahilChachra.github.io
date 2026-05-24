@@ -15,5 +15,6 @@ export const profile = {
     linkedin: "https://www.linkedin.com/in/sahil-chachra/",
     twitter: "https://x.com/ChachraSahil",
     medium: "https://medium.com/@sahilchachra",
+    huggingface: "https://huggingface.co/sahilchachra",
   },
 };
