@@ -4,40 +4,7 @@ import { LinkButton } from "@/components/ui/link-button";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
 import { ExternalLink } from "lucide-react";
 import { profile } from "@/data/profile";
-
-const models = [
-  {
-    base: "Granite 4.1 8B",
-    origin: "ibm-granite/granite-4.1-8b",
-    task: "Reasoning · Code · Tool Use",
-    variants: ["4-bit", "5-bit", "6-bit", "8-bit", "mixed4_6", "MX FP4", "MX FP8"],
-    highlight: "MX FP8 delivers 2× decode speed and half the memory vs FP16 on M5 Pro",
-    hfUrl: "https://huggingface.co/sahilchachra/granite-4.1-8b-mxfp8-mlx",
-  },
-  {
-    base: "Hy-MT2 7B",
-    origin: "tencent/Hy-MT2-7B",
-    task: "Translation · 40+ Languages",
-    variants: ["4-bit", "5-bit", "6-bit", "8-bit", "MX FP4", "MX FP8"],
-    highlight: "8-bit affine matches FP16 translation quality (chrF++ 60.23 vs 60.24) at half the size",
-    hfUrl: "https://huggingface.co/sahilchachra/hy-mt2-7b-8bit-mlx",
-  },
-  {
-    base: "Hy-MT2 1.8B",
-    origin: "tencent/Hy-MT2-1.8B",
-    task: "Translation · On-device",
-    variants: ["4-bit", "5-bit", "6-bit", "8-bit", "MX FP4", "MX FP8"],
-    highlight: "Runs entirely on-device — under 1 GB in 4-bit for mobile-class hardware",
-    hfUrl: "https://huggingface.co/sahilchachra/hy-mt2-1.8b-mxfp8-mlx",
-  },
-];
-
-const stats = [
-  { value: "14+", label: "Models published" },
-  { value: "3", label: "Base models ported" },
-  { value: "7", label: "Quant formats per model" },
-  { value: "M5 Pro", label: "Benchmarked on" },
-];
+import { modelFamilies as models, modelStats as stats } from "@/data/models";
 
 export function OpenModels() {
   return (
@@ -47,7 +14,7 @@ export function OpenModels() {
           <SectionHeader
             label="HuggingFace"
             title="Open Models"
-            subtitle="I quantize open-source LLMs into every MLX variant and publish them for the community — so anyone on Apple Silicon can run frontier models locally without writing a line of quantization code."
+            subtitle="I port open-source models to MLX — quantizing them into every variant, and occasionally merging or uncensoring them — so anyone on Apple Silicon can run frontier models locally without writing a line of quantization code."
           />
         </FadeIn>
 
@@ -113,7 +80,7 @@ export function OpenModels() {
                   </div>
 
                   <p className="text-xs text-zinc-500 leading-relaxed flex-1 italic">
-                    {model.highlight}
+                    {model.note}
                   </p>
 
                   <span className="mt-4 text-xs text-zinc-500 group-hover:text-zinc-300 transition-colors flex items-center gap-1">

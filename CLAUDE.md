@@ -179,11 +179,17 @@ Section components live in `components/sections/`.
 
 All personal content is kept in `data/` as typed TypeScript files — not hardcoded inside components.
 
-- `data/projects.ts` — Array of project objects (`title`, `description`, `tags`, `liveUrl`, `githubUrl`, `featured`)
-- `data/skills.ts` — Skills grouped by category (e.g. Languages, Frameworks, Tools)
 - `data/profile.ts` — Name, tagline, bio, social links, email
+- `data/experience.ts` — Work history (`role`, `company`, `narrative`, `bullets`, `tags`, dates)
+- `data/projects.ts` — Project objects (`title`, `description`, `tags`, `githubUrl`, `liveUrl`, `featured`)
+- `data/models.ts` — Published HuggingFace models grouped by base model (`modelFamilies`) + headline `modelStats`
+- `data/now.ts` — `/now`-style streams (Shipping / Thinking About / Exploring)
+- `data/notes.ts` — Knowledge-base entries; each maps to an HTML file in `public/notes/`
+- `data/stats.ts` — Headline numbers for the Stats strip
 
 Update these files to change site content without touching component logic.
+
+> **Writing/articles are NOT in `data/`.** The `Writing` section fetches the latest Medium posts live at build time via `fetchMediumPosts()` in `lib/medium.ts` (it parses the RSS feed at `medium.com/feed/@sahilchachra`). There is no `articles.ts` — don't reintroduce one.
 
 ---
 
@@ -257,4 +263,3 @@ const ShaderAnimation = dynamic(
 - No blog/CMS for now (can be added later).
 - No authentication.
 - No database.
-- No experience/timeline section in the initial version.
