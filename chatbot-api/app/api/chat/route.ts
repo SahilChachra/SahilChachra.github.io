@@ -100,7 +100,7 @@ interface ChatMessage {
   content: string;
 }
 
-async function callOpenRouter(key: string, messages: ChatMessage[], maxTokens = 350) {
+async function callOpenRouter(key: string, messages: ChatMessage[], maxTokens = 500) {
   const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -120,6 +120,7 @@ async function callOpenRouter(key: string, messages: ChatMessage[], maxTokens = 
       messages,
       max_tokens: maxTokens,
       temperature: 0.4,
+      include_reasoning: false,
     }),
   });
   const data = await res.json();

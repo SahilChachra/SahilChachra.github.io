@@ -12,7 +12,7 @@ import { fetchHFModels, modelDisplayName, type HFModel } from "@/lib/huggingface
 
 const CHATBOT_API_URL =
   process.env.NEXT_PUBLIC_CHATBOT_API_URL ??
-  "https://sahil-chachra-github-io-ekfn.vercel.app/api/chat";
+  "https://sahil-chachra-github-io.vercel.app/api/chat";
 
 interface HFResult {
   id: string;
