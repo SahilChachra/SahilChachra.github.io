@@ -110,17 +110,16 @@ async function callOpenRouter(key: string, messages: ChatMessage[], maxTokens = 
       "X-Title": "Sahil Chachra Portfolio - Model Finder",
     },
     body: JSON.stringify({
-      model: "nex-agi/nex-n2-pro:free",
+      model: "meta-llama/llama-3.1-8b-instruct",
       models: [
+        "meta-llama/llama-3.1-8b-instruct",
+        "mistralai/mistral-7b-instruct",
         "nex-agi/nex-n2-pro:free",
-        "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
-        "poolside/laguna-m.1:free",
       ],
       route: "fallback",
       messages,
       max_tokens: maxTokens,
       temperature: 0.4,
-      include_reasoning: false,
     }),
   });
   const data = await res.json();
