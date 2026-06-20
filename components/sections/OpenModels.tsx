@@ -1,14 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FadeIn } from "@/components/ui/fade-in";
 import { SectionHeader } from "@/components/SectionHeader";
 import { LinkButton } from "@/components/ui/link-button";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, SendHorizonal, Sparkles } from "lucide-react";
 import { profile } from "@/data/profile";
 import { modelFamilies, modelStats } from "@/data/models";
 import { fetchHFModels, modelDisplayName, type HFModel } from "@/lib/huggingface";
+
+const CHATBOT_API_URL =
+  process.env.NEXT_PUBLIC_CHATBOT_API_URL ?? "http://localhost:3001/api/chat";
+
+interface HFResult {
+  id: string;
+  downloads: number;
+  task: string | null;
+  url: string;
+}
 
 const FEATURED_COUNT = 4;
 
@@ -21,6 +31,35 @@ const staticStats = modelStats;
 export function OpenModels() {
   const [liveModels, setLiveModels] = useState<HFModel[] | null>(null);
   const [error, setError] = useState(false);
+
+  const [chatQuery, setChatQuery] = useState("");
+  const [chatAnswer, setChatAnswer] = useState("");
+  const [chatResults, setChatResults] = useState<HFResult[]>([]);
+  const [chatLoading, setChatLoading] = useState(false);
+  const answerRef = useRef<HTMLDivElement>(null);
+
+  async function handleAsk(e: React.FormEvent) {
+    e.preventDefault();
+    if (!chatQuery.trim() || chatLoading) return;
+    setChatLoading(true);
+    setChatAnswer("");
+    setChatResults([]);
+    try {
+      const res = await fetch(CHATBOT_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: chatQuery }),
+      });
+      const data = await res.json();
+      setChatAnswer(data.answer ?? "No response.");
+      setChatResults(data.hfResults ?? []);
+      setTimeout(() => answerRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 100);
+    } catch {
+      setChatAnswer("Something went wrong. Please try again.");
+    } finally {
+      setChatLoading(false);
+    }
+  }
 
   useEffect(() => {
     fetchHFModels("sahilchachra")
@@ -202,6 +241,79 @@ export function OpenModels() {
                 >
                   View all <ExternalLink size={10} />
                 </a>
+              </div>
+            )}
+          </div>
+        </FadeIn>
+
+        {/* Find Your Model chatbot */}
+        <FadeIn delay={550}>
+          <div className="rounded-2xl border border-zinc-800/60 bg-zinc-900/20 px-6 py-6 mb-10">
+            <div className="flex items-center gap-2 mb-4">
+              <Sparkles size={14} className="text-zinc-500" />
+              <p className="text-xs font-semibold tracking-widest uppercase text-zinc-500">
+                Find Your Model
+              </p>
+            </div>
+
+            <form onSubmit={handleAsk} className="flex gap-2 mb-4">
+              <input
+                type="text"
+                value={chatQuery}
+                onChange={(e) => setChatQuery(e.target.value)}
+                placeholder="e.g. best coding model for M4 Pro 24GB…"
+                className="flex-1 rounded-lg border border-zinc-700 bg-zinc-800/60 px-4 py-2.5 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-500 transition-colors"
+              />
+              <button
+                type="submit"
+                disabled={chatLoading || !chatQuery.trim()}
+                className="flex items-center gap-1.5 rounded-lg bg-zinc-700 hover:bg-zinc-600 disabled:opacity-40 disabled:cursor-not-allowed px-4 py-2.5 text-sm text-zinc-200 transition-colors"
+              >
+                <SendHorizonal size={14} />
+                {chatLoading ? "Thinking…" : "Ask"}
+              </button>
+            </form>
+
+            {chatLoading && (
+              <div className="flex gap-1 py-2">
+                {[0, 1, 2].map((i) => (
+                  <span
+                    key={i}
+                    className="w-1.5 h-1.5 rounded-full bg-zinc-600 animate-bounce"
+                    style={{ animationDelay: `${i * 120}ms` }}
+                  />
+                ))}
+              </div>
+            )}
+
+            {chatAnswer && (
+              <div ref={answerRef} className="space-y-3">
+                <p className="text-sm text-zinc-300 leading-relaxed">{chatAnswer}</p>
+
+                {chatResults.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 mb-2">
+                      Also on HuggingFace
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {chatResults.map((r) => (
+                        <a
+                          key={r.id}
+                          href={r.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="group flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900 hover:border-zinc-600 px-3 py-1.5 transition-colors"
+                        >
+                          <span className="text-xs text-zinc-400 group-hover:text-zinc-200 transition-colors">
+                            {r.id.split("/").pop()}
+                          </span>
+                          <span className="text-[10px] text-zinc-600">↓{r.downloads?.toLocaleString()}</span>
+                          <ExternalLink size={10} className="text-zinc-700 group-hover:text-zinc-500" />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
