@@ -136,5 +136,5 @@ export const modelStats: ModelStat[] = [
   { value: "60+", label: "Models published" },
   { value: "15+", label: "Base models ported" },
   { value: "MLX · AWQ · NVFP4 · OptiQ", label: "Quant formats" },
-  { value: "M5 Pro", label: "Benchmarked on" },
+  { value: "M4 Pro · M5 Pro", label: "Benchmarked on" },
 ];

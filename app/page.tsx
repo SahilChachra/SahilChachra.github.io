@@ -2,7 +2,7 @@ import { Navigation } from "@/components/Navigation";
 import { Hero } from "@/components/sections/Hero";
 import { Stats } from "@/components/sections/Stats";
 import { Now } from "@/components/sections/Now";
-import { Projects } from "@/components/sections/Projects";
+// import { Projects } from "@/components/sections/Projects";
 import { Experience } from "@/components/sections/Experience";
 import { OpenModels } from "@/components/sections/OpenModels";
 import { Skills } from "@/components/sections/Skills";
@@ -18,9 +18,9 @@ export default function Home() {
         <Hero />
         <Stats />
         <Now />
-        <Projects />
-        <Experience />
         <OpenModels />
+        <Experience />
+        {/* <Projects /> */}
         <Skills />
         <Writing />
         <Contact />

@@ -31,7 +31,7 @@ export function OpenModels() {
   const loading = liveModels === null && !error;
 
   const featuredModels = liveModels?.slice(0, FEATURED_COUNT) ?? [];
-  const otherModels = liveModels?.slice(FEATURED_COUNT) ?? [];
+  const otherModels = liveModels?.slice(FEATURED_COUNT, FEATURED_COUNT + 6) ?? [];
 
   const liveStats = liveModels
     ? [
@@ -164,7 +164,7 @@ export function OpenModels() {
 
             {loading ? (
               <div className="flex flex-wrap gap-2">
-                {Array.from({ length: 12 }).map((_, i) => (
+                {Array.from({ length: 6 }).map((_, i) => (
                   <div
                     key={i}
                     className="h-7 rounded-lg bg-zinc-800 animate-pulse"
