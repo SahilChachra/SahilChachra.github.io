@@ -90,6 +90,37 @@ interface HFModel {
   url: string;
 }
 
+interface ChatMessage {
+  role: "user" | "assistant" | "system";
+  content: string;
+}
+
+async function callOpenRouter(key: string, messages: ChatMessage[], maxTokens = 350) {
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": "https://sahilchachra.github.io",
+      "X-Title": "Sahil Chachra Portfolio — Model Finder",
+    },
+    body: JSON.stringify({
+      model: "meta-llama/llama-3.1-8b-instruct:free",
+      models: [
+        "meta-llama/llama-3.1-8b-instruct:free",
+        "google/gemini-flash-1.5-8b",
+        "mistralai/mistral-7b-instruct:free",
+      ],
+      route: "fallback",
+      messages,
+      max_tokens: maxTokens,
+      temperature: 0.4,
+    }),
+  });
+  const data = await res.json();
+  return (data.choices?.[0]?.message?.content as string) ?? "";
+}
+
 export async function POST(req: NextRequest) {
   const origin = req.headers.get("origin") ?? "";
   const headers = corsHeaders(origin);
@@ -99,20 +130,53 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "API key not configured" }, { status: 500, headers });
   }
 
-  let query: string;
+  let body: {
+    action?: "summarize" | "chat";
+    messages?: ChatMessage[];
+    summary?: string;
+    query?: string;
+  };
   try {
-    ({ query } = await req.json());
-    if (!query?.trim()) throw new Error("empty");
+    body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid request" }, { status: 400, headers });
   }
 
-  // Fetch live model list from HF
+  // ── Summarization action ──────────────────────────────────────────────────
+  if (body.action === "summarize" && body.messages?.length) {
+    const transcript = body.messages
+      .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
+      .join("\n");
+    try {
+      const summary = await callOpenRouter(
+        key,
+        [
+          {
+            role: "user",
+            content: `Summarize this conversation in 3-5 sentences, preserving key details about the user's hardware, use case, and any recommendations made:\n\n${transcript}`,
+          },
+        ],
+        200
+      );
+      return NextResponse.json({ summary }, { headers });
+    } catch {
+      return NextResponse.json({ summary: "" }, { headers });
+    }
+  }
+
+  // ── Chat action ───────────────────────────────────────────────────────────
+  const history: ChatMessage[] = body.messages ?? [];
+  const lastUserMsg = [...history].reverse().find((m) => m.role === "user")?.content ?? "";
+
+  if (!lastUserMsg.trim()) {
+    return NextResponse.json({ error: "Empty query" }, { status: 400, headers });
+  }
+
+  // Fetch live HF model list
   let liveModelsList = "";
   try {
     const hfRes = await fetch(
-      `https://huggingface.co/api/models?author=${HF_AUTHOR}&sort=downloads&direction=-1&limit=30`,
-      { next: { revalidate: 300 } }
+      `https://huggingface.co/api/models?author=${HF_AUTHOR}&sort=downloads&direction=-1&limit=30`
     );
     const data: Record<string, unknown>[] = await hfRes.json();
     liveModelsList = data
@@ -122,15 +186,14 @@ export async function POST(req: NextRequest) {
     liveModelsList = "(could not fetch live list)";
   }
 
-  // HF search for the query (for supplementary results)
+  // HF search on the latest user query
   const hfResults: HFModel[] = [];
   try {
     const searchRes = await fetch(
-      `https://huggingface.co/api/models?search=${encodeURIComponent(query)}&sort=downloads&direction=-1&limit=3`
+      `https://huggingface.co/api/models?search=${encodeURIComponent(lastUserMsg)}&sort=downloads&direction=-1&limit=3`
     );
     const searchData: Record<string, unknown>[] = await searchRes.json();
     for (const m of searchData) {
-      // Exclude Sahil's own models from HF search (already covered above)
       const id = m.modelId as string;
       if (!id.startsWith(HF_AUTHOR + "/")) {
         hfResults.push({
@@ -143,10 +206,14 @@ export async function POST(req: NextRequest) {
     }
   } catch {}
 
+  const summaryContext = body.summary
+    ? `\n## Previous conversation summary:\n${body.summary}\n`
+    : "";
+
   const systemPrompt = `You are a helpful AI model recommendation assistant embedded in Sahil Chachra's portfolio. Sahil publishes quantized and fine-tuned AI models to HuggingFace for the community.
 
 Your job: help users find the right model for their hardware and use case.
-
+${summaryContext}
 ${HARDWARE_PROFILES}
 
 ${MODEL_KNOWLEDGE}
@@ -156,42 +223,16 @@ ${liveModelsList}
 
 ## Instructions:
 - Recommend from Sahil's models first when they fit the user's need
-- Be specific: mention the model name, the format (MLX/AWQ/etc.), memory requirement, and why it fits
-- Keep response concise: 2-4 sentences + a clear recommendation
-- If multiple of Sahil's models fit, pick the best one and briefly mention the alternative
-- If none of Sahil's models fit well, say so honestly and suggest checking HuggingFace
+- Be specific: mention the model name, format (MLX/AWQ/etc.), memory requirement, and why it fits
+- Keep responses concise: 2-4 sentences + a clear recommendation
+- If multiple models fit, pick the best and briefly mention the alternative
+- If none of Sahil's models fit well, say so honestly
 - Never make up benchmark numbers — only cite what's provided above`;
 
-  // Call OpenRouter
   let answer = "";
   try {
-    const orRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://sahilchachra.github.io",
-        "X-Title": "Sahil Chachra Portfolio — Model Finder",
-      },
-      body: JSON.stringify({
-        // Primary: free tier Llama 3.1 8B. Fallbacks: Gemini Flash Lite, then Mistral 7B free
-        model: "meta-llama/llama-3.1-8b-instruct:free",
-        models: [
-          "meta-llama/llama-3.1-8b-instruct:free",
-          "google/gemini-flash-1.5-8b",
-          "mistralai/mistral-7b-instruct:free",
-        ],
-        route: "fallback",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: query },
-        ],
-        max_tokens: 350,
-        temperature: 0.4,
-      }),
-    });
-    const orData = await orRes.json();
-    answer = orData.choices?.[0]?.message?.content ?? "Sorry, I couldn't generate a response right now.";
+    answer = await callOpenRouter(key, [{ role: "system", content: systemPrompt }, ...history]);
+    if (!answer) answer = "Sorry, I couldn't generate a response right now.";
   } catch {
     answer = "Sorry, the recommendation service is temporarily unavailable.";
   }

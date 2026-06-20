@@ -21,7 +21,14 @@ interface HFResult {
   url: string;
 }
 
+interface ChatMsg {
+  role: "user" | "assistant";
+  content: string;
+  hfResults?: HFResult[];
+}
+
 const FEATURED_COUNT = 4;
+const MAX_USER_TURNS = 5;
 
 const enrichmentMap = new Map(
   modelFamilies.map((f) => [f.flagshipId, f])
@@ -34,29 +41,84 @@ export function OpenModels() {
   const [error, setError] = useState(false);
 
   const [chatQuery, setChatQuery] = useState("");
-  const [chatAnswer, setChatAnswer] = useState("");
-  const [chatResults, setChatResults] = useState<HFResult[]>([]);
+  const [chatMsgs, setChatMsgs] = useState<ChatMsg[]>([]);
+  const [chatSummary, setChatSummary] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
-  const answerRef = useRef<HTMLDivElement>(null);
+  const chatBottomRef = useRef<HTMLDivElement>(null);
 
-  async function handleAsk(e: React.FormEvent) {
-    e.preventDefault();
-    if (!chatQuery.trim() || chatLoading) return;
-    setChatLoading(true);
-    setChatAnswer("");
-    setChatResults([]);
+  function scrollToBottom() {
+    setTimeout(() => chatBottomRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 80);
+  }
+
+  async function summarizeAndCompress(msgs: ChatMsg[]) {
     try {
       const res = await fetch(CHATBOT_API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: chatQuery }),
+        body: JSON.stringify({
+          action: "summarize",
+          messages: msgs.map(({ role, content }) => ({ role, content })),
+        }),
       });
       const data = await res.json();
-      setChatAnswer(data.answer ?? "No response.");
-      setChatResults(data.hfResults ?? []);
-      setTimeout(() => answerRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 100);
+      return (data.summary as string) ?? "";
     } catch {
-      setChatAnswer("Something went wrong. Please try again.");
+      return "";
+    }
+  }
+
+  async function handleAsk(e: React.FormEvent) {
+    e.preventDefault();
+    const query = chatQuery.trim();
+    if (!query || chatLoading) return;
+    setChatQuery("");
+    setChatLoading(true);
+
+    // Append user message immediately
+    const userMsg: ChatMsg = { role: "user", content: query };
+    const nextMsgs = [...chatMsgs, userMsg];
+    setChatMsgs(nextMsgs);
+    scrollToBottom();
+
+    // Count user turns so far
+    const userTurnCount = nextMsgs.filter((m) => m.role === "user").length;
+
+    // If we've hit the limit, summarize previous history first
+    let activeSummary = chatSummary;
+    let historyToSend = nextMsgs;
+    if (userTurnCount > MAX_USER_TURNS) {
+      const msgsToSummarize = nextMsgs.slice(0, -1); // everything except the new user msg
+      const summary = await summarizeAndCompress(msgsToSummarize);
+      activeSummary = summary;
+      setChatSummary(summary);
+      // Keep only the new user message in history
+      historyToSend = [userMsg];
+      setChatMsgs([
+        { role: "assistant", content: "_(Conversation summarized to save context — continuing below)_" },
+        userMsg,
+      ]);
+    }
+
+    try {
+      const res = await fetch(CHATBOT_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "chat",
+          messages: historyToSend.map(({ role, content }) => ({ role, content })),
+          summary: activeSummary || undefined,
+        }),
+      });
+      const data = await res.json();
+      const assistantMsg: ChatMsg = {
+        role: "assistant",
+        content: data.answer ?? "No response.",
+        hfResults: data.hfResults ?? [],
+      };
+      setChatMsgs((prev) => [...prev, assistantMsg]);
+      scrollToBottom();
+    } catch {
+      setChatMsgs((prev) => [...prev, { role: "assistant", content: "Something went wrong. Please try again." }]);
     } finally {
       setChatLoading(false);
     }
@@ -257,66 +319,84 @@ export function OpenModels() {
               </p>
             </div>
 
-            <form onSubmit={handleAsk} className="flex gap-2 mb-4">
+            {/* Chat history */}
+            {chatMsgs.length > 0 && (
+              <div className="space-y-4 mb-4 max-h-80 overflow-y-auto pr-1">
+                {chatMsgs.map((msg, i) => (
+                  <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                    <div className={`max-w-[85%] space-y-2 ${msg.role === "user" ? "items-end" : "items-start"} flex flex-col`}>
+                      <div
+                        className={`rounded-xl px-4 py-2.5 text-sm leading-relaxed ${
+                          msg.role === "user"
+                            ? "bg-zinc-700 text-zinc-100"
+                            : "bg-zinc-800/60 border border-zinc-700/50 text-zinc-300"
+                        }`}
+                      >
+                        {msg.content}
+                      </div>
+                      {msg.hfResults && msg.hfResults.length > 0 && (
+                        <div className="w-full space-y-1.5">
+                          <p className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600">
+                            Also on HuggingFace
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {msg.hfResults.map((r) => (
+                              <a
+                                key={r.id}
+                                href={r.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="group flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900 hover:border-zinc-600 px-2.5 py-1 transition-colors"
+                              >
+                                <span className="text-xs text-zinc-400 group-hover:text-zinc-200 transition-colors">
+                                  {r.id.split("/").pop()}
+                                </span>
+                                <span className="text-[10px] text-zinc-600">↓{r.downloads?.toLocaleString()}</span>
+                                <ExternalLink size={9} className="text-zinc-700 group-hover:text-zinc-500" />
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                {chatLoading && (
+                  <div className="flex justify-start">
+                    <div className="bg-zinc-800/60 border border-zinc-700/50 rounded-xl px-4 py-3 flex gap-1">
+                      {[0, 1, 2].map((i) => (
+                        <span
+                          key={i}
+                          className="w-1.5 h-1.5 rounded-full bg-zinc-500 animate-bounce"
+                          style={{ animationDelay: `${i * 120}ms` }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div ref={chatBottomRef} />
+              </div>
+            )}
+
+            <form onSubmit={handleAsk} className="flex gap-2">
               <input
                 type="text"
                 value={chatQuery}
                 onChange={(e) => setChatQuery(e.target.value)}
-                placeholder="e.g. best coding model for M4 Pro 24GB…"
+                placeholder={chatMsgs.length === 0 ? "e.g. best coding model for M4 Pro 24GB…" : "Ask a follow-up…"}
                 className="flex-1 rounded-lg border border-zinc-700 bg-zinc-800/60 px-4 py-2.5 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-500 transition-colors"
               />
               <button
                 type="submit"
                 disabled={chatLoading || !chatQuery.trim()}
-                className="flex items-center gap-1.5 rounded-lg bg-zinc-700 hover:bg-zinc-600 disabled:opacity-40 disabled:cursor-not-allowed px-4 py-2.5 text-sm text-zinc-200 transition-colors"
+                className="flex items-center gap-1.5 rounded-lg bg-zinc-700 hover:bg-zinc-600 disabled:opacity-40 disabled:cursor-not-allowed px-4 py-2.5 text-sm text-zinc-200 transition-colors shrink-0"
               >
                 <SendHorizonal size={14} />
-                {chatLoading ? "Thinking…" : "Ask"}
+                {chatLoading ? "…" : "Ask"}
               </button>
             </form>
-
-            {chatLoading && (
-              <div className="flex gap-1 py-2">
-                {[0, 1, 2].map((i) => (
-                  <span
-                    key={i}
-                    className="w-1.5 h-1.5 rounded-full bg-zinc-600 animate-bounce"
-                    style={{ animationDelay: `${i * 120}ms` }}
-                  />
-                ))}
-              </div>
-            )}
-
-            {chatAnswer && (
-              <div ref={answerRef} className="space-y-3">
-                <p className="text-sm text-zinc-300 leading-relaxed">{chatAnswer}</p>
-
-                {chatResults.length > 0 && (
-                  <div>
-                    <p className="text-[10px] font-semibold tracking-widest uppercase text-zinc-600 mb-2">
-                      Also on HuggingFace
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {chatResults.map((r) => (
-                        <a
-                          key={r.id}
-                          href={r.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="group flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900 hover:border-zinc-600 px-3 py-1.5 transition-colors"
-                        >
-                          <span className="text-xs text-zinc-400 group-hover:text-zinc-200 transition-colors">
-                            {r.id.split("/").pop()}
-                          </span>
-                          <span className="text-[10px] text-zinc-600">↓{r.downloads?.toLocaleString()}</span>
-                          <ExternalLink size={10} className="text-zinc-700 group-hover:text-zinc-500" />
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         </FadeIn>
 
