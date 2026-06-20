@@ -117,8 +117,9 @@ export function OpenModels() {
       };
       setChatMsgs((prev) => [...prev, assistantMsg]);
       scrollToBottom();
-    } catch {
-      setChatMsgs((prev) => [...prev, { role: "assistant", content: "Something went wrong. Please try again." }]);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      setChatMsgs((prev) => [...prev, { role: "assistant", content: `Error: ${msg}` }]);
     } finally {
       setChatLoading(false);
     }
