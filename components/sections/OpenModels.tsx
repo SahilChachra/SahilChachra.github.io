@@ -1,14 +1,19 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { FadeIn } from "@/components/ui/fade-in";
 import { SectionHeader } from "@/components/SectionHeader";
 import { LinkButton } from "@/components/ui/link-button";
-import { GlowingEffect } from "@/components/ui/glowing-effect";
 import { ExternalLink, SendHorizonal, Sparkles, TrendingUp } from "lucide-react";
 import { profile } from "@/data/profile";
 import { modelFamilies, modelStats } from "@/data/models";
 import { fetchHFModels, modelDisplayName, type HFModel } from "@/lib/huggingface";
+
+const ThermodynamicGrid = dynamic(
+  () => import("@/components/ui/interactive-thermodynamic-grid"),
+  { ssr: false }
+);
 
 const CHATBOT_API_URL =
   process.env.NEXT_PUBLIC_CHATBOT_API_URL ??
@@ -155,11 +160,13 @@ export function OpenModels() {
 
   const totalDownloads = liveModels?.reduce((sum, m) => sum + m.downloads, 0) ?? 0;
   const modelCount = liveModels?.length ?? 0;
-  const topLeaderboard = liveModels?.slice(0, 10) ?? [];
+  const topLeaderboard = liveModels?.slice(0, 5) ?? [];
   const maxDownloads = topLeaderboard[0]?.downloads ?? 1;
 
   const animatedDownloads = useCountUp(totalDownloads, 1600, !!liveModels);
   const animatedModelCount = useCountUp(modelCount, 1000, !!liveModels);
+
+  const [hoveredBar, setHoveredBar] = useState<number | null>(null);
 
   const otherModels = liveModels?.slice(4, 10) ?? [];
 
@@ -179,8 +186,13 @@ export function OpenModels() {
   ];
 
   return (
-    <section id="open-models" className="py-16 lg:py-20 bg-zinc-950">
-      <div className="max-w-6xl mx-auto px-6">
+    <section id="open-models" className="relative py-16 lg:py-20 bg-[#050505] overflow-hidden">
+      {/* Thermodynamic interactive background */}
+      <ThermodynamicGrid resolution={18} coolingFactor={0.97} aria-hidden="true" />
+      {/* Fade edges so content reads cleanly */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_40%,transparent_20%,rgba(5,5,5,0.75)_100%)]" />
+
+      <div className="relative z-10 max-w-6xl mx-auto px-6">
         <FadeIn>
           <SectionHeader
             label="HuggingFace"
@@ -195,16 +207,8 @@ export function OpenModels() {
             {liveStats.map((s) => (
               <div
                 key={s.label}
-                className="relative rounded-xl border border-zinc-800 bg-zinc-900/40 px-5 py-4 text-center"
+                className="relative rounded-xl border border-white/10 bg-white/5 backdrop-blur-md px-5 py-4 text-center shadow-[0_4px_24px_rgba(0,0,0,0.5)]"
               >
-                <GlowingEffect
-                  spread={30}
-                  glow={true}
-                  disabled={false}
-                  proximity={50}
-                  inactiveZone={0.01}
-                  borderWidth={2}
-                />
                 <p className="text-xl font-bold text-zinc-100 tracking-tight tabular-nums">
                   {s.value}
                 </p>
@@ -219,15 +223,7 @@ export function OpenModels() {
 
         {/* Download leaderboard */}
         <FadeIn delay={180}>
-          <div className="relative rounded-2xl border border-zinc-800/60 bg-zinc-900/30 px-6 py-5 mb-8">
-            <GlowingEffect
-              spread={40}
-              glow={true}
-              disabled={false}
-              proximity={80}
-              inactiveZone={0.01}
-              borderWidth={1}
-            />
+          <div className="relative rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md px-6 py-5 mb-8 shadow-[0_4px_32px_rgba(0,0,0,0.5)]">
             <div className="flex items-center gap-2 mb-5">
               <TrendingUp size={13} className="text-zinc-500" />
               <p className="text-xs font-semibold tracking-widest uppercase text-zinc-500">
@@ -255,6 +251,11 @@ export function OpenModels() {
                   const enrich = enrichmentMap.get(m.id);
                   const name = enrich?.base ?? modelDisplayName(m.id);
                   const isTop = i === 0;
+                  const isHot = hoveredBar === i;
+
+                  // Fire intensity dims as rank drops; hover ignites any bar
+                  const baseFrom = isTop ? "from-orange-600/70" : i === 1 ? "from-red-700/55" : "from-red-900/40";
+                  const baseTo   = isTop ? "to-yellow-500/45"   : i === 1 ? "to-orange-600/30"  : "to-orange-800/20";
 
                   return (
                     <a
@@ -263,27 +264,45 @@ export function OpenModels() {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="group flex items-center gap-3"
+                      onMouseEnter={() => setHoveredBar(i)}
+                      onMouseLeave={() => setHoveredBar(null)}
                     >
-                      <span className={`text-xs w-4 text-right shrink-0 tabular-nums ${isTop ? "text-zinc-400 font-semibold" : "text-zinc-600"}`}>
+                      <span className={`text-xs w-4 text-right shrink-0 tabular-nums transition-colors duration-200 ${
+                        isHot ? "text-orange-400 font-semibold" : isTop ? "text-zinc-400 font-semibold" : "text-zinc-600"
+                      }`}>
                         {i + 1}
                       </span>
+
                       <div className="flex-1 relative h-7 rounded-md bg-zinc-800/50 overflow-hidden">
+                        {/* Base fire bar */}
                         <div
-                          className={`absolute inset-y-0 left-0 rounded-md transition-all duration-700 ease-out ${
-                            isTop
-                              ? "bg-gradient-to-r from-blue-600/70 to-blue-400/40"
-                              : "bg-gradient-to-r from-zinc-600/50 to-zinc-700/20"
-                          } group-hover:from-blue-600/60 group-hover:to-blue-400/30`}
+                          className={`absolute inset-y-0 left-0 rounded-md transition-all duration-700 ease-out bg-gradient-to-r ${
+                            isHot
+                              ? "from-orange-400/90 to-yellow-300/70"
+                              : `${baseFrom} ${baseTo}`
+                          }`}
                           style={{
                             width: barsVisible ? `${pct}%` : "0%",
-                            transitionDelay: `${i * 50}ms`,
+                            transitionDelay: isHot ? "0ms" : `${i * 50}ms`,
                           }}
                         />
-                        <span className="absolute inset-0 flex items-center px-2.5 text-[11px] font-medium text-zinc-300 group-hover:text-zinc-100 transition-colors truncate">
+                        {/* Glow bloom on hover */}
+                        {isHot && (
+                          <div
+                            className="absolute inset-y-0 left-0 rounded-md bg-gradient-to-r from-orange-500/30 to-yellow-400/20 blur-sm"
+                            style={{ width: `${pct}%` }}
+                          />
+                        )}
+                        <span className={`absolute inset-0 flex items-center px-2.5 text-[11px] font-medium transition-colors duration-200 truncate ${
+                          isHot ? "text-yellow-100" : "text-zinc-300"
+                        }`}>
                           {name}
                         </span>
                       </div>
-                      <span className="text-xs text-zinc-500 group-hover:text-zinc-400 transition-colors w-12 text-right shrink-0 tabular-nums">
+
+                      <span className={`text-xs transition-colors duration-200 w-12 text-right shrink-0 tabular-nums ${
+                        isHot ? "text-orange-400" : "text-zinc-500"
+                      }`}>
                         {formatDownloads(m.downloads)}
                       </span>
                     </a>
@@ -296,7 +315,7 @@ export function OpenModels() {
 
         {/* Also published — compact chip strip */}
         <FadeIn delay={400}>
-          <div className="rounded-2xl border border-zinc-800/60 bg-zinc-900/30 px-6 py-5 mb-10">
+          <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md px-6 py-5 mb-10 shadow-[0_4px_32px_rgba(0,0,0,0.5)]">
             <p className="text-xs font-semibold tracking-widest uppercase text-zinc-600 mb-4">
               Also Published
             </p>
@@ -348,7 +367,7 @@ export function OpenModels() {
 
         {/* Find Your Model chatbot */}
         <FadeIn delay={550}>
-          <div className="rounded-2xl border border-zinc-800/60 bg-zinc-900/20 px-6 py-6 mb-10">
+          <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md px-6 py-6 mb-10 shadow-[0_4px_32px_rgba(0,0,0,0.5)]">
             <div className="flex items-center gap-2 mb-4">
               <Sparkles size={14} className="text-zinc-500" />
               <p className="text-xs font-semibold tracking-widest uppercase text-zinc-500">

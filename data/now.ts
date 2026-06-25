@@ -19,12 +19,8 @@ export const nowStreams: NowStream[] = [
         body: "Multi-camera asyncio system where raw model events pass through a sliding-window persistence gate before they touch the backend — temporal confidence filtering as the anti-hallucination layer.",
       },
       {
-        label: "Cross-platform utility apps",
-        body: "Building Windows, macOS, and Linux desktop apps that onboard customers into the BLUE ecosystem — paired with contributions to a patented Intel VAAPI video compression pipeline.",
-      },
-      {
-        label: "MLX-quantized models for Apple Silicon",
-        body: "Publishing every quantization variant (affine 4/5/6/8-bit, mixed-bit, MX FP4/FP8) of Granite 4.1 8B and Hy-MT2 to HuggingFace — with benchmark reports comparing quality and throughput against FP16 baselines on M5 Pro.",
+        label: "Quantization across formats and use cases",
+        body: "Exploring how affine, MX FP4/FP8, and OptiQ quants behave differently across reasoning, translation, and code workloads — and fine-tuning small models (1B–8B) with LoRA to close the gap where quantization hurts most.",
       },
     ],
   },
