@@ -27,7 +27,6 @@ interface ChatMsg {
   hfResults?: HFResult[];
 }
 
-const FEATURED_COUNT = 4;
 const MAX_USER_TURNS = 5;
 
 const enrichmentMap = new Map(
@@ -162,8 +161,7 @@ export function OpenModels() {
   const animatedDownloads = useCountUp(totalDownloads, 1600, !!liveModels);
   const animatedModelCount = useCountUp(modelCount, 1000, !!liveModels);
 
-  const featuredModels = liveModels?.slice(0, FEATURED_COUNT) ?? [];
-  const otherModels = liveModels?.slice(FEATURED_COUNT, FEATURED_COUNT + 6) ?? [];
+  const otherModels = liveModels?.slice(4, 10) ?? [];
 
   const liveStats = [
     {
@@ -295,87 +293,6 @@ export function OpenModels() {
             )}
           </div>
         </FadeIn>
-
-        {/* Featured model cards — 2×2 grid */}
-        {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-8">
-            {Array.from({ length: FEATURED_COUNT }).map((_, i) => (
-              <div
-                key={i}
-                className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6 animate-pulse h-52"
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-8">
-            {featuredModels.map((model, i) => {
-              const enrich = enrichmentMap.get(model.id);
-              const displayName = enrich?.base ?? modelDisplayName(model.id);
-              const hfUrl = `https://huggingface.co/${model.id}`;
-
-              return (
-                <FadeIn key={model.id} delay={i * 80}>
-                  <a
-                    href={hfUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group relative flex flex-col h-full rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6 hover:border-zinc-700 transition-colors"
-                  >
-                    <GlowingEffect
-                      spread={35}
-                      glow={true}
-                      disabled={false}
-                      proximity={60}
-                      inactiveZone={0.01}
-                      borderWidth={2}
-                    />
-
-                    <div className="relative z-10 flex flex-col h-full">
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <h3 className="text-base font-semibold text-zinc-100 group-hover:text-white transition-colors">
-                          {displayName}
-                        </h3>
-                        <span className="shrink-0 text-[10px] text-zinc-500 bg-zinc-800/80 rounded-full px-2 py-0.5 mt-0.5">
-                          ↓ {model.downloads.toLocaleString()}
-                        </span>
-                      </div>
-
-                      {enrich && (
-                        <>
-                          <p className="text-xs text-zinc-500 mb-1">{enrich.origin}</p>
-                          <p className="text-xs text-zinc-400 mb-4">{enrich.task}</p>
-                          <div className="flex flex-wrap gap-1.5 mb-4">
-                            {enrich.variants.map((v) => (
-                              <span
-                                key={v}
-                                className="text-[11px] text-zinc-400 bg-zinc-800 rounded-md px-2 py-0.5"
-                              >
-                                {v}
-                              </span>
-                            ))}
-                          </div>
-                          <p className="text-xs text-zinc-500 leading-relaxed flex-1 italic">
-                            {enrich.note}
-                          </p>
-                        </>
-                      )}
-
-                      {!enrich && model.task && (
-                        <p className="text-xs text-zinc-400 mb-4 flex-1">
-                          {model.task.replace(/-/g, " ")}
-                        </p>
-                      )}
-
-                      <span className="mt-4 text-xs text-zinc-500 group-hover:text-zinc-300 transition-colors flex items-center gap-1">
-                        Explore on HuggingFace <ExternalLink size={11} />
-                      </span>
-                    </div>
-                  </a>
-                </FadeIn>
-              );
-            })}
-          </div>
-        )}
 
         {/* Also published — compact chip strip */}
         <FadeIn delay={400}>
