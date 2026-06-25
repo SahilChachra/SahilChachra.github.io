@@ -5,7 +5,7 @@ import { FadeIn } from "@/components/ui/fade-in";
 import { SectionHeader } from "@/components/SectionHeader";
 import { LinkButton } from "@/components/ui/link-button";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
-import { ExternalLink, SendHorizonal, Sparkles } from "lucide-react";
+import { ExternalLink, SendHorizonal, Sparkles, TrendingUp } from "lucide-react";
 import { profile } from "@/data/profile";
 import { modelFamilies, modelStats } from "@/data/models";
 import { fetchHFModels, modelDisplayName, type HFModel } from "@/lib/huggingface";
@@ -34,11 +34,33 @@ const enrichmentMap = new Map(
   modelFamilies.map((f) => [f.flagshipId, f])
 );
 
-const staticStats = modelStats;
+function useCountUp(target: number, duration = 1400, enabled = true) {
+  const [val, setVal] = useState(0);
+  useEffect(() => {
+    if (!enabled || target === 0) return;
+    let startTime: number | null = null;
+    const tick = (ts: number) => {
+      if (!startTime) startTime = ts;
+      const progress = Math.min((ts - startTime) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 4);
+      setVal(Math.floor(eased * target));
+      if (progress < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, [target, duration, enabled]);
+  return val;
+}
+
+function formatDownloads(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+  return String(n);
+}
 
 export function OpenModels() {
   const [liveModels, setLiveModels] = useState<HFModel[] | null>(null);
   const [error, setError] = useState(false);
+  const [barsVisible, setBarsVisible] = useState(false);
 
   const [chatQuery, setChatQuery] = useState("");
   const [chatMsgs, setChatMsgs] = useState<ChatMsg[]>([]);
@@ -74,24 +96,20 @@ export function OpenModels() {
     setChatQuery("");
     setChatLoading(true);
 
-    // Append user message immediately
     const userMsg: ChatMsg = { role: "user", content: query };
     const nextMsgs = [...chatMsgs, userMsg];
     setChatMsgs(nextMsgs);
     scrollToBottom();
 
-    // Count user turns so far
     const userTurnCount = nextMsgs.filter((m) => m.role === "user").length;
 
-    // If we've hit the limit, summarize previous history first
     let activeSummary = chatSummary;
     let historyToSend = nextMsgs;
     if (userTurnCount > MAX_USER_TURNS) {
-      const msgsToSummarize = nextMsgs.slice(0, -1); // everything except the new user msg
+      const msgsToSummarize = nextMsgs.slice(0, -1);
       const summary = await summarizeAndCompress(msgsToSummarize);
       activeSummary = summary;
       setChatSummary(summary);
-      // Keep only the new user message in history
       historyToSend = [userMsg];
       setChatMsgs([
         { role: "assistant", content: "_(Conversation summarized to save context — continuing below)_" },
@@ -127,21 +145,40 @@ export function OpenModels() {
 
   useEffect(() => {
     fetchHFModels("sahilchachra")
-      .then(setLiveModels)
+      .then((models) => {
+        setLiveModels(models);
+        setTimeout(() => setBarsVisible(true), 200);
+      })
       .catch(() => setError(true));
   }, []);
 
   const loading = liveModels === null && !error;
 
+  const totalDownloads = liveModels?.reduce((sum, m) => sum + m.downloads, 0) ?? 0;
+  const modelCount = liveModels?.length ?? 0;
+  const topLeaderboard = liveModels?.slice(0, 10) ?? [];
+  const maxDownloads = topLeaderboard[0]?.downloads ?? 1;
+
+  const animatedDownloads = useCountUp(totalDownloads, 1600, !!liveModels);
+  const animatedModelCount = useCountUp(modelCount, 1000, !!liveModels);
+
   const featuredModels = liveModels?.slice(0, FEATURED_COUNT) ?? [];
   const otherModels = liveModels?.slice(FEATURED_COUNT, FEATURED_COUNT + 6) ?? [];
 
-  const liveStats = liveModels
-    ? [
-        { value: `${liveModels.length}+`, label: "Models published" },
-        ...staticStats.slice(1),
-      ]
-    : staticStats;
+  const liveStats = [
+    {
+      value: liveModels ? formatDownloads(animatedDownloads) : modelStats[0].value,
+      label: "Total downloads",
+      live: true,
+    },
+    {
+      value: liveModels ? `${animatedModelCount}+` : modelStats[0].value,
+      label: "Models published",
+      live: true,
+    },
+    { value: modelStats[2].value, label: modelStats[2].label, live: false },
+    { value: modelStats[3].value, label: modelStats[3].label, live: false },
+  ];
 
   return (
     <section id="open-models" className="py-16 lg:py-20 bg-zinc-950">
@@ -154,9 +191,9 @@ export function OpenModels() {
           />
         </FadeIn>
 
-        {/* Stats strip */}
+        {/* Stats strip — animated live counters */}
         <FadeIn delay={100}>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             {liveStats.map((s) => (
               <div
                 key={s.label}
@@ -170,10 +207,92 @@ export function OpenModels() {
                   inactiveZone={0.01}
                   borderWidth={2}
                 />
-                <p className="text-xl font-bold text-zinc-100 tracking-tight">{s.value}</p>
+                <p className="text-xl font-bold text-zinc-100 tracking-tight tabular-nums">
+                  {s.value}
+                </p>
                 <p className="text-xs text-zinc-500 mt-1">{s.label}</p>
+                {s.live && liveModels && (
+                  <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                )}
               </div>
             ))}
+          </div>
+        </FadeIn>
+
+        {/* Download leaderboard */}
+        <FadeIn delay={180}>
+          <div className="relative rounded-2xl border border-zinc-800/60 bg-zinc-900/30 px-6 py-5 mb-8">
+            <GlowingEffect
+              spread={40}
+              glow={true}
+              disabled={false}
+              proximity={80}
+              inactiveZone={0.01}
+              borderWidth={1}
+            />
+            <div className="flex items-center gap-2 mb-5">
+              <TrendingUp size={13} className="text-zinc-500" />
+              <p className="text-xs font-semibold tracking-widest uppercase text-zinc-500">
+                Downloads by Model
+              </p>
+              {liveModels && (
+                <span className="ml-auto text-[10px] text-zinc-600">live · sorted by downloads</span>
+              )}
+            </div>
+
+            {loading ? (
+              <div className="space-y-2.5">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <div className="w-4 h-3 rounded bg-zinc-800 animate-pulse" />
+                    <div className="flex-1 h-6 rounded-md bg-zinc-800/60 animate-pulse" style={{ maxWidth: `${90 - i * 8}%` }} />
+                    <div className="w-10 h-3 rounded bg-zinc-800 animate-pulse" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {topLeaderboard.map((m, i) => {
+                  const pct = (m.downloads / maxDownloads) * 100;
+                  const enrich = enrichmentMap.get(m.id);
+                  const name = enrich?.base ?? modelDisplayName(m.id);
+                  const isTop = i === 0;
+
+                  return (
+                    <a
+                      key={m.id}
+                      href={`https://huggingface.co/${m.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group flex items-center gap-3"
+                    >
+                      <span className={`text-xs w-4 text-right shrink-0 tabular-nums ${isTop ? "text-zinc-400 font-semibold" : "text-zinc-600"}`}>
+                        {i + 1}
+                      </span>
+                      <div className="flex-1 relative h-7 rounded-md bg-zinc-800/50 overflow-hidden">
+                        <div
+                          className={`absolute inset-y-0 left-0 rounded-md transition-all duration-700 ease-out ${
+                            isTop
+                              ? "bg-gradient-to-r from-blue-600/70 to-blue-400/40"
+                              : "bg-gradient-to-r from-zinc-600/50 to-zinc-700/20"
+                          } group-hover:from-blue-600/60 group-hover:to-blue-400/30`}
+                          style={{
+                            width: barsVisible ? `${pct}%` : "0%",
+                            transitionDelay: `${i * 50}ms`,
+                          }}
+                        />
+                        <span className="absolute inset-0 flex items-center px-2.5 text-[11px] font-medium text-zinc-300 group-hover:text-zinc-100 transition-colors truncate">
+                          {name}
+                        </span>
+                      </div>
+                      <span className="text-xs text-zinc-500 group-hover:text-zinc-400 transition-colors w-12 text-right shrink-0 tabular-nums">
+                        {formatDownloads(m.downloads)}
+                      </span>
+                    </a>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </FadeIn>
 
@@ -320,7 +439,6 @@ export function OpenModels() {
               </p>
             </div>
 
-            {/* Chat history */}
             {chatMsgs.length > 0 && (
               <div className="space-y-4 mb-4 max-h-80 overflow-y-auto pr-1">
                 {chatMsgs.map((msg, i) => (
